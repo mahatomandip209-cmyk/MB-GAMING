@@ -1,0 +1,6 @@
+{
+  "name": "Topup App",
+  "description": "A minimalist white background application with no options or text.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
