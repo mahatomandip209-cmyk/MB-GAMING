@@ -310,51 +310,44 @@ export default function App() {
 
         {activeBottomNav === 'home' && (
           <>
-            {/* WEEKEND SPECIAL PROMO SLIDER BANNER WITH CRYSTALS/DIAMONDS (EXACT LOOK & FEEL) */}
-            <section className="relative overflow-hidden rounded-3xl bg-neutral-950 text-white min-h-[300px] sm:min-h-[330px] flex items-center shadow-lg border border-zinc-800">
+            {/* WEEKEND SPECIAL PROMO SLIDER BANNER WITH CRYSTALS/DIAMONDS (SMALL COMPACT REFRESHED HEIGHT) */}
+            <section className="relative overflow-hidden rounded-[24px] bg-neutral-950 text-white h-[140px] sm:h-[170px] flex items-center shadow-md border border-zinc-900">
               
-              {/* STYLISH CSS CYG/BLUE DEEP GLOWING DIOMANDS AND PARTICLES EMULATION */}
+              {/* STYLISH CSS CYG/BLUE DEEP GLOWING DIAMONDS AND PARTICLES EMULATION */}
               <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-900 to-black pointer-events-none" />
               
               {/* Glowing emerald orb */}
-              <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blue-500/15 blur-3xl pointer-events-none" />
               {/* Glowing cyan orb */}
-              <div className="absolute -bottom-12 -left-12 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
               
-              {/* Custom floating gemstone mockups matching the screenshot's crystal theme */}
-              <div className="absolute right-[12%] top-[15%] w-14 h-14 bg-gradient-to-br from-blue-400 to-indigo-600 opacity-60 rounded-lg blur-[1px] rotate-45 transform animate-bounce duration-500 pointer-events-none shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-              <div className="absolute right-[8%] bottom-[20%] w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 opacity-70 rounded-tr-3xl rotate-12 blur-[1px] pointer-events-none shadow-[0_0_20px_rgba(6,182,212,0.5)]" />
-              <div className="absolute left-[8%] bottom-[12%] w-10 h-10 bg-gradient-to-tr from-purple-400 to-pink-500 opacity-50 rounded-xl rotate-[35deg] pointer-events-none animate-pulse" />
-              <div className="absolute right-[25%] top-[10%] w-6 h-6 bg-cyan-300 opacity-40 rounded-full blur-md pointer-events-none" />
-              <div className="absolute right-[32%] bottom-[12%] w-8 h-8 bg-blue-300 opacity-30 rounded-bl-xl rotate-45 pointer-events-none" />
-
-              {/* Glowing cyan/green visual framing boxes */}
-              <div className="absolute top-[12%] left-[10%] right-[10%] bottom-[12%] border border-cyan-500/10 rounded-2xl pointer-events-none" />
-              <div className="absolute top-[15%] left-[12%] right-[12%] bottom-[15%] border border-emerald-500/10 rounded-2xl pointer-events-none" />
-
+              {/* Custom floating gemstone mockups scaled down to fit smaller banner */}
+              <div className="absolute right-[15%] top-[25%] w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-600 opacity-60 rounded-lg blur-[1px] rotate-45 transform pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.4)] animate-pulse" />
+              <div className="absolute right-[8%] bottom-[15%] w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 opacity-50 rounded-tr-2xl rotate-12 blur-[1px] pointer-events-none shadow-[0_0_15px_rgba(6,182,212,0.3)]" />
+              
               {/* Text Content */}
-              <div className="relative z-10 px-8 sm:px-14 py-12 max-w-lg space-y-4">
-                <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight text-white leading-tight">
+              <div className="relative z-10 px-6 sm:px-12 py-3 sm:py-5 max-w-md sm:max-w-xl space-y-1.5 sm:space-y-2">
+                {PROMO_BANNERS[promoIndex].subTitle && (
+                  <span className="inline-block text-[9px] font-bold tracking-widest text-blue-400 uppercase leading-none font-mono">
+                    {PROMO_BANNERS[promoIndex].subTitle}
+                  </span>
+                )}
+                
+                <h3 className="text-base sm:text-xl md:text-2xl font-black font-display tracking-tight text-white leading-tight">
                   {PROMO_BANNERS[promoIndex].title}
                 </h3>
-                
-                {PROMO_BANNERS[promoIndex].subTitle && (
-                  <p className="text-sm font-bold tracking-widest text-[#a5f3fc] uppercase leading-none font-mono">
-                    {PROMO_BANNERS[promoIndex].subTitle}
-                  </p>
-                )}
 
-                <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed font-medium">
+                <p className="text-zinc-400 text-[10px] sm:text-xs leading-relaxed max-w-[280px] sm:max-w-md line-clamp-1 sm:line-clamp-2">
                   {PROMO_BANNERS[promoIndex].tagline}
                 </p>
 
-                <div className="pt-2 flex items-center gap-3">
+                <div className="pt-1">
                   <button 
                     onClick={() => {
                       setSelectedCategory('top-up');
                       triggerToast('Filtered for in-game topups!');
                     }}
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-extrabold tracking-wider uppercase transition-all shadow-md active:scale-95"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] sm:text-[10px] font-extrabold tracking-wider uppercase transition-all shadow-md active:scale-95"
                   >
                     🚀 {PROMO_BANNERS[promoIndex].buttonText}
                   </button>
@@ -364,28 +357,28 @@ export default function App() {
               {/* Left Slider Arrow Navigation */}
               <button
                 onClick={() => setPromoIndex(prev => (prev === 0 ? PROMO_BANNERS.length - 1 : prev - 1))}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none"
                 aria-label="Previous Promo"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
 
               {/* Right Slider Arrow Navigation */}
               <button
                 onClick={() => setPromoIndex(prev => (prev === PROMO_BANNERS.length - 1 ? 0 : prev + 1))}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none"
                 aria-label="Next Promo"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
 
               {/* Exact Slide Indicators at bottom center */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
                 {PROMO_BANNERS.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setPromoIndex(idx)}
-                    className={`h-2 transition-all duration-300 rounded-full ${idx === promoIndex ? 'w-6 bg-blue-500' : 'w-2 bg-zinc-600'}`}
+                    className={`h-1.5 transition-all duration-300 rounded-full ${idx === promoIndex ? 'w-4 bg-blue-500' : 'w-1.5 bg-zinc-600'}`}
                     aria-label={`Go to slide ${idx + 1}`}
                   />
                 ))}
@@ -415,12 +408,47 @@ export default function App() {
             </section>
 
             {/* POPULAR BADGE NOTIFIER */}
-            <div className="flex items-center gap-2 px-1 py-0.5">
-              <div className="h-0.5 flex-grow bg-zinc-100" />
-              <span className="text-amber-500 text-xs font-black tracking-widest uppercase flex items-center gap-1">
-                🔥 POPULAR NOW 🔥
-              </span>
-              <div className="h-0.5 flex-grow bg-zinc-100" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-[11px] font-black tracking-widest text-[#f97316] uppercase flex items-center gap-1 bg-amber-550/10 px-2.5 py-1 rounded-full border border-orange-100">
+                  🔥 POPULAR NOW
+                </span>
+                <div className="h-[1px] flex-grow bg-zinc-150" />
+              </div>
+
+              {/* POPULAR PRODUCTS HORIZONTAL CONTAINER (As shown in screenshot 1) */}
+              <div className="flex items-center gap-3.5 overflow-x-auto pb-2.5 scrollbar-none px-1">
+                {ALL_PRODUCTS.filter(p => p.popular).map((product) => (
+                  <div
+                    key={`pop-${product.id}`}
+                    onClick={() => openCheckout(product)}
+                    className="w-28 sm:w-32 md:w-36 shrink-0 bg-white border border-zinc-150 hover:border-blue-500 rounded-3xl p-2.5 transition-all hover:shadow-[0_4px_16px_rgba(0,0,0,0.02)] cursor-pointer flex flex-col gap-2 group relative text-center"
+                  >
+                    <div className="w-full aspect-square rounded-[20px] overflow-hidden bg-zinc-50 border border-zinc-100 flex items-center justify-center relative shadow-sm">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} flex items-center justify-center text-white`}>
+                          {renderProductIcon(product.iconName, "w-8 h-8")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-0.5 px-0.5">
+                      <h4 className="text-[10px] sm:text-[11px] font-extrabold text-zinc-900 truncate leading-tight group-hover:text-blue-600 transition-colors uppercase">
+                        {product.name}
+                      </h4>
+                      <p className="text-[10px] font-mono font-bold text-blue-600">
+                        NPR {product.minAmount}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* ALL CAPSULE CATEGORIES COVERED IN BOX (As on alicdigitalshop.com) */}
@@ -430,10 +458,10 @@ export default function App() {
                 {/* ALL Button Tab */}
                 <button
                   onClick={() => handleCategoryChange('all')}
-                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-center whitespace-nowrap transition-all uppercase cursor-pointer ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
                     selectedCategory === 'all'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border border-zinc-200'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
                   }`}
                 >
                   ALL
@@ -442,10 +470,10 @@ export default function App() {
                 {/* TOP-UP Button Tab */}
                 <button
                   onClick={() => handleCategoryChange('top-up')}
-                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-center whitespace-nowrap transition-all uppercase cursor-pointer ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
                     selectedCategory === 'top-up'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border border-zinc-200'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
                   }`}
                 >
                   TOP-UP
@@ -454,10 +482,10 @@ export default function App() {
                 {/* VOUCHER Button Tab */}
                 <button
                   onClick={() => handleCategoryChange('voucher')}
-                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-center whitespace-nowrap transition-all uppercase cursor-pointer ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
                     selectedCategory === 'voucher'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border border-zinc-200'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
                   }`}
                 >
                   VOUCHER
@@ -466,10 +494,10 @@ export default function App() {
                 {/* SUBSCRIPTION Button Tab */}
                 <button
                   onClick={() => handleCategoryChange('subscription')}
-                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-center whitespace-nowrap transition-all uppercase cursor-pointer ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
                     selectedCategory === 'subscription'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border border-zinc-200'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
                   }`}
                 >
                   SUBSCRIPTION
@@ -478,10 +506,10 @@ export default function App() {
                 {/* DESIGN Button Tab */}
                 <button
                   onClick={() => handleCategoryChange('design')}
-                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-center whitespace-nowrap transition-all uppercase cursor-pointer ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
                     selectedCategory === 'design'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border border-zinc-200'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
                   }`}
                 >
                   DESIGN
@@ -490,16 +518,92 @@ export default function App() {
                 {/* VOUCHERS alternative Button Tab */}
                 <button
                   onClick={() => handleCategoryChange('vouchers')}
-                  className={`px-5 py-2.5 text-xs font-extrabold rounded-xl text-center whitespace-nowrap transition-all uppercase cursor-pointer ${
+                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
                     selectedCategory === 'vouchers'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border border-zinc-200'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
                   }`}
                 >
                   VOUCHERS
                 </button>
 
               </div>
+            </section>
+
+            {/* PRODUCT CARD GRID (Matching screenshots precisely) */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-extrabold tracking-wider uppercase text-zinc-400">
+                  Products ({filteredProducts.length})
+                </span>
+                {searchQuery && (
+                  <button 
+                    onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }} 
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Reset Filter
+                  </button>
+                )}
+              </div>
+
+              {filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-5">
+                  {filteredProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => openCheckout(product)}
+                      className="group cursor-pointer bg-white border border-zinc-150 hover:border-blue-500 rounded-3xl p-3.5 transition-all hover:shadow-[0_8px_30px_rgba(37,99,235,0.04)] flex flex-col justify-between relative overflow-hidden"
+                    >
+                      <div className="space-y-3 flex flex-col h-full">
+                        {/* Upper image frame */}
+                        <div className="w-full aspect-square rounded-[20px] overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
+                          
+                          {/* Heart favorite clicker */}
+                          <button
+                            onClick={(e) => toggleFavorite(product.id, e)}
+                            className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-zinc-300 hover:text-red-500 focus:outline-none"
+                            title="Favorite"
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${favoriteIds.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                          </button>
+
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
+                              {renderProductIcon(product.iconName, "w-8 h-8")}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title Underneath */}
+                        <div className="flex-grow flex items-center justify-center pb-1">
+                          <h4 className="text-[11px] sm:text-xs font-black text-zinc-800 tracking-tight leading-snug text-center group-hover:text-blue-600 transition-colors line-clamp-2 px-0.5 uppercase">
+                            {product.name}
+                          </h4>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white border border-zinc-150 rounded-3xl p-12 text-center text-zinc-500">
+                  <AlertCircle className="w-10 h-10 text-zinc-300 mx-auto mb-3 animate-pulse" />
+                  <p className="text-xs font-bold text-zinc-800">No Services Available Currently</p>
+                  <p className="text-[11px] text-zinc-400 mt-1 max-w-xs mx-auto">Try typing a different name or checking another category tab.</p>
+                  <button 
+                    onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white font-extrabold text-xs tracking-wider uppercase rounded-xl shadow-sm"
+                  >
+                    Show All Catalog
+                  </button>
+                </div>
+              )}
             </section>
 
 

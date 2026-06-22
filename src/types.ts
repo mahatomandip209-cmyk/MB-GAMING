@@ -14,6 +14,8 @@ export interface Product {
   inputLabel: string;
   inputPlaceholder: string;
   iconName: 'phone' | 'gamepad' | 'tv' | 'music' | 'shopping' | 'wifi' | 'layers';
+  imageUrl?: string;
+  popular?: boolean;
 }
 
 export interface Transaction {
