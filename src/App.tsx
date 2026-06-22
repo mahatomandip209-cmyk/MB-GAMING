@@ -28,6 +28,9 @@ import {
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
 
+const ACTIVE_PRODUCTS = ALL_PRODUCTS.filter(product => !!product.imageUrl);
+
+
 export default function App() {
   // STATE MANAGEMENT
   const [walletBalance, setWalletBalance] = useState<number>(2450);
@@ -122,7 +125,7 @@ export default function App() {
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    return ALL_PRODUCTS.filter((product) => {
+    return ACTIVE_PRODUCTS.filter((product) => {
       const matchCategory = selectedCategory === 'all' || product.category === selectedCategory;
       const matchSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -418,7 +421,7 @@ export default function App() {
 
               {/* POPULAR PRODUCTS HORIZONTAL CONTAINER (As shown in screenshot 1) */}
               <div className="flex items-center gap-3.5 overflow-x-auto pb-2.5 scrollbar-none px-1">
-                {ALL_PRODUCTS.filter(p => p.popular).map((product) => (
+                {ACTIVE_PRODUCTS.filter(p => p.popular).map((product) => (
                   <div
                     key={`pop-${product.id}`}
                     onClick={() => openCheckout(product)}
@@ -757,7 +760,7 @@ export default function App() {
 
             {favoriteIds.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ALL_PRODUCTS.filter(p => favoriteIds.includes(p.id)).map(product => (
+                {ACTIVE_PRODUCTS.filter(p => favoriteIds.includes(p.id)).map(product => (
                   <div
                     key={product.id}
                     onClick={() => openCheckout(product)}
