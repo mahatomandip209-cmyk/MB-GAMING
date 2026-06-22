@@ -410,49 +410,7 @@ export default function App() {
               </div>
             </section>
 
-            {/* POPULAR BADGE NOTIFIER */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-[11px] font-black tracking-widest text-[#f97316] uppercase flex items-center gap-1 bg-amber-550/10 px-2.5 py-1 rounded-full border border-orange-100">
-                  🔥 POPULAR NOW
-                </span>
-                <div className="h-[1px] flex-grow bg-zinc-150" />
-              </div>
 
-              {/* POPULAR PRODUCTS HORIZONTAL CONTAINER (As shown in screenshot 1) */}
-              <div className="flex items-center gap-3.5 overflow-x-auto pb-2.5 scrollbar-none px-1">
-                {ACTIVE_PRODUCTS.filter(p => p.popular).map((product) => (
-                  <div
-                    key={`pop-${product.id}`}
-                    onClick={() => openCheckout(product)}
-                    className="w-28 sm:w-32 md:w-36 shrink-0 bg-white border border-zinc-150 hover:border-blue-500 rounded-3xl p-2.5 transition-all hover:shadow-[0_4px_16px_rgba(0,0,0,0.02)] cursor-pointer flex flex-col gap-2 group relative text-center"
-                  >
-                    <div className="w-full aspect-square rounded-[20px] overflow-hidden bg-zinc-50 border border-zinc-100 flex items-center justify-center relative shadow-sm">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} flex items-center justify-center text-white`}>
-                          {renderProductIcon(product.iconName, "w-8 h-8")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-0.5 px-0.5">
-                      <h4 className="text-[10px] sm:text-[11px] font-extrabold text-zinc-900 truncate leading-tight group-hover:text-blue-600 transition-colors uppercase">
-                        {product.name}
-                      </h4>
-                      <p className="text-[10px] font-mono font-bold text-blue-600">
-                        NPR {product.minAmount}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* ALL CAPSULE CATEGORIES COVERED IN BOX (As on alicdigitalshop.com) */}
             <section className="bg-white p-1 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
