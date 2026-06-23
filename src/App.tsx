@@ -461,7 +461,66 @@ export default function App() {
               </div>
             </section>
 
+            {/* POPULAR NOW SECTION (Matching design/size requested, displaying popular products with horizontal scroll) */}
+            <section className="bg-white rounded-2xl p-4 border border-zinc-150 shadow-[0_1px_4px_rgba(0,0,0,0.01)] space-y-3.5">
+              <div className="flex items-center gap-1.5 px-0.5">
+                <span className="text-xs font-extrabold tracking-wider text-orange-600 uppercase flex items-center gap-1.5 font-display">
+                  🔥 POPULAR NOW 🔥
+                </span>
+              </div>
+              <div className="flex items-stretch gap-4 overflow-x-auto pb-1 scrollbar-none">
+                {ALL_PRODUCTS.filter(product => product.popular).map((product) => (
+                  <div
+                    key={`popular-${product.id}`}
+                    onClick={() => openCheckout(product)}
+                    className="w-[135px] sm:w-[155px] shrink-0 group cursor-pointer bg-white border border-zinc-150 hover:border-blue-500 rounded-2xl p-3 transition-all hover:shadow-[0_8px_30px_rgba(37,99,235,0.04)] flex flex-col justify-between relative overflow-hidden"
+                  >
+                    <div className="space-y-2 flex flex-col h-full justify-between">
+                      <div>
+                        {/* Upper image frame */}
+                        <div className="w-full aspect-square rounded-xl overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
+                          {/* Heart favorite clicker */}
+                          <button
+                            onClick={(e) => toggleFavorite(product.id, e)}
+                            className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_1px_5px_rgba(0,0,0,0.04)] text-zinc-300 hover:text-red-500 focus:outline-none"
+                            title="Favorite"
+                          >
+                            <Heart className={`w-3 h-3 ${favoriteIds.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                          </button>
 
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
+                              {renderProductIcon(product.iconName, "w-6 h-6")}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title Underneath */}
+                        <div className="mt-2.5 px-0.5">
+                          <h4 className="text-[11px] sm:text-xs font-bold text-zinc-800 tracking-tight leading-snug text-left group-hover:text-blue-600 transition-colors line-clamp-2">
+                            {product.name}
+                          </h4>
+                        </div>
+                      </div>
+
+                      {/* Price Underneath */}
+                      <div className="px-0.5 mt-1.5">
+                        <div className="text-[10px] sm:text-xs font-extrabold text-blue-600 text-left">
+                          NPR {product.minAmount}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
 
             {/* ALL CAPSULE CATEGORIES COVERED IN BOX (As on alicdigitalshop.com) */}
             <section className="bg-white p-1 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
@@ -564,40 +623,49 @@ export default function App() {
                     <div
                       key={product.id}
                       onClick={() => openCheckout(product)}
-                      className="group cursor-pointer bg-white border border-zinc-150 hover:border-blue-500 rounded-3xl p-3.5 transition-all hover:shadow-[0_8px_30px_rgba(37,99,235,0.04)] flex flex-col justify-between relative overflow-hidden"
+                      className="group cursor-pointer bg-white border border-zinc-150 hover:border-blue-500 rounded-2xl p-3 transition-all hover:shadow-[0_8px_30px_rgba(37,99,235,0.04)] flex flex-col justify-between relative overflow-hidden"
                     >
-                      <div className="space-y-3 flex flex-col h-full">
-                        {/* Upper image frame */}
-                        <div className="w-full aspect-square rounded-[20px] overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
-                          
-                          {/* Heart favorite clicker */}
-                          <button
-                            onClick={(e) => toggleFavorite(product.id, e)}
-                            className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-zinc-300 hover:text-red-500 focus:outline-none"
-                            title="Favorite"
-                          >
-                            <Heart className={`w-3.5 h-3.5 ${favoriteIds.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
-                          </button>
+                      <div className="space-y-2 flex flex-col h-full justify-between">
+                        <div>
+                          {/* Upper image frame */}
+                          <div className="w-full aspect-square rounded-xl overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
+                            
+                            {/* Heart favorite clicker */}
+                            <button
+                              onClick={(e) => toggleFavorite(product.id, e)}
+                              className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_1px_5px_rgba(0,0,0,0.04)] text-zinc-300 hover:text-red-500 focus:outline-none"
+                              title="Favorite"
+                            >
+                              <Heart className={`w-3 h-3 ${favoriteIds.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                            </button>
 
-                          {product.imageUrl ? (
-                            <img
-                              src={product.imageUrl}
-                              alt={product.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
-                            />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
-                              {renderProductIcon(product.iconName, "w-8 h-8")}
-                            </div>
-                          )}
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                              />
+                            ) : (
+                              <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
+                                {renderProductIcon(product.iconName, "w-6 h-6")}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Title Underneath */}
+                          <div className="mt-2.5 px-0.5">
+                            <h4 className="text-[11px] sm:text-xs font-bold text-zinc-800 tracking-tight leading-snug text-left group-hover:text-blue-600 transition-colors line-clamp-2">
+                              {product.name}
+                            </h4>
+                          </div>
                         </div>
 
-                        {/* Title Underneath */}
-                        <div className="flex-grow flex items-center justify-center pb-1">
-                          <h4 className="text-[11px] sm:text-xs font-black text-zinc-800 tracking-tight leading-snug text-center group-hover:text-blue-600 transition-colors line-clamp-2 px-0.5 uppercase">
-                            {product.name}
-                          </h4>
+                        {/* Price Underneath */}
+                        <div className="px-0.5 mt-1.5">
+                          <div className="text-[10px] sm:text-xs font-extrabold text-blue-600 text-left">
+                            NPR {product.minAmount}
+                          </div>
                         </div>
                       </div>
                     </div>
