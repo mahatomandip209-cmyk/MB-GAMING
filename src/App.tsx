@@ -473,48 +473,39 @@ export default function App() {
                   <div
                     key={`popular-${product.id}`}
                     onClick={() => openCheckout(product)}
-                    className="w-[135px] sm:w-[155px] shrink-0 group cursor-pointer bg-white border border-white hover:border-blue-500 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden"
+                    className="w-[135px] sm:w-[155px] shrink-0 group cursor-pointer bg-white border border-white hover:border-blue-500 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all relative overflow-hidden"
                   >
-                    <div className="space-y-2 flex flex-col h-full justify-between">
-                      <div>
-                        {/* Upper image frame */}
-                        <div className="w-full aspect-square rounded-xl overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
-                          {/* Heart favorite clicker */}
-                          <button
-                            onClick={(e) => toggleFavorite(product.id, e)}
-                            className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_1px_5px_rgba(0,0,0,0.04)] text-zinc-300 hover:text-red-500 focus:outline-none"
-                            title="Favorite"
-                          >
-                            <Heart className={`w-3 h-3 ${favoriteIds.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
-                          </button>
+                    <div className="space-y-2.5">
+                      {/* Upper image frame */}
+                      <div className="w-full aspect-square rounded-xl overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
+                        {/* Heart favorite clicker */}
+                        <button
+                          onClick={(e) => toggleFavorite(product.id, e)}
+                          className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_1px_5px_rgba(0,0,0,0.04)] text-black focus:outline-none"
+                          title="Favorite"
+                        >
+                          <Heart className={`w-3 h-3 transition-colors ${favoriteIds.includes(product.id) ? 'fill-red-500' : ''}`} />
+                        </button>
 
-                          {product.imageUrl ? (
-                            <img
-                              src={product.imageUrl}
-                              alt={product.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
-                            />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
-                              {renderProductIcon(product.iconName, "w-6 h-6")}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Title Underneath */}
-                        <div className="mt-2.5 px-0.5">
-                          <h4 className="text-[11px] sm:text-xs font-bold text-zinc-800 tracking-tight leading-snug text-left group-hover:text-blue-600 transition-colors line-clamp-2">
-                            {product.name}
-                          </h4>
-                        </div>
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                          />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
+                            {renderProductIcon(product.iconName, "w-6 h-6")}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Price Underneath */}
-                      <div className="px-0.5 mt-1.5">
-                        <div className="text-[10px] sm:text-xs font-extrabold text-blue-600 text-left">
-                          NPR {product.minAmount}
-                        </div>
+                      {/* Title Underneath */}
+                      <div className="px-0.5">
+                        <h4 className="text-[11px] sm:text-xs font-bold text-zinc-800 tracking-tight leading-snug text-left group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {product.name}
+                        </h4>
                       </div>
                     </div>
                   </div>
@@ -623,49 +614,40 @@ export default function App() {
                     <div
                       key={product.id}
                       onClick={() => openCheckout(product)}
-                      className="group cursor-pointer bg-white border border-white hover:border-blue-500 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden"
+                      className="group cursor-pointer bg-white border border-white hover:border-blue-500 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all relative overflow-hidden"
                     >
-                      <div className="space-y-2 flex flex-col h-full justify-between">
-                        <div>
-                          {/* Upper image frame */}
-                          <div className="w-full aspect-square rounded-xl overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
-                            
-                            {/* Heart favorite clicker */}
-                            <button
-                              onClick={(e) => toggleFavorite(product.id, e)}
-                              className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_1px_5px_rgba(0,0,0,0.04)] text-zinc-300 hover:text-red-500 focus:outline-none"
-                              title="Favorite"
-                            >
-                              <Heart className={`w-3 h-3 ${favoriteIds.includes(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
-                            </button>
+                      <div className="space-y-2.5">
+                        {/* Upper image frame */}
+                        <div className="w-full aspect-square rounded-xl overflow-hidden bg-neutral-50 relative border border-zinc-100 flex items-center justify-center shadow-sm">
+                          
+                          {/* Heart favorite clicker */}
+                          <button
+                            onClick={(e) => toggleFavorite(product.id, e)}
+                            className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-full bg-white/85 hover:bg-white backdrop-blur-sm transition-all shadow-[0_1px_5px_rgba(0,0,0,0.04)] text-black focus:outline-none"
+                            title="Favorite"
+                          >
+                            <Heart className={`w-3 h-3 transition-colors ${favoriteIds.includes(product.id) ? 'fill-red-500' : ''}`} />
+                          </button>
 
-                            {product.imageUrl ? (
-                              <img
-                                src={product.imageUrl}
-                                alt={product.name}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
-                              />
-                            ) : (
-                              <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
-                                {renderProductIcon(product.iconName, "w-6 h-6")}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Title Underneath */}
-                          <div className="mt-2.5 px-0.5">
-                            <h4 className="text-[11px] sm:text-xs font-bold text-zinc-800 tracking-tight leading-snug text-left group-hover:text-blue-600 transition-colors line-clamp-2">
-                              {product.name}
-                            </h4>
-                          </div>
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor} text-white flex items-center justify-center`}>
+                              {renderProductIcon(product.iconName, "w-6 h-6")}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Price Underneath */}
-                        <div className="px-0.5 mt-1.5">
-                          <div className="text-[10px] sm:text-xs font-extrabold text-blue-600 text-left">
-                            NPR {product.minAmount}
-                          </div>
+                        {/* Title Underneath */}
+                        <div className="px-0.5">
+                          <h4 className="text-[11px] sm:text-xs font-bold text-zinc-800 tracking-tight leading-snug text-left group-hover:text-blue-600 transition-colors line-clamp-2">
+                            {product.name}
+                          </h4>
                         </div>
                       </div>
                     </div>

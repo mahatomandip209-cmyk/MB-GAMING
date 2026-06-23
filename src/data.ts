@@ -217,21 +217,6 @@ export const ALL_PRODUCTS: Product[] = [
     inputPlaceholder: 'e.g. "ProGamer88"',
     iconName: 'layers',
     imageUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=400&h=400&q=80'
-  },
-  {
-    id: 'logo-brand-design',
-    name: 'Abstract Gaming Mascot Logo',
-    provider: 'MB GAMING Design Team',
-    category: 'design',
-    imagePlaceholderColor: 'from-indigo-500 to-purple-600',
-    description: 'Vector-drawn mascot logo design optimized for gaming platforms, tournaments, and social avatars.',
-    minAmount: 2500,
-    fixedAmounts: [2500, 4000],
-    popularAmount: 2500,
-    inputLabel: 'Mascot Theme description',
-    inputPlaceholder: 'e.g. "Neon Tiger / Dark Wolf"',
-    iconName: 'layers',
-    imageUrl: 'https://images.unsplash.com/photo-1614680376593-902f74fa0d41?auto=format&fit=crop&w=400&h=400&q=80'
   }
 ];
 
