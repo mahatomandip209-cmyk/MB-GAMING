@@ -462,18 +462,18 @@ export default function App() {
             </section>
 
             {/* POPULAR NOW SECTION (Matching design/size requested, displaying popular products with horizontal scroll) */}
-            <section className="bg-white rounded-2xl p-4 border border-zinc-150 shadow-[0_1px_4px_rgba(0,0,0,0.01)] space-y-3.5">
-              <div className="flex items-center gap-1.5 px-0.5">
+            <section className="space-y-3 pt-2">
+              <div className="flex items-center gap-1.5 px-1">
                 <span className="text-xs font-extrabold tracking-wider text-orange-600 uppercase flex items-center gap-1.5 font-display">
                   🔥 POPULAR NOW 🔥
                 </span>
               </div>
-              <div className="flex items-stretch gap-4 overflow-x-auto pb-1 scrollbar-none">
+              <div className="flex items-stretch gap-4 overflow-x-auto pb-2 scrollbar-none px-1">
                 {ALL_PRODUCTS.filter(product => product.popular).map((product) => (
                   <div
                     key={`popular-${product.id}`}
                     onClick={() => openCheckout(product)}
-                    className="w-[135px] sm:w-[155px] shrink-0 group cursor-pointer bg-white border border-zinc-150 hover:border-blue-500 rounded-2xl p-3 transition-all hover:shadow-[0_8px_30px_rgba(37,99,235,0.04)] flex flex-col justify-between relative overflow-hidden"
+                    className="w-[135px] sm:w-[155px] shrink-0 group cursor-pointer bg-white border border-white hover:border-blue-500 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden"
                   >
                     <div className="space-y-2 flex flex-col h-full justify-between">
                       <div>
@@ -623,7 +623,7 @@ export default function App() {
                     <div
                       key={product.id}
                       onClick={() => openCheckout(product)}
-                      className="group cursor-pointer bg-white border border-zinc-150 hover:border-blue-500 rounded-2xl p-3 transition-all hover:shadow-[0_8px_30px_rgba(37,99,235,0.04)] flex flex-col justify-between relative overflow-hidden"
+                      className="group cursor-pointer bg-white border border-white hover:border-blue-500 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden"
                     >
                       <div className="space-y-2 flex flex-col h-full justify-between">
                         <div>
