@@ -1,4 +1,4 @@
-import { useState, useMemo, FormEvent, MouseEvent } from 'react';
+import { useState, useMemo, FormEvent, MouseEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Phone,
@@ -23,7 +23,20 @@ import {
   Heart,
   User,
   ShoppingBag,
-  ArrowUpRight
+  ArrowUpRight,
+  ArrowUp,
+  ArrowLeft,
+  Pencil,
+  Link,
+  Bell,
+  MessageSquare,
+  Gift,
+  Settings,
+  FileText,
+  RotateCcw,
+  XCircle,
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
@@ -57,6 +70,39 @@ export default function App() {
   // Active Promo Index for the main slider
   const [promoIndex, setPromoIndex] = useState<number>(0);
 
+  // Scroll to Top state & logic
+  const [showScrollToTop, setShowScrollToTop] = useState<boolean>(false);
+
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      // Immediately hide arrow during active scrolling (either direction)
+      setShowScrollToTop(false);
+
+      clearTimeout(scrollTimeout);
+      // ONLY show arrow when the user has stopped scrolling (for 400ms) and is past 300px
+      scrollTimeout = setTimeout(() => {
+        if (window.scrollY > 300) {
+          setShowScrollToTop(true);
+        }
+      }, 400);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   // Error notifications
   const [modalError, setModalError] = useState<string>('');
   const [walletError, setWalletError] = useState<string>('');
@@ -66,19 +112,19 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
       id: 'tx-202601',
-      productId: 'ff-diamonds',
-      productName: 'Free Fire 1000+100 Diamonds',
-      provider: 'Garena Free Fire',
+      productId: 'garena-freefire',
+      productName: 'Garena Free Fire Diamonds',
+      provider: 'Garena',
       category: 'top-up',
-      amount: 780,
+      amount: 499,
       timestamp: '2026-06-20 05:12',
       status: 'SUCCESS',
       targetAccount: 'UID: 928348293'
     },
     {
       id: 'tx-202602',
-      productId: 'netflix',
-      productName: 'Netflix Premium Ultra VIP',
+      productId: 'netflix-sub-card',
+      productName: 'Netflix Premium Subscription Room',
       provider: 'Netflix Inc.',
       category: 'subscription',
       amount: 649,
@@ -89,7 +135,7 @@ export default function App() {
   ]);
 
   // Favorites state
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(['ff-diamonds', 'netflix']);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(['garena-freefire', 'pubg-mobile-uc']);
 
   // toggle favorite
   const toggleFavorite = (productId: string, e: MouseEvent) => {
@@ -133,6 +179,11 @@ export default function App() {
       return matchCategory && matchSearch;
     });
   }, [selectedCategory, searchQuery]);
+
+  // Memoized favorited products
+  const favoritedProducts = useMemo(() => {
+    return ACTIVE_PRODUCTS.filter(p => favoriteIds.includes(p.id));
+  }, [favoriteIds]);
 
   // Handle clicking a category tab
   const handleCategoryChange = (category: Category) => {
@@ -589,9 +640,23 @@ export default function App() {
                 {transactions.map((tx) => (
                   <div key={tx.id} className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-700 mt-0.5">
-                        <ReceiptText className="w-4.5 h-4.5" />
-                      </div>
+                      {(() => {
+                        const associatedProduct = ALL_PRODUCTS.find(p => p.id === tx.productId);
+                        return associatedProduct?.imageUrl ? (
+                          <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-155 shrink-0 shadow-sm mt-0.5">
+                            <img
+                              src={associatedProduct.imageUrl}
+                              alt={tx.productName}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-700 shrink-0 mt-0.5">
+                            <ReceiptText className="w-4.5 h-4.5" />
+                          </div>
+                        );
+                      })()}
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-extrabold text-zinc-900 uppercase">{tx.productName}</span>
@@ -716,18 +781,29 @@ export default function App() {
               <p className="text-xs text-zinc-400">Quick access pins for items you recharge often</p>
             </div>
 
-            {favoriteIds.length > 0 ? (
+            {favoritedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ACTIVE_PRODUCTS.filter(p => favoriteIds.includes(p.id)).map(product => (
+                {favoritedProducts.map(product => (
                   <div
                     key={product.id}
                     onClick={() => openCheckout(product)}
                     className="bg-white border border-zinc-200 hover:border-blue-500 cursor-pointer p-4 rounded-xl flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-lg bg-gradient-to-tr ${product.imagePlaceholderColor} text-white`}>
-                        {renderProductIcon(product.iconName, "w-4 h-4")}
-                      </div>
+                      {product.imageUrl ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-150 shrink-0 shadow-sm">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`p-2.5 rounded-lg bg-gradient-to-tr ${product.imagePlaceholderColor} text-white shrink-0`}>
+                          {renderProductIcon(product.iconName, "w-4 h-4")}
+                        </div>
+                      )}
                       <div>
                         <h4 className="text-xs font-extrabold text-zinc-900 uppercase leading-none">{product.name}</h4>
                         <p className="text-[10px] text-zinc-400 mt-1 font-semibold">{product.provider}</p>
@@ -752,42 +828,280 @@ export default function App() {
           </section>
         )}
 
-        {/* USER PROFILE INFO VIEW */}
+        {/* USER PROFILE INFO VIEW (ACCORDING TO USER'S SCREENSHOTS) */}
         {activeBottomNav === 'profile' && (
-          <section className="bg-white rounded-2xl p-6 border border-zinc-200/80 space-y-6">
-            <div className="flex items-center gap-4 pb-4 border-b border-zinc-100">
-              <div className="w-14 h-14 rounded-full bg-blue-50 border-2 border-blue-250 flex items-center justify-center text-blue-600">
-                <User className="w-7 h-7" />
+          <div className="space-y-4">
+            
+            {/* Header top bar with Back Button */}
+            <div className="flex items-center justify-between pb-2">
+              <button 
+                onClick={() => setActiveBottomNav('home')}
+                className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-600 transition-colors cursor-pointer"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-1.5">
+                <User className="w-5 h-5 text-blue-600 stroke-[2.5]" />
+                <h3 className="text-base font-extrabold text-zinc-900 uppercase tracking-tight">Profile</h3>
               </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-zinc-900 uppercase">Verified Member Account</h3>
-                <p className="text-xs font-mono text-zinc-400">CLIENT_ID: AD-902348-NEPAL</p>
+              <div className="w-8"></div> {/* Spacer to keep centered balance */}
+            </div>
+
+            {/* Profile Summary Card */}
+            <div className="bg-white rounded-2xl p-5 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                {/* User Profile Avatar Image from Unsplash */}
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 shadow-md">
+                  <img 
+                    src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&h=150&q=80" 
+                    alt="Abhishek Admin" 
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-black text-zinc-800 leading-tight">Abhishek Admin</h4>
+                  <p className="text-xs text-zinc-400 font-medium">abhisheknabik01@gmail.com</p>
+                  
+                  {/* Points Indicator with link icon */}
+                  <div className="pt-1 flex items-center gap-1 text-blue-600 font-extrabold">
+                    <Link className="w-3.5 h-3.5" />
+                    <span className="text-[11px] hover:underline cursor-pointer">37903 Points</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit button with Pencil icon */}
+              <button 
+                onClick={() => triggerToast("Edit profile is restricted to administrators.")}
+                className="w-8 py-1.5 rounded-lg border border-blue-105 bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all flex items-center justify-center cursor-pointer"
+                title="Edit Profile"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Main Menu Links Grid */}
+            <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
+              
+              {/* Store Points Option */}
+              <div className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50">
+                    <Link className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">Store Points</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: 37903 Points</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* My Orders Option */}
+              <div 
+                onClick={() => setActiveBottomNav('orders')}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/50">
+                    <ShoppingBag className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">My Orders</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Track your purchases</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* Favorites Option */}
+              <div 
+                onClick={() => setActiveBottomNav('favorites')}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100/50">
+                    <Heart className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">Favorites</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Your favorite games</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* Notifications */}
+              <div 
+                onClick={() => triggerToast("Your notifications are all up to date!")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100/50">
+                    <Bell className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">Notifications</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Stay updated</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* Support Chat */}
+              <div 
+                onClick={() => triggerToast("Connecting to live support chat...")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/50">
+                    <MessageSquare className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">Support Chat</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Chat with our team</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* Refer and earn */}
+              <div 
+                onClick={() => triggerToast("Get Rs. 50 bonus points upon inviting your first gamer friend!")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100/50">
+                    <Gift className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">Refer & Earn</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Share with friends & earn rewards</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* Settings */}
+              <div 
+                onClick={() => triggerToast("App settings are configured to optimal performance.")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-zinc-100 text-zinc-600 flex items-center justify-center border border-zinc-150">
+                    <Settings className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-zinc-800">Settings</h5>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">App preferences</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+            </div>
+
+            {/* Legal Links section */}
+            <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
+              <span className="block text-[9.5px] font-black text-zinc-400 px-2 tracking-wider uppercase">LEGAL</span>
+              
+              {/* Terms & Conditions */}
+              <div 
+                onClick={() => triggerToast("Displaying Terms & Conditions document...")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-zinc-850">Terms & Conditions</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+              </div>
+
+              {/* Refund Policy */}
+              <div 
+                onClick={() => triggerToast("Displaying Refund Policy details...")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-zinc-850">Refund Policy</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+              </div>
+
+              {/* Cancellation Policy */}
+              <div 
+                onClick={() => triggerToast("Displaying Cancellation Policy parameters...")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                    <XCircle className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-zinc-850">Cancellation Policy</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+              </div>
+
+              {/* Privacy Policy */}
+              <div 
+                onClick={() => triggerToast("Displaying Privacy Policy details...")}
+                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-extrabold text-zinc-850">Privacy Policy</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+              </div>
+
+            </div>
+
+            {/* Logout Row */}
+            <div 
+              onClick={() => {
+                triggerToast("Session logged out successfully! Restarting profile context...");
+              }}
+              className="bg-rose-50 border border-rose-100 hover:bg-rose-100/50 rounded-2xl p-4 flex items-center gap-3.5 cursor-pointer transition-all active:scale-99"
+            >
+              <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-200">
+                <LogOut className="w-5 h-5 shrink-0" />
+              </div>
+              <div className="space-y-0.5">
+                <h5 className="text-[11px] font-black text-rose-700 leading-none">Logout</h5>
+                <p className="text-[10px] text-rose-500 font-semibold">Sign out of your account</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="p-3 bg-zinc-50 rounded-xl space-y-1">
-                <span className="text-[9px] uppercase font-bold text-zinc-400 block leading-none">Primary Wallet</span>
-                <span className="text-sm font-bold text-zinc-800 font-mono">Rs. {walletBalance}</span>
-              </div>
-              <div className="p-3 bg-zinc-50 rounded-xl space-y-1">
-                <span className="text-[9px] uppercase font-bold text-zinc-400 block leading-none">Completed Recharges</span>
-                <span className="text-sm font-bold text-zinc-800 font-mono">{transactions.length} orders</span>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <span className="block text-[10px] font-bold text-zinc-400 tracking-wider">GATEWAY CERTIFICATION STATUS</span>
-              <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl flex items-center justify-between border border-emerald-150">
-                <span>Auto-Recharge API Status</span>
-                <span className="font-extrabold text-[10px] bg-emerald-600 text-white rounded px-2 py-0.5">ONLINE</span>
-              </div>
-            </div>
-          </section>
+          </div>
         )}
 
       </main>
 
+      {/* SCROLL TO TOP BUTTON (Dynamic with smooth Framer Motion transition) */}
+      <AnimatePresence>
+        {showScrollToTop && activeBottomNav === 'home' && (
+          <motion.button
+            id="scroll-to-top-btn"
+            initial={{ opacity: 0, scale: 0.85, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 15 }}
+            onClick={scrollToTop}
+            className="fixed bottom-24 right-5 sm:right-8 z-45 bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-full shadow-2xl border border-blue-500 cursor-pointer flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+            aria-label="Scroll to top"
+          >
+            <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
 
       {/* FIXED FLOATING STEADY BOTTOM NAVIGATION BAR (As on alicdigitalshop.com) */}
