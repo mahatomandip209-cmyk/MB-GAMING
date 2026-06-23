@@ -13,7 +13,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Garena Player ID (UID)',
     inputPlaceholder: 'e.g. 5129384732',
     iconName: 'gamepad',
-    imageUrl: '/src/assets/images/freefire_ice_fist_1782180289898.jpg',
+    imageUrl: '/assets/images/freefire_ice_fist_1782180289898.jpg',
     popular: true
   },
   {
@@ -28,7 +28,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'PUBG Character ID',
     inputPlaceholder: 'e.g. 293848293',
     iconName: 'gamepad',
-    imageUrl: '/src/assets/images/pubg_helmet_1782180313575.jpg',
+    imageUrl: '/assets/images/pubg_helmet_1782180313575.jpg',
     popular: true
   },
   {
@@ -44,7 +44,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Recipient Email Address',
     inputPlaceholder: 'gamer@example.com',
     iconName: 'gamepad',
-    imageUrl: '/src/assets/images/pubg_uc_voucher_1782180328294.jpg',
+    imageUrl: '/assets/images/pubg_uc_voucher_1782180328294.jpg',
     popular: true
   },
   {
@@ -60,7 +60,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Recipient Email Address',
     inputPlaceholder: 'player@unipin.com',
     iconName: 'shopping',
-    imageUrl: '/src/assets/images/unipin_voucher_1782180340316.jpg',
+    imageUrl: '/assets/images/unipin_voucher_1782180340316.jpg',
     popular: true
   },
   {
@@ -75,7 +75,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'MLBB User ID + Zone ID',
     inputPlaceholder: 'e.g. 12345678 (1234)',
     iconName: 'gamepad',
-    imageUrl: '/src/assets/images/mlbb_diamonds_avatar_1782180352803.jpg'
+    imageUrl: '/assets/images/mlbb_diamonds_avatar_1782180352803.jpg'
   },
   {
     id: 'apeuni-vip',
@@ -89,7 +89,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'APEUni Registered Email',
     inputPlaceholder: 'student@example.com',
     iconName: 'layers',
-    imageUrl: '/src/assets/images/apeuni_pte_logo_1782180367060.jpg'
+    imageUrl: '/assets/images/apeuni_pte_logo_1782180367060.jpg'
   },
   {
     id: 'apple-gift-card',
@@ -103,7 +103,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Delivery Email Address',
     inputPlaceholder: 'appleuser@gmail.com',
     iconName: 'shopping',
-    imageUrl: '/src/assets/images/apple_gift_card_logo_1782180379136.jpg'
+    imageUrl: '/assets/images/apple_gift_card_logo_1782180379136.jpg'
   },
   {
     id: 'freefire-sub',
@@ -117,7 +117,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Player Account UID',
     inputPlaceholder: 'e.g. 91823847',
     iconName: 'tv',
-    imageUrl: '/src/assets/images/freefire_subscription_cards_1782180392034.jpg'
+    imageUrl: '/assets/images/freefire_subscription_cards_1782180392034.jpg'
   },
   {
     id: 'garena-shell',
@@ -131,7 +131,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Delivery Email Address',
     inputPlaceholder: 'garenagamer@gmail.com',
     iconName: 'shopping',
-    imageUrl: '/src/assets/images/garena_shells_card_1782180414709.jpg'
+    imageUrl: '/assets/images/garena_shells_card_1782180414709.jpg'
   },
   {
     id: 'netflix-sub-card',
@@ -145,7 +145,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Netflix Profile Email',
     inputPlaceholder: 'watcher@netflix.com',
     iconName: 'tv',
-    imageUrl: '/src/assets/images/netflix_subscription_card_1782180427123.jpg'
+    imageUrl: '/assets/images/netflix_subscription_card_1782180427123.jpg'
   },
   {
     id: 'pubg-prime-plus',
@@ -159,7 +159,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'PUBG Game ID (UID)',
     inputPlaceholder: 'e.g. 19283742',
     iconName: 'tv',
-    imageUrl: '/src/assets/images/pubg_prime_plus_cards_1782180440092.jpg'
+    imageUrl: '/assets/images/pubg_prime_plus_cards_1782180440092.jpg'
   },
   {
     id: 'roblox',
@@ -173,7 +173,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Roblox User Name',
     inputPlaceholder: 'e.g. GamerRox',
     iconName: 'gamepad',
-    imageUrl: '/src/assets/images/roblox_game_card_logo_1782180452136.jpg'
+    imageUrl: '/assets/images/roblox_game_card_logo_1782180452136.jpg'
   },
   {
     id: 'tiktok-coins',
@@ -187,7 +187,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'TikTok Account Handle',
     inputPlaceholder: 'e.g. @coolcreators',
     iconName: 'phone',
-    imageUrl: '/src/assets/images/tiktok_coins_card_1782180478215.jpg'
+    imageUrl: '/assets/images/tiktok_coins_card_1782180478215.jpg'
   },
   {
     id: 'telegram-premium',
@@ -201,7 +201,7 @@ export const ALL_PRODUCTS: Product[] = [
     inputLabel: 'Telegram Username or Phone Number',
     inputPlaceholder: 'e.g. @username or +97798...',
     iconName: 'phone',
-    imageUrl: '/src/assets/images/telegram_premium_badge_1782180466663.jpg'
+    imageUrl: '/assets/images/telegram_premium_badge_1782180466663.jpg'
   },
   {
     id: 'yt-banner-design',
