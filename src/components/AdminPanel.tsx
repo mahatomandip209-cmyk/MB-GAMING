@@ -38,7 +38,14 @@ import {
   UserPlus,
   Coins,
   Award,
-  Wallet
+  Wallet,
+  Phone,
+  Tv,
+  Layers,
+  Wifi,
+  Music,
+  Gamepad,
+  Upload
 } from 'lucide-react';
 import { Product, Transaction } from '../types';
 
@@ -61,6 +68,26 @@ export default function AdminPanel({
   walletBalance,
   setWalletBalance
 }: AdminPanelProps) {
+  // Helper helper to draw corresponding icon
+  const renderProductIcon = (iconName: string, className = "w-5 h-5") => {
+    switch (iconName) {
+      case 'phone':
+        return <Phone className={className} />;
+      case 'gamepad':
+        return <Gamepad className={className} />;
+      case 'tv':
+        return <Tv className={className} />;
+      case 'music':
+        return <Music className={className} />;
+      case 'wifi':
+        return <Wifi className={className} />;
+      case 'layers':
+        return <Layers className={className} />;
+      default:
+        return <Ticket className={className} />;
+    }
+  };
+
   // Authentication states
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [emailInput, setEmailInput] = useState('');
@@ -303,6 +330,28 @@ export default function AdminPanel({
     setFormImageUrl('');
     setFormPopular(false);
     setIsProductModalOpen(true);
+  };
+
+  // Handle image file selection & convert to Base64
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        triggerToast('Image is too large! Choose an image smaller than 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setFormImageUrl(reader.result);
+          triggerToast('Local image attached successfully!');
+        }
+      };
+      reader.onerror = () => {
+        triggerToast('Error processing image file.');
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Open modal for Product editing
@@ -1309,7 +1358,7 @@ export default function AdminPanel({
                           <tr key={product.id} className="hover:bg-zinc-50/40 transition-colors">
                             {/* Image */}
                             <td className="py-3 px-4">
-                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-100 bg-neutral-100 flex items-center justify-center shrink-0">
+                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-zinc-100 bg-neutral-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
                                 {product.imageUrl ? (
                                   <img 
                                     src={product.imageUrl} 
@@ -1317,7 +1366,9 @@ export default function AdminPanel({
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <span className="text-[10px] font-bold text-zinc-500">MOCK</span>
+                                  <div className={`w-full h-full bg-gradient-to-tr ${product.imagePlaceholderColor || 'from-blue-600 to-indigo-700'} text-white flex items-center justify-center`}>
+                                    {renderProductIcon(product.iconName, "w-4.5 h-4.5")}
+                                  </div>
                                 )}
                               </div>
                             </td>
@@ -2235,33 +2286,132 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* Image URL & Icons */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Logo Image URL</label>
-                  <input
-                    type="text"
-                    value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    placeholder="https://example.com/logo.jpg"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
-                  />
+              {/* Product Cover/Logo Graphic Manager */}
+              <div className="space-y-3 bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4.5">
+                <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Logo Image Configuration</span>
+                
+                {/* File Uploader */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-center">
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-bold text-zinc-400 uppercase">Local File Upload</label>
+                    <div className="relative border border-dashed border-zinc-300 hover:border-blue-500 bg-white rounded-xl p-3 transition-colors text-center cursor-pointer group">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleProductImageUpload} 
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                        id="prod-file-upload"
+                      />
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <Upload className="w-5 h-5 text-zinc-400 group-hover:text-blue-500 transition-colors" />
+                        <span className="text-[10px] font-bold text-zinc-600 group-hover:text-blue-600">Click to upload file</span>
+                        <span className="text-[8px] text-zinc-400">PNG or JPG up to 2MB</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fallback Vector Settings */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-bold text-zinc-400 uppercase">Icon Fallback style</label>
+                    <select
+                      value={formIconName}
+                      onChange={(e) => setFormIconName(e.target.value as any)}
+                      className="w-full bg-white border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
+                    >
+                      <option value="gamepad">🎮 Gamepad</option>
+                      <option value="phone">📱 Phone / Mobile</option>
+                      <option value="tv">📺 Television / Stream</option>
+                      <option value="layers">🥞 Layers / Design</option>
+                      <option value="shopping">🛍️ Shopping / Voucher</option>
+                      <option value="wifi">📶 Wifi / Net</option>
+                    </select>
+                    <p className="text-[8.5px] text-zinc-400">Used if no logo image is uploaded/pasted.</p>
+                  </div>
                 </div>
 
+                {/* Preset Picker Gallery */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="block text-[9px] font-bold text-zinc-400 uppercase">Or Select from Game Cover Presets:</label>
+                  <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
+                    {[
+                      { name: 'PUBG Cover', path: '/assets/images/pubg_helmet_1782180313575.jpg' },
+                      { name: 'PUBG UC', path: '/assets/images/pubg_uc_voucher_1782180328294.jpg' },
+                      { name: 'Free Fire', path: '/assets/images/freefire_ice_fist_1782180289898.jpg' },
+                      { name: 'MLBB', path: '/assets/images/mlbb_diamonds_avatar_1782180352803.jpg' },
+                      { name: 'Netflix', path: '/assets/images/netflix_subscription_card_1782180427123.jpg' },
+                      { name: 'Apple Gift', path: '/assets/images/apple_gift_card_logo_1782180379136.jpg' },
+                      { name: 'UniPin', path: '/assets/images/unipin_voucher_1782180340316.jpg' },
+                      { name: 'Free Fire sub', path: '/assets/images/freefire_subscription_cards_1782180392034.jpg' },
+                      { name: 'Garena Shell', path: '/assets/images/garena_shells_card_1782180414709.jpg' }
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setFormImageUrl(preset.path);
+                          triggerToast(`Selected preset: ${preset.name}`);
+                        }}
+                        className={`w-11 h-11 shrink-0 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                          formImageUrl === preset.path ? 'border-blue-600 ring-2 ring-blue-100' : 'border-transparent hover:border-zinc-300'
+                        }`}
+                        title={preset.name}
+                      >
+                        <img src={preset.path} alt={preset.name} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Paste URL directly */}
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Icon Fallback style</label>
-                  <select
-                    value={formIconName}
-                    onChange={(e) => setFormIconName(e.target.value as any)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
-                  >
-                    <option value="gamepad">Gamepad</option>
-                    <option value="phone">Phone / Mobile</option>
-                    <option value="tv">Television / Stream</option>
-                    <option value="layers">Layers / Design</option>
-                    <option value="shopping">Shopping / Voucher</option>
-                    <option value="wifi">Wifi / Net</option>
-                  </select>
+                  <label className="block text-[9px] font-bold text-zinc-400 uppercase">Or Paste direct image URL link</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formImageUrl}
+                      onChange={(e) => setFormImageUrl(e.target.value)}
+                      placeholder="e.g. https://domain.com/image.png"
+                      className="flex-1 bg-white border border-zinc-200 rounded-xl py-1.5 px-3 text-[11px] focus:outline-none"
+                    />
+                    {formImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormImageUrl('');
+                          triggerToast('Image cleared.');
+                        }}
+                        className="bg-zinc-100 hover:bg-zinc-200 text-zinc-600 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Live Preview Card */}
+              <div className="bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4.5 space-y-2.5">
+                <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">Live Card Layout Preview</span>
+                <div className="flex gap-4 items-center bg-white p-3.5 border border-zinc-100 rounded-2xl shadow-sm">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-zinc-100 relative shadow-sm flex items-center justify-center bg-neutral-50">
+                    {formImageUrl ? (
+                      <img src={formImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-tr from-blue-600 to-indigo-700 text-white flex items-center justify-center">
+                        {renderProductIcon(formIconName, "w-8 h-8")}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black uppercase text-blue-600 tracking-wide">{formProvider || 'Epic Games'}</span>
+                      {formPopular && (
+                        <span className="bg-amber-100 text-[#716104] font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase">★ Popular</span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-extrabold text-zinc-900 truncate mt-0.5">{formName || 'New Product Title'}</h4>
+                    <p className="text-[10px] text-zinc-400 font-bold mt-1 font-mono">Price Range: Rs. {formMinAmount || '100'} - Rs. {formMaxAmount || '5000'}</p>
+                  </div>
                 </div>
               </div>
 
