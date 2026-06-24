@@ -53,19 +53,8 @@ export default function AdminPanel({
     return localStorage.getItem('mb_admin_logged_in') === 'true';
   });
   
-  // Forgot Password flow states: 'login' | 'forgot_email' | 'enter_code' | 'reset_password' | 'reset_success'
-  const [authStep, setAuthStep] = useState<'login' | 'forgot_email' | 'enter_code' | 'reset_password' | 'reset_success'>('login');
-  const [recoveryEmail, setRecoveryEmail] = useState('mandipmahato717@gmail.com');
-  const [codeInputValue, setCodeInputValue] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
-  const [isActivationPending, setIsActivationPending] = useState(false);
-
   // Errors & success
   const [loginError, setLoginError] = useState('');
-  const [resetError, setResetError] = useState('');
   const [adminToast, setAdminToast] = useState<string | null>(null);
 
   // Admin Dashboard views: 'dashboard' | 'products' | 'transactions' | 'wallet'
@@ -120,81 +109,7 @@ export default function AdminPanel({
     triggerToast('Logged out successfully.');
   };
 
-  // Code generation & sending securely
-  const sendVerificationCode = async () => {
-    setIsSendingCode(true);
-    setResetError('');
-    setIsActivationPending(false);
-    try {
-      const res = await fetch('/api/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (data.isActivationPending) {
-          setIsActivationPending(true);
-          setResetError('Email activation required! Please check your Gmail (including Spam/Promotions folder) and click "Confirm" in FormSubmit email to activate.');
-          triggerToast('Activation email sent! Confirm your email to receive reset codes.');
-        } else {
-          setAuthStep('enter_code');
-          triggerToast('Verification code sent to mandipmahato717@gmail.com!');
-        }
-      } else {
-        setResetError(data.error || 'Failed to send verification code.');
-      }
-    } catch (e) {
-      console.error(e);
-      setResetError('Network error while requesting verification code.');
-    } finally {
-      setIsSendingCode(false);
-    }
-  };
 
-  // Code verification handler
-  const handleVerifyCode = async (e: FormEvent) => {
-    e.preventDefault();
-    setResetError('');
-    setIsVerifyingCode(true);
-    try {
-      const res = await fetch('/api/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeInputValue })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAuthStep('reset_password');
-      } else {
-        setResetError(data.error || 'Invalid verification code. Please check and try again.');
-      }
-    } catch (e) {
-      console.error(e);
-      setResetError('Network error during code verification.');
-    } finally {
-      setIsVerifyingCode(false);
-    }
-  };
-
-  // Save new password handler
-  const handleSaveNewPassword = (e: FormEvent) => {
-    e.preventDefault();
-    setResetError('');
-
-    if (newPassword.length < 6) {
-      setResetError('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setResetError('Passwords do not match.');
-      return;
-    }
-
-    localStorage.setItem('mb_admin_password', newPassword);
-    setAuthStep('reset_success');
-    triggerToast('Password reset successfully!');
-  };
 
   // Transaction quick status change
   const handleUpdateTransactionStatus = (txId: string, status: 'SUCCESS' | 'FAILED') => {
@@ -360,275 +275,70 @@ export default function AdminPanel({
             {/* Auth card */}
             <div className="bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-6 shadow-2xl backdrop-blur-md">
               
-              {/* STEP 1: LOGIN FORM */}
-              {authStep === 'login' && (
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
-                    <h2 className="text-sm font-bold text-zinc-200">Sign In to Dashboard</h2>
-                    <p className="text-[11px] text-zinc-500">Only registered store administrators can gain entry.</p>
-                  </div>
-
-                  {loginError && (
-                    <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                      <span>{loginError}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-3.5">
-                    {/* Email */}
-                    <div className="space-y-1.5">
-                      <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">Admin Email</label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                        <input
-                          type="email"
-                          required
-                          value={emailInput}
-                          onChange={(e) => setEmailInput(e.target.value)}
-                          placeholder="admin@gmail.com"
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Password */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">Password</label>
-                        <button
-                          type="button"
-                          onClick={() => setAuthStep('forgot_email')}
-                          className="text-[11px] font-bold text-blue-400 hover:underline hover:text-blue-300 focus:outline-none"
-                        >
-                          Forgot Password?
-                        </button>
-                      </div>
-                      <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          required
-                          value={passwordInput}
-                          onChange={(e) => setPasswordInput(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-11 pr-11 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 uppercase tracking-wider mt-4"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    Secure Login
-                  </button>
-                </form>
-              )}
-
-              {/* STEP 2: FORGOT PASSWORD / EMAIL CONFIRMATION */}
-              {authStep === 'forgot_email' && (
-                <div className="space-y-4">
-                  <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
-                    <h2 className="text-sm font-bold text-zinc-200">Reset Admin Password</h2>
-                    <p className="text-[11px] text-zinc-500">A verification code will be sent to your registered Gmail address.</p>
-                  </div>
-
-                  <div className="p-3.5 bg-blue-950/30 border border-blue-900/50 rounded-xl space-y-2">
-                    <p className="text-xs text-blue-300 font-semibold leading-relaxed">
-                      For absolute security, the reset code is sent directly to your registered administrator recovery email:
-                    </p>
-                    <div className="font-mono text-xs bg-zinc-950/80 px-3 py-1.5 rounded border border-blue-950 text-white font-bold select-all text-center">
-                      mandipmahato717@gmail.com
-                    </div>
-                  </div>
-
-                  {resetError && (
-                    <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                      <span>{resetError}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <button
-                      onClick={sendVerificationCode}
-                      disabled={isSendingCode}
-                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:text-zinc-400 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider flex items-center justify-center gap-2"
-                    >
-                      {isSendingCode ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Sending Code...
-                        </>
-                      ) : (
-                        'Send Code to Gmail App'
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => setAuthStep('login')}
-                      disabled={isSendingCode}
-                      className="w-full bg-zinc-950 hover:bg-zinc-900 text-zinc-400 hover:text-white text-xs font-semibold py-3 rounded-xl border border-zinc-800 transition-all cursor-pointer"
-                    >
-                      Back to Sign In
-                    </button>
-                  </div>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
+                  <h2 className="text-sm font-bold text-zinc-200">Sign In to Dashboard</h2>
+                  <p className="text-[11px] text-zinc-500">Only registered store administrators can gain entry.</p>
                 </div>
-              )}
 
-              {/* STEP 3: ENTER CODE */}
-              {authStep === 'enter_code' && (
-                <form onSubmit={handleVerifyCode} className="space-y-4">
-                  <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
-                    <h2 className="text-sm font-bold text-zinc-200">Enter Verification Code</h2>
-                    <p className="text-[11px] text-zinc-500">Check your <b>Gmail App</b> for the 6-digit code sent to mandipmahato717@gmail.com</p>
+                {loginError && (
+                  <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>{loginError}</span>
                   </div>
+                )}
 
-                  {resetError && (
-                    <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                      <span>{resetError}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400 text-center">Verification Code</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      required
-                      value={codeInputValue}
-                      onChange={(e) => setCodeInputValue(e.target.value.replace(/\D/g, ''))}
-                      placeholder="e.g. 123456"
-                      className="w-full text-center font-mono font-bold text-lg bg-zinc-950 border border-zinc-800 rounded-xl py-3 tracking-widest text-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-2 pt-2">
-                    <button
-                      type="submit"
-                      disabled={isVerifyingCode || isSendingCode}
-                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:text-zinc-400 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider flex items-center justify-center gap-2"
-                    >
-                      {isVerifyingCode ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Verifying...
-                        </>
-                      ) : (
-                        'Verify Code'
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isSendingCode || isVerifyingCode}
-                      onClick={sendVerificationCode}
-                      className="w-full text-[11px] text-zinc-400 hover:text-blue-400 hover:underline disabled:text-zinc-600 font-bold text-center py-1 flex items-center justify-center gap-1.5"
-                    >
-                      {isSendingCode ? (
-                        <div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                      ) : null}
-                      Resend Code to Gmail
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isSendingCode || isVerifyingCode}
-                      onClick={() => setAuthStep('forgot_email')}
-                      className="w-full text-xs text-zinc-500 hover:text-zinc-300 font-semibold text-center mt-2"
-                    >
-                      Back
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* STEP 4: RESET PASSWORD FORMS */}
-              {authStep === 'reset_password' && (
-                <form onSubmit={handleSaveNewPassword} className="space-y-4">
-                  <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
-                    <h2 className="text-sm font-bold text-zinc-200">Set New Password</h2>
-                    <p className="text-[11px] text-zinc-500">Provide a secure new credential for administrative login.</p>
-                  </div>
-
-                  {resetError && (
-                    <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                      <span>{resetError}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-3.5">
-                    {/* New Password */}
-                    <div className="space-y-1">
-                      <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">1 new password</label>
+                <div className="space-y-3.5">
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">Admin Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                       <input
-                        type="password"
+                        type="email"
                         required
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new secure password"
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 px-4 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
-                      />
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div className="space-y-1">
-                      <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">confirm password</label>
-                      <input
-                        type="password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Retype password to confirm"
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 px-4 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="admin@gmail.com"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
                       />
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider mt-2"
-                  >
-                    Update Password
-                  </button>
-                </form>
-              )}
-
-              {/* STEP 5: SUCCESS RESET */}
-              {authStep === 'reset_success' && (
-                <div className="text-center space-y-4">
-                  <div className="w-12 h-12 bg-emerald-950 border border-emerald-500 rounded-full flex items-center justify-center mx-auto text-emerald-400">
-                    <Check className="w-6 h-6 stroke-[3]" />
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">Password</label>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-11 pr-11 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-zinc-100">Reset Successful!</h3>
-                    <p className="text-[11px] text-zinc-500">Your admin credentials have been securely updated.</p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setAuthStep('login');
-                      setPasswordInput('');
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer"
-                  >
-                    Go back to Login
-                  </button>
                 </div>
-              )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 uppercase tracking-wider mt-4"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Secure Login
+                </button>
+              </form>
 
             </div>
 
