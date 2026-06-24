@@ -56,21 +56,11 @@ export default function AdminPanel({
   // Forgot Password flow states: 'login' | 'forgot_email' | 'enter_code' | 'reset_password' | 'reset_success'
   const [authStep, setAuthStep] = useState<'login' | 'forgot_email' | 'enter_code' | 'reset_password' | 'reset_success'>('login');
   const [recoveryEmail, setRecoveryEmail] = useState('mandipmahato95@gmail.com');
-  const [generatedCode, setGeneratedCode] = useState('');
   const [codeInputValue, setCodeInputValue] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
-  // Simulated Inbox state
-  const [simulatedEmails, setSimulatedEmails] = useState<{
-    id: string;
-    from: string;
-    to: string;
-    subject: string;
-    body: string;
-    time: string;
-  }[]>([]);
-  const [showSimulatedInbox, setShowSimulatedInbox] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
 
   // Errors & success
   const [loginError, setLoginError] = useState('');
@@ -129,45 +119,52 @@ export default function AdminPanel({
     triggerToast('Logged out successfully.');
   };
 
-  // Code generation & sending simulation
-  const sendVerificationCode = () => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
-    
-    // Add to simulated emails
-    const newMail = {
-      id: `mail-${Date.now()}`,
-      from: 'security@mbgamingstore.com',
-      to: 'mandipmahato95@gmail.com',
-      subject: 'MB GAMING STORE - Password Reset Code',
-      body: `Hello Mandip,
-      
-We received a request to reset your MB GAMING STORE administrator password.
-Your 6-digit password reset verification code is:
-
-👉 [ ${code} ] 👈
-
-Enter this code in the admin portal reset screen to change your password. If you didn't request this, you can safely ignore this email.
-
-Best regards,
-MB GAMING STORE Security Team`,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    };
-
-    setSimulatedEmails([newMail, ...simulatedEmails]);
-    setShowSimulatedInbox(true); // Auto expand inbox simulation so user can copy easily
-    setAuthStep('enter_code');
-    triggerToast('Verification code sent to mandipmahato95@gmail.com!');
+  // Code generation & sending securely
+  const sendVerificationCode = async () => {
+    setIsSendingCode(true);
+    setResetError('');
+    try {
+      const res = await fetch('/api/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAuthStep('enter_code');
+        triggerToast('Verification code sent to mandipmahato95@gmail.com!');
+      } else {
+        setResetError(data.error || 'Failed to send verification code.');
+      }
+    } catch (e) {
+      console.error(e);
+      setResetError('Network error while requesting verification code.');
+    } finally {
+      setIsSendingCode(false);
+    }
   };
 
   // Code verification handler
-  const handleVerifyCode = (e: FormEvent) => {
+  const handleVerifyCode = async (e: FormEvent) => {
     e.preventDefault();
     setResetError('');
-    if (codeInputValue.trim() === generatedCode) {
-      setAuthStep('reset_password');
-    } else {
-      setResetError('Invalid verification code. Please check and try again.');
+    setIsVerifyingCode(true);
+    try {
+      const res = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeInputValue })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAuthStep('reset_password');
+      } else {
+        setResetError(data.error || 'Invalid verification code. Please check and try again.');
+      }
+    } catch (e) {
+      console.error(e);
+      setResetError('Network error during code verification.');
+    } finally {
+      setIsVerifyingCode(false);
     }
   };
 
@@ -319,57 +316,7 @@ MB GAMING STORE Security Team`,
         )}
       </AnimatePresence>
 
-      {/* Floating Simulated Email Inbox - For code retrieval during forget password */}
-      {showSimulatedInbox && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 bg-white border border-zinc-200 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 animate-bounce" />
-              <span className="text-xs font-black tracking-tight uppercase">Simulated Inbox (mandipmahato95@gmail.com)</span>
-            </div>
-            <button 
-              onClick={() => setShowSimulatedInbox(false)}
-              className="p-1 hover:bg-blue-700 rounded-lg text-white transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="p-4 max-h-72 overflow-y-auto space-y-3 bg-zinc-50">
-            {simulatedEmails.length === 0 ? (
-              <div className="text-center py-8 text-zinc-400 text-xs">
-                No emails received yet. Click "Send verification code" in the forgot password tab.
-              </div>
-            ) : (
-              simulatedEmails.map(mail => (
-                <div key={mail.id} className="bg-white border border-zinc-200 rounded-xl p-3 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-[10px] text-zinc-400 font-bold">
-                    <span>From: {mail.from}</span>
-                    <span>{mail.time}</span>
-                  </div>
-                  <h4 className="text-xs font-black text-zinc-800">{mail.subject}</h4>
-                  <p className="text-[11px] text-zinc-600 whitespace-pre-wrap font-mono bg-zinc-50 p-2.5 rounded-lg border border-zinc-100 leading-relaxed">
-                    {mail.body}
-                  </p>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => {
-                        const codeMatch = mail.body.match(/\[ (\\d+) \]/);
-                        if (codeMatch && codeMatch[1]) {
-                          setCodeInputValue(codeMatch[1]);
-                          triggerToast('Reset code copied!');
-                        }
-                      }}
-                      className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold hover:bg-blue-100 transition-colors"
-                    >
-                      Copy Reset Code
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* LOGIN OR AUTH RECOVERY SCREENS */}
       {!isLoggedIn ? (
@@ -485,28 +432,44 @@ MB GAMING STORE Security Team`,
                 <div className="space-y-4">
                   <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
                     <h2 className="text-sm font-bold text-zinc-200">Reset Admin Password</h2>
-                    <p className="text-[11px] text-zinc-500">Retrieve a verification code to authenticate your identity.</p>
+                    <p className="text-[11px] text-zinc-500">A verification code will be sent to your registered Gmail address.</p>
                   </div>
 
                   <div className="p-3.5 bg-blue-950/30 border border-blue-900/50 rounded-xl space-y-2">
                     <p className="text-xs text-blue-300 font-semibold leading-relaxed">
-                      For security, verification codes can only be requested and delivered to the registered recovery email:
+                      For absolute security, the reset code is sent directly to your registered administrator recovery email:
                     </p>
                     <div className="font-mono text-xs bg-zinc-950/80 px-3 py-1.5 rounded border border-blue-950 text-white font-bold select-all text-center">
                       mandipmahato95@gmail.com
                     </div>
                   </div>
 
+                  {resetError && (
+                    <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      <span>{resetError}</span>
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     <button
                       onClick={sendVerificationCode}
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider"
+                      disabled={isSendingCode}
+                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:text-zinc-400 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider flex items-center justify-center gap-2"
                     >
-                      Send Verification Code
+                      {isSendingCode ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Sending Code...
+                        </>
+                      ) : (
+                        'Send Code to Gmail App'
+                      )}
                     </button>
                     
                     <button
                       onClick={() => setAuthStep('login')}
+                      disabled={isSendingCode}
                       className="w-full bg-zinc-950 hover:bg-zinc-900 text-zinc-400 hover:text-white text-xs font-semibold py-3 rounded-xl border border-zinc-800 transition-all cursor-pointer"
                     >
                       Back to Sign In
@@ -520,7 +483,7 @@ MB GAMING STORE Security Team`,
                 <form onSubmit={handleVerifyCode} className="space-y-4">
                   <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
                     <h2 className="text-sm font-bold text-zinc-200">Enter Verification Code</h2>
-                    <p className="text-[11px] text-zinc-500">Enter the 6-digit verification code sent to mandipmahato95@gmail.com</p>
+                    <p className="text-[11px] text-zinc-500">Check your <b>Gmail App</b> for the 6-digit code sent to mandipmahato95@gmail.com</p>
                   </div>
 
                   {resetError && (
@@ -546,21 +509,34 @@ MB GAMING STORE Security Team`,
                   <div className="space-y-2 pt-2">
                     <button
                       type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider"
+                      disabled={isVerifyingCode || isSendingCode}
+                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:text-zinc-400 text-white text-xs font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider flex items-center justify-center gap-2"
                     >
-                      Verify Code
+                      {isVerifyingCode ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        'Verify Code'
+                      )}
                     </button>
 
                     <button
                       type="button"
+                      disabled={isSendingCode || isVerifyingCode}
                       onClick={sendVerificationCode}
-                      className="w-full text-[11px] text-zinc-400 hover:text-blue-400 hover:underline font-bold text-center py-1"
+                      className="w-full text-[11px] text-zinc-400 hover:text-blue-400 hover:underline disabled:text-zinc-600 font-bold text-center py-1 flex items-center justify-center gap-1.5"
                     >
-                      Resend Code
+                      {isSendingCode ? (
+                        <div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                      ) : null}
+                      Resend Code to Gmail
                     </button>
 
                     <button
                       type="button"
+                      disabled={isSendingCode || isVerifyingCode}
                       onClick={() => setAuthStep('forgot_email')}
                       className="w-full text-xs text-zinc-500 hover:text-zinc-300 font-semibold text-center mt-2"
                     >
@@ -648,19 +624,7 @@ MB GAMING STORE Security Team`,
 
             </div>
 
-            {/* Simulated Inbox hint trigger */}
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSimulatedInbox(true);
-                  triggerToast('Simulated Email Inbox expanded!');
-                }}
-                className="text-[11px] text-zinc-500 hover:text-zinc-300 hover:underline font-bold"
-              >
-                📬 Need to retrieve verification codes? Open simulated inbox
-              </button>
-            </div>
+
 
           </div>
         </div>
@@ -773,12 +737,7 @@ MB GAMING STORE Security Team`,
                     <p className="text-xs text-zinc-500 font-semibold mt-0.5">Control product prices, handle client payments, and manage instant deliveries.</p>
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => setShowSimulatedInbox(true)}
-                      className="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0 transition-all flex items-center gap-1 cursor-pointer"
-                    >
-                      <Mail className="w-3.5 h-3.5" /> Mail Simulator
-                    </button>
+                    {/* Secure and fully offline system settings */}
                   </div>
                 </div>
 
