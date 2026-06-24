@@ -48,6 +48,174 @@ import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
 
+export function getProductPackages(product: Product): { name: string; price: number }[] {
+  // Mobile Legends
+  if (product.id === 'mlbb-diamonds') {
+    return [
+      { name: '78+8 Diamonds 💎', price: 210 },
+      { name: 'WEEKLY PASS', price: 265 },
+      { name: '156+16 Diamonds 💎', price: 460 },
+      { name: '234+23 Diamonds 💎', price: 699 },
+      { name: '253 + 25 Diamonds 💎', price: 725 },
+      { name: 'TWILIGHT PASS', price: 1399 },
+      { name: '505 + 66 Diamonds 💎', price: 1450 },
+      { name: '625 + 81 Diamonds 💎', price: 1799 },
+      { name: '1010 + 182 Diamonds 💎', price: 2900 },
+      { name: '1515 + 273 Diamonds 💎', price: 4350 },
+      { name: '4008 + 802 Diamonds 💎', price: 11600 },
+      { name: '5010 + 1002 Diamonds 💎', price: 14500 }
+    ];
+  }
+  
+  // Garena Free Fire
+  if (product.id === 'garena-freefire') {
+    return [
+      { name: '115 Diamonds 💎', price: 130 },
+      { name: '240 Diamonds 💎', price: 260 },
+      { name: '355 Diamonds 💎', price: 380 },
+      { name: '505 Diamonds 💎', price: 530 },
+      { name: '610 Diamonds 💎', price: 630 },
+      { name: '1090 Diamonds 💎', price: 1100 },
+      { name: '1240 Diamonds 💎', price: 1250 },
+      { name: '2220 Diamonds 💎', price: 2200 },
+      { name: 'WEEKLY MEMBERSHIP', price: 210 },
+      { name: 'MONTHLY MEMBERSHIP', price: 999 }
+    ];
+  }
+
+  // PUBG Mobile UC
+  if (product.id === 'pubg-mobile-uc' || product.id === 'pubg-uc-vouchers') {
+    const suffix = product.id === 'pubg-uc-vouchers' ? ' (Voucher)' : ' UC';
+    return [
+      { name: '60' + suffix, price: 145 },
+      { name: '325' + suffix, price: 725 },
+      { name: '660' + suffix, price: 1450 },
+      { name: '1800' + suffix, price: 3800 },
+      { name: '3850' + suffix, price: 7500 },
+      { name: '8100' + suffix, price: 14500 }
+    ];
+  }
+
+  // UniPin Voucher
+  if (product.id === 'unipin-voucher-bdt') {
+    return [
+      { name: '500 BDT Voucher', price: 500 },
+      { name: '1000 BDT Voucher', price: 1000 },
+      { name: '2000 BDT Voucher', price: 2000 },
+      { name: '5000 BDT Voucher', price: 5000 }
+    ];
+  }
+
+  // Apple Gift Card
+  if (product.id === 'apple-gift-card') {
+    return [
+      { name: '$5 Apple Code', price: 500 },
+      { name: '$10 Apple Code', price: 1000 },
+      { name: '$20 Apple Code', price: 2000 },
+      { name: '$50 Apple Code', price: 5000 }
+    ];
+  }
+
+  // Free Fire Member Subscription
+  if (product.id === 'freefire-sub') {
+    return [
+      { name: 'Weekly Membership Lite', price: 199 },
+      { name: 'Weekly Membership Max', price: 499 },
+      { name: 'Monthly Membership Pass', price: 1200 }
+    ];
+  }
+
+  // Garena Shell
+  if (product.id === 'garena-shell') {
+    return [
+      { name: '50 Shells', price: 320 },
+      { name: '100 Shells', price: 640 },
+      { name: '200 Shells', price: 1200 }
+    ];
+  }
+
+  // Netflix Subscription
+  if (product.id === 'netflix-sub-card') {
+    return [
+      { name: 'Mobile Screen (1 Month)', price: 199 },
+      { name: 'Basic HD Screen (1 Month)', price: 499 },
+      { name: 'Standard Full HD (1 Month)', price: 649 },
+      { name: 'Premium 4K Ultra HD (1 Month)', price: 1200 }
+    ];
+  }
+
+  // PUBG Prime / Prime Plus
+  if (product.id === 'pubg-prime-plus') {
+    return [
+      { name: 'PUBG Prime (1 Month)', price: 250 },
+      { name: 'PUBG Prime Plus (1 Month)', price: 800 },
+      { name: 'PUBG Prime Plus Elite (1 Month)', price: 1200 }
+    ];
+  }
+
+  // Roblox
+  if (product.id === 'roblox') {
+    return [
+      { name: '80 Robux', price: 150 },
+      { name: '400 Robux', price: 550 },
+      { name: '800 Robux', price: 1100 },
+      { name: '1700 Robux', price: 2200 },
+      { name: '4500 Robux', price: 5500 }
+    ];
+  }
+
+  // TikTok Coins
+  if (product.id === 'tiktok-coins') {
+    return [
+      { name: '70 Coins', price: 180 },
+      { name: '350 Coins', price: 850 },
+      { name: '700 Coins', price: 1650 },
+      { name: '1400 Coins', price: 3200 },
+      { name: '3500 Coins', price: 7800 }
+    ];
+  }
+
+  // Telegram Premium
+  if (product.id === 'telegram-premium') {
+    return [
+      { name: 'Telegram Premium (1 Month)', price: 399 },
+      { name: 'Telegram Premium (3 Months)', price: 1199 },
+      { name: 'Telegram Premium (12 Months)', price: 3999 }
+    ];
+  }
+
+  // APEUni VIP
+  if (product.id === 'apeuni-vip') {
+    return [
+      { name: 'APEUni VIP (1 Month)', price: 450 },
+      { name: 'APEUni VIP (3 Months)', price: 900 },
+      { name: 'APEUni VIP (6 Months)', price: 1500 }
+    ];
+  }
+
+  // Custom Gaming YouTube Banner
+  if (product.id === 'yt-banner-design') {
+    return [
+      { name: 'Bronze Logo + Banner Package', price: 1500 },
+      { name: 'Gold Logo + Banner + Intro Package', price: 3000 }
+    ];
+  }
+
+  // Default Fallback
+  if (product.fixedAmounts && product.fixedAmounts.length > 0) {
+    return product.fixedAmounts.map(amt => ({
+      name: `Package Rs. ${amt}`,
+      price: amt
+    }));
+  }
+
+  return [
+    { name: 'Basic Package', price: product.minAmount },
+    { name: 'Standard Package', price: product.minAmount * 2 },
+    { name: 'Pro Package', price: product.minAmount * 4 },
+    { name: 'Ultimate Package', price: product.minAmount * 8 }
+  ];
+}
 
 export default function App() {
   // STATE MANAGEMENT
@@ -84,6 +252,8 @@ export default function App() {
   // Modal states
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [checkoutTarget, setCheckoutTarget] = useState<string>('');
+  const [mlbbUserId, setMlbbUserId] = useState<string>('');
+  const [mlbbZoneId, setMlbbZoneId] = useState<string>('');
   const [checkoutAmount, setCheckoutAmount] = useState<number>(0);
   const [customAmountText, setCustomAmountText] = useState<string>('');
   
@@ -236,6 +406,8 @@ export default function App() {
   const openCheckout = (product: Product) => {
     setSelectedProduct(product);
     setCheckoutTarget('');
+    setMlbbUserId('');
+    setMlbbZoneId('');
     setModalError('');
     
     // Set default standard amount
@@ -264,9 +436,17 @@ export default function App() {
     if (!selectedProduct) return;
 
     // Validation
-    if (!checkoutTarget.trim()) {
-      setModalError(`Please fill in the required ${selectedProduct.inputLabel.toLowerCase()} fields.`);
-      return;
+    const isMlbb = selectedProduct.id === 'mlbb-diamonds';
+    if (isMlbb) {
+      if (!mlbbUserId.trim() || !mlbbZoneId.trim()) {
+        setModalError('Please enter both your Server ID and Game User ID.');
+        return;
+      }
+    } else {
+      if (!checkoutTarget.trim()) {
+        setModalError(`Please fill in the required ${selectedProduct.inputLabel.toLowerCase()} fields.`);
+        return;
+      }
     }
 
     if (checkoutAmount <= 0) {
@@ -274,14 +454,20 @@ export default function App() {
       return;
     }
 
-    if (checkoutAmount < selectedProduct.minAmount) {
-      setModalError(`Minimum recharge amount is Rs. ${selectedProduct.minAmount}`);
-      return;
-    }
+    // Skip min/max validation for preset/fixed packages to avoid errors on custom package listings
+    const packages = getProductPackages(selectedProduct);
+    const isPresetPackage = packages.some(p => p.price === checkoutAmount);
 
-    if (selectedProduct.maxAmount && checkoutAmount > selectedProduct.maxAmount) {
-      setModalError(`Maximum limit allowed is Rs. ${selectedProduct.maxAmount}`);
-      return;
+    if (!isPresetPackage) {
+      if (checkoutAmount < selectedProduct.minAmount) {
+        setModalError(`Minimum recharge amount is Rs. ${selectedProduct.minAmount}`);
+        return;
+      }
+
+      if (selectedProduct.maxAmount && checkoutAmount > selectedProduct.maxAmount) {
+        setModalError(`Maximum limit allowed is Rs. ${selectedProduct.maxAmount}`);
+        return;
+      }
     }
 
     // Check balance
@@ -299,6 +485,8 @@ export default function App() {
       ? `PIN-${Math.floor(10000000 + Math.random() * 90000000)}` 
       : undefined;
 
+    const finalTarget = isMlbb ? `${mlbbUserId.trim()} (${mlbbZoneId.trim()})` : checkoutTarget.trim();
+
     const newTx: Transaction = {
       id: `tx-${Math.floor(100000 + Math.random() * 900000)}`,
       productId: selectedProduct.id,
@@ -306,7 +494,7 @@ export default function App() {
       provider: selectedProduct.provider,
       category: selectedProduct.category,
       amount: checkoutAmount,
-      targetAccount: checkoutTarget,
+      targetAccount: finalTarget,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'PENDING',
       pinCode: pinString
@@ -314,7 +502,7 @@ export default function App() {
 
     setTransactions([newTx, ...transactions]);
     setLastCompletedTransaction(newTx);
-    setSelectedProduct(null); // Close modal
+    setSelectedProduct(null); // Close modal/view
     setShowSuccessOverlay(true); // Open success overlay
     triggerToast('Purchase request submitted for administrator review!');
   };
@@ -403,50 +591,378 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* TOP COMPACT BRAND HEADER */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-4 py-3 sm:px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          
-          {/* Logo element representing MB GAMING */}
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setSelectedCategory('all')}>
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
-              <img 
-                src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
-                alt="MB GAMING STORE Logo" 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
+      {/* PRODUCT SPECIFIC STICKY HEADER */}
+      {selectedProduct && (
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-zinc-100 px-4 py-3 sm:px-6 shadow-sm">
+          <div className="max-w-xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setSelectedProduct(null)}
+                className="p-1.5 rounded-xl hover:bg-zinc-100 transition-all text-zinc-700 cursor-pointer"
+                title="Go Back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
+                  {selectedProduct.imageUrl ? (
+                    <img 
+                      src={selectedProduct.imageUrl} 
+                      alt={selectedProduct.name} 
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className={`w-full h-full bg-gradient-to-tr ${selectedProduct.imagePlaceholderColor} text-white flex items-center justify-center`}>
+                      {renderProductIcon(selectedProduct.iconName, "w-4 h-4")}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none uppercase">
+                    {selectedProduct.name}
+                  </h1>
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5 leading-none">
+                    {selectedProduct.provider}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
-                MB GAMING
-              </span>
-              <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
-                S T O R E
-              </span>
-            </div>
-          </div>
 
-          {/* Right Area: Blue Wallet Outline Button */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setShowWalletModal(true); setWalletError(''); }}
-              className="px-4 py-1.5 rounded-full border border-blue-500 hover:bg-blue-50/50 text-blue-600 flex items-center gap-1.5 text-xs font-semibold tracking-wide transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>Wallet</span>
-              <span className="ml-1 px-1.5 py-0.2 bg-blue-550/10 text-[10px] rounded font-mono font-bold text-blue-600">
-                Rs.{walletBalance}
+            <div className="flex items-center">
+              <span className="bg-blue-50 text-blue-600 font-extrabold px-3.5 py-1 rounded-full text-[9px] tracking-widest uppercase">
+                TOPUP
               </span>
-            </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
+
+      {/* TOP COMPACT BRAND HEADER */}
+      {!selectedProduct && (
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-4 py-3 sm:px-6">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            
+            {/* Logo element representing MB GAMING */}
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setSelectedCategory('all')}>
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
+                <img 
+                  src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
+                  alt="MB GAMING STORE Logo" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
+                  MB GAMING
+                </span>
+                <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
+                  S T O R E
+                </span>
+              </div>
+            </div>
+
+            {/* Right Area: Blue Wallet Outline Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setShowWalletModal(true); setWalletError(''); }}
+                className="px-4 py-1.5 rounded-full border border-blue-500 hover:bg-blue-50/50 text-blue-600 flex items-center gap-1.5 text-xs font-semibold tracking-wide transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span>Wallet</span>
+                <span className="ml-1 px-1.5 py-0.2 bg-blue-550/10 text-[10px] rounded font-mono font-bold text-blue-600">
+                  Rs.{walletBalance}
+                </span>
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
 
       {/* MAIN VIEW CONTROLLER */}
       <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
 
-        {activeBottomNav === 'home' && (
+        {selectedProduct ? (
+          /* GORGEOUS INLINE PRODUCT DETAIL PAGE FOR CLICKED GAME AND REQUIREMENTS */
+          <div className="max-w-xl mx-auto space-y-6">
+            
+            {/* PLAYER INFORMATION CARD */}
+            <div className="bg-white rounded-[24px] p-6 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
+              <span className="block text-[10px] font-black text-blue-600 tracking-wider uppercase">
+                Player Information
+              </span>
+
+              {selectedProduct.id === 'mlbb-diamonds' ? (
+                /* MLBB Special side-by-side Inputs */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
+                      ENTER YOUR SERVER ID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={mlbbZoneId}
+                      onChange={(e) => setMlbbZoneId(e.target.value)}
+                      placeholder="SERVER ID"
+                      className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
+                      GAME USER ID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={mlbbUserId}
+                      onChange={(e) => setMlbbUserId(e.target.value)}
+                      placeholder="PLEASE ENTER YOUR GAME USER ID"
+                      className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Standard Single Input box */
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
+                    {selectedProduct.inputLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={checkoutTarget}
+                    onChange={(e) => setCheckoutTarget(e.target.value)}
+                    placeholder={selectedProduct.inputPlaceholder}
+                    className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
+                  />
+                </div>
+              )}
+              <p className="text-[10px] text-zinc-400 font-semibold leading-relaxed">
+                Please ensure correctness. Recharges execute instantly and cannot be reversed.
+              </p>
+            </div>
+
+            {/* ERROR SUMMARY */}
+            {modalError && (
+              <div className="p-4 bg-red-50 border border-red-100 rounded-[20px] flex items-start gap-3 text-xs text-red-600 font-bold">
+                <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            {/* SELECT PACKAGE BUNDLE / PACKAGE CARDS */}
+            <div className="space-y-4">
+              <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase px-1">
+                Select Package Bundle
+              </span>
+
+              <div className="grid grid-cols-2 gap-4">
+                {getProductPackages(selectedProduct).map((pkg) => {
+                  const isSelected = checkoutAmount === pkg.price;
+                  return (
+                    <div
+                      key={pkg.name}
+                      onClick={() => {
+                        setCheckoutAmount(pkg.price);
+                        setCustomAmountText(pkg.price.toString());
+                      }}
+                      className={`cursor-pointer p-4 rounded-2xl border transition-all flex flex-col justify-between h-[96px] text-left relative overflow-hidden ${
+                        isSelected
+                          ? 'bg-blue-50/15 border-blue-600 ring-1 ring-blue-600 shadow-xs'
+                          : 'bg-white border-zinc-200/80 hover:bg-zinc-50 hover:border-zinc-300'
+                      }`}
+                    >
+                      {/* Checkmark corner visual */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-0.5 flex items-center justify-center shadow-sm">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                      
+                      <span className="text-[11.5px] font-black text-zinc-900 uppercase leading-snug line-clamp-2 pr-4">
+                        {pkg.name}
+                      </span>
+                      <span className="text-xs font-extrabold text-blue-600 font-mono mt-2">
+                        NPR {pkg.price}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SUB TOTAL BILL & PAY BUTTON */}
+            <form onSubmit={executeRecharge} className="bg-white border border-zinc-200/80 rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
+              <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">
+                Order Summary
+              </span>
+              
+              <div className="space-y-2.5 text-xs font-semibold">
+                <div className="flex justify-between text-zinc-500">
+                  <span>Selected Option:</span>
+                  <span className="font-extrabold text-zinc-900 uppercase">
+                    {getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`}
+                  </span>
+                </div>
+                <div className="flex justify-between text-zinc-500">
+                  <span>Processor Handling Fee:</span>
+                  <span className="text-emerald-600 font-black uppercase">FREE (Rs. 0)</span>
+                </div>
+                <div className="h-px bg-zinc-100 my-1.5" />
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-black text-zinc-950 uppercase">Estimated Total Cost:</span>
+                  <span className="font-mono font-black text-blue-600 text-base">
+                    NPR {checkoutAmount}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>Pay NPR {checkoutAmount}</span>
+              </button>
+            </form>
+
+            {/* TRUST BADGES CONTAINER */}
+            <div className="grid grid-cols-3 gap-2 py-4 border-t border-b border-zinc-100 mt-6 text-center">
+              <div className="flex flex-col items-center p-2">
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 border border-blue-100/30">
+                  <Zap className="w-4.5 h-4.5" />
+                </div>
+                <h5 className="text-[10px] font-black text-zinc-900 uppercase">Instant Delivery</h5>
+                <p className="text-[9px] text-zinc-400 font-semibold mt-0.5">Under 5 mins</p>
+              </div>
+
+              <div className="flex flex-col items-center p-2">
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 border border-blue-100/30">
+                  <ShieldCheck className="w-4.5 h-4.5" />
+                </div>
+                <h5 className="text-[10px] font-black text-zinc-900 uppercase">100% Secure</h5>
+                <p className="text-[9px] text-zinc-400 font-semibold mt-0.5">Trusted by 10K+</p>
+              </div>
+
+              <div className="flex flex-col items-center p-2">
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 border border-blue-100/30">
+                  <Headphones className="w-4.5 h-4.5" />
+                </div>
+                <h5 className="text-[10px] font-black text-zinc-900 uppercase">24/7 Support</h5>
+                <p className="text-[9px] text-zinc-400 font-semibold mt-0.5">Always here</p>
+              </div>
+            </div>
+
+            {/* STORE FOOTER (DUPLICATED HERE FOR BEAUTIFUL SCROLLING FLOW AS IN SCREENSHOT 2) */}
+            <footer className="bg-zinc-50/20 border border-zinc-100 rounded-[32px] p-8 sm:p-10 space-y-10 mt-10">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10">
+                
+                {/* Col 1: Brand Info (6 cols) */}
+                <div className="md:col-span-6 space-y-4 text-left">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
+                      <img 
+                        src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
+                        alt="MB GAMING Logo" 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
+                        Alic Digital Store
+                      </span>
+                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mt-1">
+                        NEPAL'S PREMIUM TOP-UP
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-zinc-500 text-[11px] font-semibold leading-relaxed max-w-sm">
+                    Nepal's #1 Digital Top-Up Store — fast, secure, and always at the best price.
+                  </p>
+                </div>
+
+                {/* Col 2: Quick Links (3 cols) */}
+                <div className="md:col-span-3 space-y-3.5 text-left">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">QUICK LINKS</h4>
+                  <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('home'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">Home</button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('orders'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">My Orders</button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('wallet'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">Wallet</button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('profile'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">Profile</button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('profile'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">Support</button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Col 3: Top Services (3 cols) */}
+                <div className="md:col-span-3 space-y-3.5 text-left">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">TOP SERVICES</h4>
+                  <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setSelectedCategory('top-up'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Free Fire Diamond
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setSelectedCategory('top-up'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        PUBG Mobile UC
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setSelectedCategory('top-up'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Mobile Legends
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setSelectedCategory('subscription'); setSearchQuery('Premium'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        YouTube Premium
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedProduct(null); setSelectedCategory('voucher'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Gift Cards
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+              </div>
+
+              {/* Bottom Copyright Area */}
+              <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
+                <div>
+                  © 2026 <span className="text-zinc-750 font-extrabold">Alic Digital Store</span>. All rights reserved.
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Developed by</span>
+                  <span className="text-blue-600 font-extrabold hover:underline cursor-pointer">Mandip Mahato</span>
+                </div>
+                <div className="flex gap-3 text-zinc-400">
+                  <button onClick={() => triggerToast("Terms policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Terms</button>
+                  <button onClick={() => triggerToast("Privacy policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Privacy</button>
+                  <button onClick={() => triggerToast("Refund policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Refund</button>
+                  <button onClick={() => triggerToast("Cancellation policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Cancellation</button>
+                </div>
+              </div>
+            </footer>
+
+          </div>
+        ) : (
+          <>
+            {activeBottomNav === 'home' && (
           <>
             {/* WEEKEND SPECIAL PROMO SLIDER BANNER WITH CRYSTALS/DIAMONDS (SMALL COMPACT REFRESHED HEIGHT) */}
             <section className="relative overflow-hidden rounded-[24px] bg-neutral-950 text-white h-[140px] sm:h-[170px] flex items-center shadow-md border border-zinc-900">
@@ -841,8 +1357,8 @@ export default function App() {
             <footer className="bg-zinc-50/20 border border-zinc-100 rounded-[32px] p-8 sm:p-10 space-y-10 mt-10">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10">
                 
-                {/* Col 1: Brand Info (5 cols) */}
-                <div className="md:col-span-5 space-y-4">
+                {/* Col 1: Brand Info (6 cols) */}
+                <div className="md:col-span-6 space-y-4">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                       <img 
@@ -889,8 +1405,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Col 2: Quick Links (2 cols) */}
-                <div className="md:col-span-2 space-y-3.5">
+                {/* Col 2: Quick Links (3 cols) */}
+                <div className="md:col-span-3 space-y-3.5">
                   <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">QUICK LINKS</h4>
                   <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
                     <li>
@@ -921,8 +1437,8 @@ export default function App() {
                   </ul>
                 </div>
 
-                {/* Col 3: Top Services (2.5 cols) */}
-                <div className="md:col-span-2.5 space-y-3.5">
+                {/* Col 3: Top Services (3 cols) */}
+                <div className="md:col-span-3 space-y-3.5">
                   <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">TOP SERVICES</h4>
                   <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
                     <li>
@@ -953,25 +1469,6 @@ export default function App() {
                   </ul>
                 </div>
 
-                {/* Col 4: Get In Touch (2.5 cols) */}
-                <div className="md:col-span-2.5 space-y-3.5">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">GET IN TOUCH</h4>
-                  <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
-                    <li className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                      <a href="tel:9705128900" className="hover:text-blue-600 transition-colors">9705128900</a>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                      <a href="mailto:abhisheknabik01@gmail.com" className="hover:text-blue-600 transition-colors break-all">abhisheknabik01@gmail.com</a>
-                    </li>
-                    <li className="text-zinc-550 flex items-center gap-2 pt-1 font-extrabold text-[10px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-ping" />
-                      <span>Based in Nepal</span>
-                    </li>
-                  </ul>
-                </div>
-
               </div>
 
               {/* Bottom Copyright Area */}
@@ -981,7 +1478,7 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Developed by</span>
-                  <span className="text-blue-600 font-extrabold hover:underline cursor-pointer">Wevlo Dev</span>
+                  <span className="text-blue-600 font-extrabold hover:underline cursor-pointer">Mandip Mahato</span>
                 </div>
                 <div className="flex gap-3 text-zinc-400">
                   <button onClick={() => triggerToast("Terms policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Terms</button>
@@ -1478,6 +1975,9 @@ export default function App() {
           </div>
         )}
 
+          </>
+        )}
+
       </main>
 
       {/* SCROLL TO TOP BUTTON (Dynamic with smooth Framer Motion transition) */}
@@ -1679,7 +2179,7 @@ export default function App() {
 
       {/* POPUP 2: PRODUCT CHECKOUT DRAWER / MODAL */}
       <AnimatePresence>
-        {selectedProduct && (
+        {false && selectedProduct && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
