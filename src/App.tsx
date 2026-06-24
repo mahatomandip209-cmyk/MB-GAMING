@@ -36,7 +36,13 @@ import {
   RotateCcw,
   XCircle,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Headphones,
+  Shield,
+  Zap,
+  Percent,
+  Coins,
+  Facebook
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
@@ -746,6 +752,245 @@ export default function App() {
               )}
             </section>
 
+            {/* WHY CHOOSE US? SECTION (Matching design from screenshots, fully responsive and interactive) */}
+            <section className="pt-10 pb-6 border-t border-zinc-100">
+              <div className="text-center space-y-2 mb-10">
+                <span className="text-[10px] font-black text-blue-600 tracking-widest uppercase">TRUSTED GATEWAY</span>
+                <h3 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">WHY CHOOSE US?</h3>
+                <p className="text-xs sm:text-sm text-zinc-500 max-w-lg mx-auto font-medium">
+                  We provide the fastest, most secure, and affordable top-up service in Nepal.
+                </p>
+              </div>
+
+              {/* 2x2 Feature Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Feature 1 */}
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
+                    <Zap className="w-5.5 h-5.5 text-blue-600 fill-blue-600/10" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="text-sm font-extrabold text-zinc-900">Instant Delivery</h4>
+                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
+                      Get your gaming credits, diamonds, and subscription vouchers instantly after automated verification.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
+                    <Shield className="w-5.5 h-5.5 text-blue-600" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="text-sm font-extrabold text-zinc-900">Secure Payment</h4>
+                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
+                      100% safe and encrypted transactions. Your account data remains fully protected at all times.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
+                    <Headphones className="w-5.5 h-5.5 text-blue-600" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="text-sm font-extrabold text-zinc-900">24/7 Support</h4>
+                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
+                      We are always online here to help you solve any issues, query, or recharge trouble, any time of the day.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 4 */}
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
+                    <Percent className="w-5.5 h-5.5 text-blue-600" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="text-sm font-extrabold text-zinc-900">Best Prices</h4>
+                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
+                      Guaranteed cheapest rates in the Nepali digital recharge market with custom loyalty reward points.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* THREE-ROW QUICK BADGE STRIP */}
+            <div className="bg-zinc-50/50 border border-zinc-150 rounded-[24px] p-5.5 grid grid-cols-1 sm:grid-cols-3 gap-4.5 sm:gap-2.5 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/60 text-center">
+              <div className="flex flex-col items-center justify-center gap-1.5 py-1.5 sm:py-0">
+                <Zap className="w-5.5 h-5.5 text-blue-600 animate-pulse" />
+                <span className="text-xs font-black text-zinc-900">Instant Delivery</span>
+                <span className="text-[10.5px] font-bold text-zinc-400">Under 5 mins</span>
+              </div>
+              <div className="flex flex-col items-center justify-center gap-1.5 pt-4 sm:pt-0 py-1.5 sm:py-0">
+                <ShieldCheck className="w-5.5 h-5.5 text-blue-600" />
+                <span className="text-xs font-black text-zinc-900">100% Secure</span>
+                <span className="text-[10.5px] font-bold text-zinc-400">Trusted by 10K+</span>
+              </div>
+              <div className="flex flex-col items-center justify-center gap-1.5 pt-4 sm:pt-0 py-1.5 sm:py-0">
+                <Headphones className="w-5.5 h-5.5 text-blue-600" />
+                <span className="text-xs font-black text-zinc-900">24/7 Support</span>
+                <span className="text-[10.5px] font-bold text-zinc-400">Always here</span>
+              </div>
+            </div>
+
+            {/* MAIN COMPLEX FOOTER (Directly matching user design constraints) */}
+            <footer className="bg-zinc-50/20 border border-zinc-100 rounded-[32px] p-8 sm:p-10 space-y-10 mt-10">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10">
+                
+                {/* Col 1: Brand Info (5 cols) */}
+                <div className="md:col-span-5 space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
+                      <img 
+                        src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
+                        alt="MB GAMING STORE Logo" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-black text-zinc-950 font-display tracking-tight leading-none">
+                        MB GAMING
+                      </span>
+                      <span className="text-[9.5px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
+                        S T O R E
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-blue-600">NEPAL'S PREMIUM TOP-UP</span>
+                  
+                  <p className="text-[11px] leading-relaxed text-zinc-500 font-medium">
+                    Welcome to MB Gaming Store, your trusted destination for digital gaming top-ups and gift cards. We provide fast and secure delivery of PUBG Mobile UC, Free Fire Diamonds, Mobile Legends Diamonds, UniPin Vouchers, iTunes Gift Cards, Razer Gold PINs, and other digital products at competitive prices. Enjoy instant service, reliable support, and convenient payment options for all your gaming and digital needs.
+                  </p>
+
+                  {/* Social Buttons */}
+                  <div className="flex items-center gap-2.5 pt-1.5">
+                    <a 
+                      href="https://facebook.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-600 flex items-center justify-center transition-all shadow-sm"
+                    >
+                      <Facebook className="w-4 h-4" />
+                    </a>
+                    <button 
+                      onClick={() => {
+                        setActiveBottomNav('profile');
+                        triggerToast('Direct customer support chat is online under your profile section!');
+                      }}
+                      className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-600 flex items-center justify-center transition-all shadow-sm cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Col 2: Quick Links (2 cols) */}
+                <div className="md:col-span-2 space-y-3.5">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">QUICK LINKS</h4>
+                  <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
+                    <li>
+                      <button onClick={() => { setActiveBottomNav('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Home
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setActiveBottomNav('orders'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        My Orders
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setShowWalletModal(true); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Wallet
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setActiveBottomNav('profile'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Profile
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setActiveBottomNav('profile'); triggerToast("Opening Support tickets..."); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Support
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Col 3: Top Services (2.5 cols) */}
+                <div className="md:col-span-2.5 space-y-3.5">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">TOP SERVICES</h4>
+                  <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
+                    <li>
+                      <button onClick={() => { setSelectedCategory('top-up'); setSearchQuery('Diamond'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Free Fire Diamond
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedCategory('top-up'); setSearchQuery('PUBG'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        PUBG Mobile UC
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedCategory('top-up'); setSearchQuery('Legends'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Mobile Legends
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedCategory('subscription'); setSearchQuery('Premium'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        YouTube Premium
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => { setSelectedCategory('voucher'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
+                        Gift Cards
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Col 4: Get In Touch (2.5 cols) */}
+                <div className="md:col-span-2.5 space-y-3.5">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-400">GET IN TOUCH</h4>
+                  <ul className="space-y-2 text-[11px] font-bold text-zinc-600">
+                    <li className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <a href="tel:9705128900" className="hover:text-blue-600 transition-colors">9705128900</a>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <a href="mailto:abhisheknabik01@gmail.com" className="hover:text-blue-600 transition-colors break-all">abhisheknabik01@gmail.com</a>
+                    </li>
+                    <li className="text-zinc-550 flex items-center gap-2 pt-1 font-extrabold text-[10px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-ping" />
+                      <span>Based in Nepal</span>
+                    </li>
+                  </ul>
+                </div>
+
+              </div>
+
+              {/* Bottom Copyright Area */}
+              <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
+                <div>
+                  © 2026 <span className="text-zinc-750 font-extrabold">MB Gaming Store</span>. All rights reserved.
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Developed by</span>
+                  <span className="text-blue-600 font-extrabold hover:underline cursor-pointer">Wevlo Dev</span>
+                </div>
+                <div className="flex gap-3 text-zinc-400">
+                  <button onClick={() => triggerToast("Terms policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Terms</button>
+                  <button onClick={() => triggerToast("Privacy policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Privacy</button>
+                  <button onClick={() => triggerToast("Refund policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Refund</button>
+                  <button onClick={() => triggerToast("Cancellation policy loaded.")} className="hover:text-zinc-650 transition-colors cursor-pointer">Cancellation</button>
+                </div>
+              </div>
+            </footer>
 
           </>
         )}

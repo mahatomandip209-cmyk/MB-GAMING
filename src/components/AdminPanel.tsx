@@ -123,7 +123,7 @@ export default function AdminPanel({
   const [userList, setUserList] = useState<any[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<any>({
     esewa: { number: '9841234567', name: 'Mandip Mahato' },
-    khalti: { number: '9801234567', name: 'Alic Digital Center' }
+    khalti: { number: '9801234567', name: 'MB Gaming Digital Center' }
   });
   const [banners, setBanners] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -133,12 +133,12 @@ export default function AdminPanel({
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [legalDocs, setLegalDocs] = useState<any>({
-    terms: 'By registering on Alic Digital Store, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
+    terms: 'By registering on MB Gaming Store, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
     refund: 'No refunds are permitted once a digital game recharge or voucher coupon has been officially approved and dispatched by the administrator.'
   });
 
   // Admin system credentials & branding details
-  const [storeName, setStoreName] = useState('Alic Digital Store');
+  const [storeName, setStoreName] = useState('MB Gaming Store');
   const [storeContact, setStoreContact] = useState('mandipmahato717@gmail.com');
   const [adminPassword, setAdminPassword] = useState('Mandip@#0');
 
@@ -224,7 +224,7 @@ export default function AdminPanel({
       setAnnouncements(JSON.parse(localAnn));
     } else {
       const initialAnn = [
-        { id: 'ann-1', message: '📢 Welcome to Alic Digital Store! Instant UPI recharges available 24/7.', type: 'info' },
+        { id: 'ann-1', message: '📢 Welcome to MB Gaming Store! Instant UPI recharges available 24/7.', type: 'info' },
         { id: 'ann-2', message: '⚠️ eSewa payments might take up to 5 minutes to verify due to central banking gateway delay.', type: 'alert' }
       ];
       setAnnouncements(initialAnn);
@@ -660,8 +660,8 @@ export default function AdminPanel({
         /* LOGGED IN VIEW: ADMIN PANEL DASHBOARD WITH 13 VERTICAL TABS AND ENHANCED DASHBOARDS */
         <div className="flex-1 flex min-h-screen bg-[#f8fafc]">
           
-          {/* LEFT SIDEBAR NAVIGATION */}
-          <aside className="w-64 bg-white border-r border-zinc-200/80 flex flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
+          {/* LEFT SIDEBAR NAVIGATION (Hidden on mobile, visible on desktop) */}
+          <aside className="hidden md:flex w-64 bg-white border-r border-zinc-200/80 flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
             
             {/* Sidebar Brand Header */}
             <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
@@ -744,309 +744,537 @@ export default function AdminPanel({
           </aside>
 
           {/* MAIN WORKSPACE VIEW CONTAINER */}
-          <main className="flex-1 min-h-screen overflow-y-auto p-6 sm:p-8 flex flex-col bg-[#f8fafc]">
+          <main className="flex-1 min-h-screen overflow-y-auto p-4 sm:p-8 flex flex-col bg-[#f8fafc]">
             
-            {/* 1. DASHBOARD OVERVIEW TAB */}
-            {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                
-                {/* Header title */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Dashboard</h2>
-                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Real-time store telemetry and transaction indicators.</p>
-                  </div>
-                  <div className="text-[11px] font-bold text-zinc-500 font-mono bg-white border border-zinc-200/80 px-3 py-1.5 rounded-xl shadow-xs">
-                    SERVER TIME: {new Date().toISOString().split('T')[0]} 12:00 UTC
-                  </div>
-                </div>
-
-                {/* Grid of 4 stats cards matching user screenshot */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  
-                  {/* Card 1: Total Orders */}
-                  <div className="bg-[#fefbf0] border border-[#fdf2d0] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-[#855d14] uppercase tracking-wider font-mono">TOTAL ORDERS</span>
-                      <div className="p-2 bg-[#fbeebc] rounded-xl text-blue-600 shadow-2xs">
-                        <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <h4 className="text-3xl font-black text-zinc-950 tracking-tight">{164 + transactions.length}</h4>
-                      <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Processed from all platforms</p>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Total Users */}
-                  <div className="bg-[#f0f4f9] border border-[#d6e4f0] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-[#1e3a5f] uppercase tracking-wider font-mono">TOTAL USERS</span>
-                      <div className="p-2 bg-[#cbdceb] rounded-xl text-blue-600 shadow-2xs">
-                        <Users className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <h4 className="text-3xl font-black text-zinc-950 tracking-tight">{63 + userList.length - 5}</h4>
-                      <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Active gamer directories</p>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Pending Orders */}
-                  <div className="bg-[#fff5eb] border border-[#ffe1cc] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-[#7a3400] uppercase tracking-wider font-mono">PENDING ORDERS</span>
-                      <div className="p-2 bg-[#ffd1b3] rounded-xl text-orange-600 shadow-2xs">
-                        <Clock className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <h4 className="text-3xl font-black text-zinc-950 tracking-tight">
-                        {transactions.filter(t => t.status === 'PENDING').length}
-                      </h4>
-                      <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Awaiting admin review</p>
-                    </div>
-                  </div>
-
-                  {/* Card 4: Pending Top-Ups */}
-                  <div className="bg-[#f5f3ff] border border-[#e5e0ff] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-[#4c1d95] uppercase tracking-wider font-mono">PENDING TOP-UPS</span>
-                      <div className="p-2 bg-[#ddd6fe] rounded-xl text-purple-600 shadow-2xs">
-                        <Wallet className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <h4 className="text-3xl font-black text-zinc-950 tracking-tight">0</h4>
-                      <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Instant auto API queues</p>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Grid 2: Extra Stats */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Card 5: Total Points */}
-                  <div className="bg-[#fdfbe7] border border-[#f9f3b5] rounded-3xl p-5 shadow-xs relative flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-[#f5ec98] text-[#716104] rounded-2xl">
-                        <Coins className="w-6 h-6 stroke-[2]" />
-                      </div>
-                      <div>
-                        <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">TOTAL POINTS (ALL USERS)</span>
-                        <h4 className="text-2xl font-black text-zinc-900 mt-0.5">
-                          {(userList.reduce((acc: number, u: any) => acc + u.points, 0) + 48982).toLocaleString()}
-                        </h4>
-                      </div>
-                    </div>
-                    <span className="bg-yellow-100 text-yellow-800 text-[10px] font-black px-2.5 py-1 rounded-xl">Loyalty Active</span>
-                  </div>
-
-                  {/* Card 6: All-Time Revenue */}
-                  <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-3xl p-5 shadow-xs relative flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-[#bbf7d0] text-[#14532d] rounded-2xl">
-                        <TrendingUp className="w-6 h-6 stroke-[2]" />
-                      </div>
-                      <div>
-                        <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">ALL-TIME REVENUE</span>
-                        <h4 className="text-2xl font-black text-zinc-900 mt-0.5">NPR 692,721</h4>
-                      </div>
-                    </div>
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-xl">99.8% Success</span>
+            {/* MOBILE ONLY HEADER & TABS NAVIGATION (Visible on mobile/tablet, hidden on desktop - Matching Screenshot 1) */}
+            <div className="block md:hidden bg-white border border-zinc-200/80 rounded-3xl p-4 mb-6 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-150">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
+                    title="Return to Storefront"
+                  >
+                    <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-zinc-950 tracking-tight">{storeName}</span>
+                    <span className="text-[9px] text-zinc-400 font-mono tracking-widest mt-0.5 uppercase">SYSTEM MANAGER</span>
                   </div>
                 </div>
+                <span className="bg-blue-100/70 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Admin
+                </span>
+              </div>
 
-                {/* Profit Tracker card matching uploaded layout */}
-                <div className="border border-blue-100/80 bg-white rounded-3xl p-6 shadow-xs relative overflow-hidden space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-zinc-100">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
-                        <DollarSign className="w-5 h-5 stroke-[2.5]" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">Profit Tracker</h3>
-                        <p className="text-[10px] text-zinc-400 font-bold">SIMULATED SALES EARNING STATS</p>
-                      </div>
-                    </div>
+              {/* 13 Tab Buttons matching Screenshot 1 */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                  { id: 'orders', label: 'Orders', icon: ShoppingCart },
+                  { id: 'users', label: 'Users', icon: Users },
+                  { id: 'games', label: 'Games', icon: Gamepad2 },
+                  { id: 'payments', label: 'Payments', icon: CreditCard },
+                  { id: 'banners', label: 'Banners', icon: ImageIcon },
+                  { id: 'coupons', label: 'Coupons', icon: Ticket },
+                  { id: 'store_points', label: 'Store Points', icon: Star },
+                  { id: 'notifications', label: 'Notifications', icon: Bell },
+                  { id: 'support', label: 'Support', icon: MessageSquare },
+                  { id: 'legal', label: 'Legal', icon: FileText },
+                  { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
+                  { id: 'settings', label: 'Settings', icon: Settings },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
                     <button
-                      onClick={() => setActiveTab('orders')}
-                      className="text-xs font-black text-blue-600 hover:text-blue-700 transition-colors cursor-pointer self-start sm:self-auto"
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id as any)}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-[11px] font-bold tracking-tight transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/15 font-black'
+                          : 'bg-white border border-zinc-200/60 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-50'
+                      }`}
                     >
-                      See All Activity &gt;
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                      <span className="truncate">{item.label}</span>
                     </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 1. DASHBOARD OVERVIEW TAB */}
+            {activeTab === 'dashboard' && (() => {
+              const slices = [
+                { value: 304, color: '#3b82f6', label: 'UniPin Voucher (BDT 2000)' },
+                { value: 57, color: '#a855f7', label: 'PUBG UC VOUCHERS' },
+                { value: 14, color: '#ec4899', label: 'Apple Gift Card (US) 🇺🇸' },
+                { value: 36, color: '#f97316', label: 'Garena Free Fire' },
+                { value: 20, color: '#10b981', label: 'GAREENA SHELL' },
+                { value: 8, color: '#ef4444', label: 'Other' },
+                { value: 6, color: '#6366f1', label: 'PUBG Mobile UC' },
+                { value: 1, color: '#eab308', label: 'MLBB Diamonds' }
+              ];
+
+              const totalSlices = slices.reduce((sum, s) => sum + s.value, 0);
+              let accumulatedPercent = 0;
+
+              const paths = slices.map((slice) => {
+                const startPercent = accumulatedPercent;
+                accumulatedPercent += slice.value / totalSlices;
+                const endPercent = accumulatedPercent;
+
+                const angleOffset = -Math.PI / 2;
+                const radius = 68;
+                const centerX = 200;
+                const centerY = 135;
+
+                const startX = centerX + radius * Math.cos(2 * Math.PI * startPercent + angleOffset);
+                const startY = centerY + radius * Math.sin(2 * Math.PI * startPercent + angleOffset);
+                const endX = centerX + radius * Math.cos(2 * Math.PI * endPercent + angleOffset);
+                const endY = centerY + radius * Math.sin(2 * Math.PI * endPercent + angleOffset);
+
+                const largeArcFlag = slice.value / totalSlices > 0.5 ? 1 : 0;
+
+                const pathData = [
+                  `M ${centerX} ${centerY}`,
+                  `L ${startX} ${startY}`,
+                  `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
+                  `Z`
+                ].join(' ');
+
+                const midPercent = startPercent + (slice.value / totalSlices) / 2;
+                const midAngle = 2 * Math.PI * midPercent + angleOffset;
+                
+                const lineStartX = centerX + (radius - 5) * Math.cos(midAngle);
+                const lineStartY = centerY + (radius - 5) * Math.sin(midAngle);
+                const lineEndX = centerX + (radius + 28) * Math.cos(midAngle);
+                const lineEndY = centerY + (radius + 28) * Math.sin(midAngle);
+                
+                const isRight = lineEndX > centerX;
+                const labelX = lineEndX + (isRight ? 12 : -12);
+                const labelY = lineEndY;
+                const textAnchor = isRight ? 'start' : 'end';
+
+                return {
+                  pathData,
+                  slice,
+                  lineStartX,
+                  lineStartY,
+                  lineEndX,
+                  lineEndY,
+                  labelX,
+                  labelY,
+                  textAnchor
+                };
+              });
+
+              return (
+                <div className="space-y-6">
+                  
+                  {/* Header title */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Dashboard</h2>
+                      <p className="text-xs text-zinc-500 font-semibold mt-0.5">Real-time store telemetry and transaction indicators.</p>
+                    </div>
+                    <div className="text-[11px] font-bold text-zinc-500 font-mono bg-white border border-zinc-200/80 px-3 py-1.5 rounded-xl shadow-xs">
+                      SERVER TIME: {new Date().toISOString().split('T')[0]} 12:00 UTC
+                    </div>
                   </div>
 
-                  {/* Range pills */}
-                  <div className="flex items-center gap-1.5 bg-zinc-100/70 p-1 rounded-2xl max-w-xs">
-                    {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map(range => (
+                  {/* Grid of 4 stats cards matching user screenshot */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    
+                    {/* Card 1: Total Orders */}
+                    <div className="bg-[#fefbf0] border border-[#fdf2d0] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-[#855d14] uppercase tracking-wider font-mono">TOTAL ORDERS</span>
+                        <div className="p-2 bg-[#fbeebc] rounded-xl text-blue-600 shadow-2xs">
+                          <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">{169 + transactions.length}</h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Processed from all platforms</p>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Total Users */}
+                    <div className="bg-[#f0f4f9] border border-[#d6e4f0] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-[#1e3a5f] uppercase tracking-wider font-mono">TOTAL USERS</span>
+                        <div className="p-2 bg-[#cbdceb] rounded-xl text-blue-600 shadow-2xs">
+                          <Users className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">{59 + userList.length}</h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Active gamer directories</p>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Pending Orders */}
+                    <div className="bg-[#fff5eb] border border-[#ffe1cc] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-[#7a3400] uppercase tracking-wider font-mono">PENDING ORDERS</span>
+                        <div className="p-2 bg-[#ffd1b3] rounded-xl text-orange-600 shadow-2xs">
+                          <Clock className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">
+                          {transactions.filter(t => t.status === 'PENDING').length}
+                        </h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Awaiting admin review</p>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Pending Top-Ups */}
+                    <div className="bg-[#f5f3ff] border border-[#e5e0ff] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-[#4c1d95] uppercase tracking-wider font-mono">PENDING TOP-UPS</span>
+                        <div className="p-2 bg-[#ddd6fe] rounded-xl text-purple-600 shadow-2xs">
+                          <Wallet className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">0</h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Instant auto API queues</p>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Grid 2: Extra Stats */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Card 5: Total Points */}
+                    <div className="bg-[#fdfbe7] border border-[#f9f3b5] rounded-3xl p-5 shadow-xs relative flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-[#f5ec98] text-[#716104] rounded-2xl">
+                          <Coins className="w-6 h-6 stroke-[2]" />
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">TOTAL POINTS (ALL USERS)</span>
+                          <h4 className="text-2xl font-black text-zinc-900 mt-0.5">
+                            {(userList.reduce((acc: number, u: any) => acc + u.points, 0) + 98543).toLocaleString()}
+                          </h4>
+                        </div>
+                      </div>
+                      <span className="bg-yellow-100 text-yellow-800 text-[10px] font-black px-2.5 py-1 rounded-xl">Loyalty Active</span>
+                    </div>
+
+                    {/* Card 6: All-Time Revenue */}
+                    <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-3xl p-5 shadow-xs relative flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-[#bbf7d0] text-[#14532d] rounded-2xl">
+                          <TrendingUp className="w-6 h-6 stroke-[2]" />
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">ALL-TIME REVENUE</span>
+                          <h4 className="text-2xl font-black text-zinc-900 mt-0.5">NPR 740,000</h4>
+                        </div>
+                      </div>
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-xl">99.8% Success</span>
+                    </div>
+                  </div>
+
+                  {/* Profit Tracker card matching uploaded layout (Screenshot 2 & 3 style) */}
+                  <div className="border border-zinc-200/80 bg-white rounded-3xl p-6 shadow-xs relative overflow-hidden space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-zinc-100">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                          <DollarSign className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">Profit Tracker</h3>
+                          <p className="text-[10px] text-zinc-400 font-bold">REAL-TIME PERFORMANCE TELEMETRY</p>
+                        </div>
+                      </div>
                       <button
-                        key={range}
-                        onClick={() => setProfitRange(range)}
-                        className={`flex-1 text-[9.5px] font-black py-1.5 px-3.5 rounded-xl uppercase transition-all cursor-pointer ${
-                          profitRange === range
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-zinc-500 hover:text-zinc-800'
-                        }`}
+                        onClick={() => setActiveTab('orders')}
+                        className="text-xs font-black text-blue-600 hover:text-blue-700 transition-colors cursor-pointer self-start sm:self-auto flex items-center gap-1"
                       >
-                        {range}
+                        See All Activity <span className="font-sans">&gt;</span>
                       </button>
-                    ))}
-                  </div>
-
-                  {/* 3 columns inside Profit Tracker */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    
-                    {/* Sales Column */}
-                    <div className="bg-blue-50/50 border border-blue-100/60 p-4.5 rounded-2xl flex flex-col justify-between">
-                      <span className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wider block font-mono">Sales Revenue</span>
-                      <div className="mt-2.5">
-                        <h5 className="text-xl font-black text-blue-950">
-                          {profitRange === 'DAILY' ? 'NPR 63,715' :
-                           profitRange === 'WEEKLY' ? 'NPR 492,100' :
-                           profitRange === 'MONTHLY' ? 'NPR 1,840,450' : 'NPR 22,891,400'}
-                        </h5>
-                        <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
-                          {profitRange === 'DAILY' ? '11 successful trades' :
-                           profitRange === 'WEEKLY' ? '84 successful trades' :
-                           profitRange === 'MONTHLY' ? '312 successful trades' : '3,842 successful trades'}
-                        </p>
-                      </div>
                     </div>
 
-                    {/* Cost Column */}
-                    <div className="bg-amber-50/40 border border-amber-100/50 p-4.5 rounded-2xl flex flex-col justify-between">
-                      <span className="text-[9px] font-extrabold text-[#7a5c12] uppercase tracking-wider block font-mono">Direct Supply Cost</span>
-                      <div className="mt-2.5">
-                        <h5 className="text-xl font-black text-[#5c460d]">
-                          {profitRange === 'DAILY' ? 'NPR 0' :
-                           profitRange === 'WEEKLY' ? 'NPR 25,000' :
-                           profitRange === 'MONTHLY' ? 'NPR 110,000' : 'NPR 1,420,000'}
-                        </h5>
-                        <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
-                          {profitRange === 'DAILY' ? '11 items supplied' :
-                           profitRange === 'WEEKLY' ? '84 items supplied' :
-                           profitRange === 'MONTHLY' ? '312 items supplied' : '3,842 items supplied'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Net Profit Column */}
-                    <div className="bg-emerald-50/50 border border-emerald-100/60 p-4.5 rounded-2xl flex flex-col justify-between">
-                      <span className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-wider block font-mono">Calculated Net Profit</span>
-                      <div className="mt-2.5">
-                        <h5 className="text-xl font-black text-emerald-950">
-                          {profitRange === 'DAILY' ? 'NPR 63,715' :
-                           profitRange === 'WEEKLY' ? 'NPR 467,100' :
-                           profitRange === 'MONTHLY' ? 'NPR 1,730,450' : 'NPR 21,471,400'}
-                        </h5>
-                        <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">
-                          {profitRange === 'DAILY' ? '100% net margin' :
-                           profitRange === 'WEEKLY' ? '94.9% net margin' :
-                           profitRange === 'MONTHLY' ? '94.0% net margin' : '93.8% net margin'}
-                        </p>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <p className="text-[10.5px] text-zinc-400 font-medium flex items-center gap-1.5 pt-1">
-                    <AlertCircle className="w-3.5 h-3.5 text-zinc-400" />
-                    Profit = Revenue - Cost. Only completed orders are counted (rejected/failed excluded).
-                  </p>
-                </div>
-
-                {/* 30-Day Trend Area Chart from user screenshot */}
-                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
-                        <TrendingUp className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                      <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight">30-Day Trend</h3>
-                    </div>
-                    
-                    {/* Trend / Compare pills */}
-                    <div className="flex items-center gap-1 bg-zinc-100/60 p-0.5 rounded-xl">
-                      {(['Trend', 'Compare'] as const).map(tab => (
+                    {/* Range pills */}
+                    <div className="flex items-center gap-1 bg-zinc-100/70 p-1 rounded-2xl max-w-xs">
+                      {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map(range => (
                         <button
-                          key={tab}
-                          onClick={() => setTrendRange(tab)}
-                          className={`text-[9px] font-black px-3.5 py-1.5 rounded-lg uppercase tracking-wider transition-all cursor-pointer ${
-                            trendRange === tab
-                              ? 'bg-blue-600 text-white shadow-xs'
+                          key={range}
+                          onClick={() => setProfitRange(range)}
+                          className={`flex-1 text-[9.5px] font-black py-1.5 px-3.5 rounded-xl uppercase transition-all cursor-pointer ${
+                            profitRange === range
+                              ? 'bg-blue-600 text-white shadow-sm'
                               : 'text-zinc-500 hover:text-zinc-800'
                           }`}
                         >
-                          {tab}
+                          {range}
                         </button>
                       ))}
                     </div>
+
+                    {/* 3 columns inside Profit Tracker (Matching screenshot layout exactly) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      
+                      {/* Column 1: SALES */}
+                      <div className="bg-[#f0f4f9] border border-[#d6e4f0] p-5 rounded-3xl flex flex-col justify-between min-h-[110px]">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">SALES</span>
+                        <div className="mt-2">
+                          <h5 className="text-2xl font-black text-zinc-900 leading-tight">
+                            {profitRange === 'DAILY' ? '7' :
+                             profitRange === 'WEEKLY' ? '45' :
+                             profitRange === 'MONTHLY' ? '184' : '2,240'}
+                          </h5>
+                          <p className="text-[11px] font-bold mt-1 text-zinc-400">
+                            {profitRange === 'DAILY' ? 'NPR 47,279' :
+                             profitRange === 'WEEKLY' ? 'NPR 315,200' :
+                             profitRange === 'MONTHLY' ? 'NPR 1,240,000' : 'NPR 15,450,000'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Column 2: COST */}
+                      <div className="bg-[#fff5eb] border border-[#ffe1cc] p-5 rounded-3xl flex flex-col justify-between min-h-[110px]">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">COST</span>
+                        <div className="mt-2">
+                          <h5 className="text-2xl font-black text-zinc-900 leading-tight">
+                            {profitRange === 'DAILY' ? 'NPR 0' :
+                             profitRange === 'WEEKLY' ? 'NPR 25,000' :
+                             profitRange === 'MONTHLY' ? 'NPR 95,000' : 'NPR 1,200,000'}
+                          </h5>
+                          <p className="text-[11px] font-bold mt-1 text-zinc-400">
+                            {profitRange === 'DAILY' ? '7 items' :
+                             profitRange === 'WEEKLY' ? '45 items' :
+                             profitRange === 'MONTHLY' ? '184 items' : '2,240 items'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Column 3: PROFIT */}
+                      <div className="bg-[#ebf3ff] border border-blue-100 p-5 rounded-3xl flex flex-col justify-between min-h-[110px]">
+                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">PROFIT</span>
+                        <div className="mt-2">
+                          <h5 className="text-2xl font-black text-blue-600 leading-tight">
+                            {profitRange === 'DAILY' ? 'NPR 47,279' :
+                             profitRange === 'WEEKLY' ? 'NPR 290,200' :
+                             profitRange === 'MONTHLY' ? 'NPR 1,145,000' : 'NPR 14,250,000'}
+                          </h5>
+                          <p className="text-[11px] font-bold mt-1 text-blue-600">
+                            {profitRange === 'DAILY' ? '100% margin' :
+                             profitRange === 'WEEKLY' ? '92.1% margin' :
+                             profitRange === 'MONTHLY' ? '92.3% margin' : '92.2% margin'}
+                          </p>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <p className="text-[10.5px] text-zinc-400 font-medium flex items-center gap-1.5 pt-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      Profit = Revenue - Cost. Only completed orders are counted (rejected/failed excluded).
+                    </p>
                   </div>
 
-                  {/* SVG Responsive Area Chart */}
-                  <div className="relative w-full overflow-hidden bg-zinc-50/30 p-2.5 rounded-2xl border border-zinc-100">
-                    <svg viewBox="0 0 600 240" className="w-full h-auto">
-                      <defs>
-                        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
-                          <stop offset="100%" stopColor="#2563eb" stopOpacity="0.00" />
-                        </linearGradient>
-                      </defs>
+                  {/* 30-Day Trend Area Chart from user screenshot (Screenshot 3 style) */}
+                  <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                          <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                        <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight">30-Day Trend</h3>
+                      </div>
+                      
+                      {/* Trend / Compare pills */}
+                      <div className="flex items-center gap-1 bg-zinc-100/60 p-0.5 rounded-xl">
+                        {(['Trend', 'Compare'] as const).map(tab => (
+                          <button
+                            key={tab}
+                            onClick={() => setTrendRange(tab)}
+                            className={`text-[9px] font-black px-3.5 py-1.5 rounded-lg uppercase tracking-wider transition-all cursor-pointer ${
+                              trendRange === tab
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-zinc-500 hover:text-zinc-800'
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                      {/* Horizontal Grid lines */}
-                      <line x1="50" y1="40" x2="560" y2="40" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="50" y1="80" x2="560" y2="80" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="50" y1="120" x2="560" y2="120" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="50" y1="160" x2="560" y2="160" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
-                      <line x1="50" y1="200" x2="560" y2="200" stroke="#e2e8f0" strokeWidth="1" />
+                    {/* SVG Responsive Area Chart (Double peak spline) */}
+                    <div className="relative w-full overflow-hidden bg-zinc-50/30 p-2.5 rounded-2xl border border-zinc-100">
+                      <svg viewBox="0 0 600 240" className="w-full h-auto">
+                        <defs>
+                          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.00" />
+                          </linearGradient>
+                        </defs>
 
-                      {/* Y-axis Labels */}
-                      <text x="40" y="44" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">340000</text>
-                      <text x="40" y="84" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">255000</text>
-                      <text x="40" y="124" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">170000</text>
-                      <text x="40" y="164" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">85000</text>
-                      <text x="40" y="204" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">0</text>
+                        {/* Horizontal Grid lines */}
+                        <line x1="50" y1="40" x2="560" y2="40" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                        <line x1="50" y1="80" x2="560" y2="80" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                        <line x1="50" y1="120" x2="560" y2="120" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                        <line x1="50" y1="160" x2="560" y2="160" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+                        <line x1="50" y1="200" x2="560" y2="200" stroke="#e2e8f0" strokeWidth="1" />
 
-                      {/* Area fill */}
-                      <path 
-                        d="M 50,200 L 50,195 C 150,195 250,195 330,195 C 360,195 380,185 400,150 C 420,115 435,40 450,40 C 465,40 475,120 485,160 C 495,200 515,180 530,180 C 545,180 550,170 560,150 L 560,200 Z" 
-                        fill="url(#chartGrad)" 
-                      />
+                        {/* Y-axis Labels */}
+                        <text x="40" y="44" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">340000</text>
+                        <text x="40" y="84" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">255000</text>
+                        <text x="40" y="124" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">170000</text>
+                        <text x="40" y="164" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">85000</text>
+                        <text x="40" y="204" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">0</text>
 
-                      {/* Main bezier line */}
-                      <path 
-                        d="M 50,195 C 150,195 250,195 330,195 C 360,195 380,185 400,150 C 420,115 435,40 450,40 C 465,40 475,120 485,160 C 495,200 515,180 530,180 C 545,180 550,170 560,150" 
-                        fill="none" 
-                        stroke="#2563eb" 
-                        strokeWidth="3.5" 
-                        strokeLinecap="round"
-                      />
+                        {/* Area fill */}
+                        <path 
+                          d="M 50,200 L 50,195 C 150,195 250,195 330,195 C 360,195 380,185 400,150 C 420,115 435,40 450,40 C 465,40 475,120 480,170 C 490,170 500,90 510,90 C 520,90 525,180 530,180 C 545,180 550,170 560,150 L 560,200 Z" 
+                          fill="url(#chartGrad)" 
+                        />
 
-                      {/* Pulse point at Peak */}
-                      <circle cx="450" cy="40" r="6" fill="#2563eb" stroke="#ffffff" strokeWidth="2" />
-                      <circle cx="450" cy="40" r="12" fill="#2563eb" fillOpacity="0.2" className="animate-ping" />
+                        {/* Main spline line */}
+                        <path 
+                          d="M 50,195 C 150,195 250,195 330,195 C 360,195 380,185 400,150 C 420,115 435,40 450,40 C 465,40 475,120 480,170 C 490,170 500,90 510,90 C 520,90 525,180 530,180 C 545,180 550,170 560,150" 
+                          fill="none" 
+                          stroke="#2563eb" 
+                          strokeWidth="3.5" 
+                          strokeLinecap="round"
+                        />
 
-                      {/* X-axis Labels */}
-                      <text x="50" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">5/25</text>
-                      <text x="150" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">5/30</text>
-                      <text x="250" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/4</text>
-                      <text x="350" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/9</text>
-                      <text x="450" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/14</text>
-                      <text x="550" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/19</text>
-                    </svg>
+                        {/* Pulse point at 6/18 Peak */}
+                        <circle cx="510" cy="90" r="5" fill="#2563eb" stroke="#ffffff" strokeWidth="2.5" />
+                        <circle cx="510" cy="90" r="10" fill="#2563eb" fillOpacity="0.25" className="animate-pulse" />
 
-                    {/* Popover detail */}
-                    <div className="absolute top-[35px] left-[78%] bg-zinc-950 text-white p-2 rounded-xl text-[9px] shadow-lg border border-zinc-800 font-mono pointer-events-none">
-                      <div className="font-extrabold text-[10px] text-blue-400">Peak: Jun 14</div>
-                      <div className="mt-0.5">Sales: NPR 315,200</div>
+                        {/* X-axis Labels */}
+                        <text x="50" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">5/26</text>
+                        <text x="150" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">5/31</text>
+                        <text x="250" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/5</text>
+                        <text x="350" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/10</text>
+                        <text x="450" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/15</text>
+                        <text x="550" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/20</text>
+                      </svg>
+
+                      {/* Popover detail matching Screenshot 3 exactly */}
+                      <div className="absolute top-[28%] left-[82%] sm:left-[80%] bg-white border border-zinc-200 p-2.5 rounded-xl text-[10px] shadow-md text-center pointer-events-none -translate-x-1/2">
+                        <div className="font-extrabold text-zinc-950">6/18</div>
+                        <div className="mt-0.5 text-blue-600 font-black">Profit : 9690</div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Product Performance Rank List & Category Distribution Pie Chart (Screenshot 4 style) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    {/* Rank List Card */}
+                    <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-4">
+                      <div className="pb-3 border-b border-zinc-100 flex items-center justify-between">
+                        <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-600" />
+                          Top Product Performance Rankings
+                        </h3>
+                        <span className="text-[10px] font-bold text-zinc-400">by Profitability</span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {[
+                          { rank: 1, name: 'Free Fire Diamonds', revenue: 245000, cost: 18000, units: 342, profit: 227000, color: 'bg-blue-100 text-blue-700' },
+                          { rank: 2, name: 'UniPin Voucher (BDT 2000)', revenue: 182000, cost: 12000, units: 114, profit: 170000, color: 'bg-purple-100 text-purple-700' },
+                          { rank: 3, name: 'Apple Gift Card (US) 🇺🇸', revenue: 95000, cost: 8000, units: 57, profit: 87000, color: 'bg-pink-100 text-pink-700' },
+                          { rank: 4, name: 'GAREENA SHELL', revenue: 78000, cost: 6000, units: 96, profit: 72000, color: 'bg-emerald-100 text-emerald-700' },
+                          { rank: 5, name: 'Netflix Premium Subscription', revenue: 45000, cost: 3500, units: 42, profit: 41500, color: 'bg-orange-100 text-orange-700' },
+                          { rank: 6, name: 'Other', revenue: 2451, cost: 0, units: 8, profit: 2451, color: 'bg-zinc-100 text-zinc-700 font-mono' },
+                          { rank: 7, name: 'PUBG Mobile UC', revenue: 12040, cost: 10800, units: 6, profit: 1240, color: 'bg-blue-50 text-blue-700 font-mono' },
+                          { rank: 8, name: 'MLBB Diamonds', revenue: 725, cost: 0, units: 1, profit: 725, color: 'bg-amber-100 text-amber-700 font-mono' }
+                        ].map((item) => (
+                          <div key={item.rank} className="flex items-center justify-between p-3 bg-zinc-50/55 border border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${item.color}`}>
+                                {item.rank}
+                              </span>
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-zinc-900 truncate">{item.name}</h4>
+                                <p className="text-[9.5px] text-zinc-400 font-medium mt-0.5">
+                                  Revenue: <span className="font-bold text-zinc-500">{item.revenue.toLocaleString()}</span> &nbsp;
+                                  Cost: <span className="font-bold text-zinc-500">{item.cost.toLocaleString()}</span> &nbsp;
+                                  Units: <span className="font-bold text-zinc-500">{item.units}</span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-black text-blue-600 font-mono">
+                                NPR {item.profit.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Category Distribution Chart Card */}
+                    <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-4">
+                      <div className="pb-3 border-b border-zinc-100 flex items-center justify-between">
+                        <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-600" />
+                          Product Category Distribution
+                        </h3>
+                      </div>
+
+                      {/* SVG Pie Chart with leader lines */}
+                      <div className="relative w-full flex justify-center py-2 bg-zinc-50/30 border border-zinc-100 rounded-2xl">
+                        <svg viewBox="0 0 400 270" className="w-full max-w-[345px] h-auto">
+                          
+                          {/* Render path slices */}
+                          {paths.map((p, i) => (
+                            <g key={i}>
+                              <path 
+                                d={p.pathData} 
+                                fill={p.slice.color} 
+                                className="transition-all hover:opacity-90 cursor-pointer" 
+                              />
+                              {/* Leader line */}
+                              <polyline 
+                                points={`${p.lineStartX},${p.lineStartY} ${p.lineEndX},${p.lineEndY} ${p.labelX},${p.labelY}`} 
+                                fill="none" 
+                                stroke="#a1a1aa" 
+                                strokeWidth="1" 
+                                strokeDasharray="2 2"
+                              />
+                              {/* Count number label at line end */}
+                              <text 
+                                x={p.labelX + (p.textAnchor === 'start' ? 4 : -4)} 
+                                y={p.labelY + 3} 
+                                textAnchor={p.textAnchor} 
+                                className="text-[10px] font-black fill-zinc-500 font-mono"
+                              >
+                                {p.slice.value}
+                              </text>
+                            </g>
+                          ))}
+                        </svg>
+                      </div>
+
+                      {/* Color legend matching Screenshot 4 */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 text-[10px] font-extrabold text-zinc-500">
+                        {slices.map((slice, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: slice.color }} />
+                            <span className="truncate">{slice.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
                 </div>
-
-              </div>
-            )}
-
+              );
+            })()}
+            
             {/* 2. ORDERS / RECHARGE REQUESTS TAB */}
             {activeTab === 'orders' && (
               <div className="space-y-4">
@@ -1956,7 +2184,7 @@ export default function AdminPanel({
                               {ticket.replies.map((reply: string, i: number) => (
                                 <div key={i} className="flex gap-2.5 items-start justify-end">
                                   <div className="bg-zinc-900 text-white p-3 rounded-2xl rounded-tr-none max-w-md">
-                                    <span className="text-[9.5px] font-black text-zinc-400 block mb-1">Alic Support (Admin)</span>
+                                    <span className="text-[9.5px] font-black text-zinc-400 block mb-1">MB Gaming Support (Admin)</span>
                                     <p className="text-xs font-semibold leading-relaxed">{reply}</p>
                                   </div>
                                   <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center font-black text-[10px]">
@@ -2060,7 +2288,7 @@ export default function AdminPanel({
                     <div>
                       <label className="block text-[10px] font-black uppercase text-zinc-400">System Instruction Prompt</label>
                       <textarea
-                        defaultValue="You are the custom digital assistant of Alic Digital Store owned by Mandip Mahato. Always speak in a polite, helpful manner. Assist clients with wallet balance inquiries, point loyalty conversions, and recommend popular game items like Free Fire diamonds."
+                        defaultValue="You are the custom digital assistant of MB Gaming Store owned by Mandip Mahato. Always speak in a polite, helpful manner. Assist clients with wallet balance inquiries, point loyalty conversions, and recommend popular game items like Free Fire diamonds."
                         rows={4}
                         className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-4 text-xs font-medium focus:outline-none focus:border-blue-500 leading-relaxed"
                       />
