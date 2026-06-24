@@ -40,13 +40,35 @@ import {
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
-
-const ACTIVE_PRODUCTS = ALL_PRODUCTS.filter(product => !!product.imageUrl);
+import AdminPanel from './components/AdminPanel';
 
 
 export default function App() {
   // STATE MANAGEMENT
-  const [walletBalance, setWalletBalance] = useState<number>(2450);
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('mb_gaming_products');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return ALL_PRODUCTS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mb_gaming_products', JSON.stringify(products));
+  }, [products]);
+
+  const [walletBalance, setWalletBalance] = useState<number>(() => {
+    const saved = localStorage.getItem('mb_gaming_wallet');
+    return saved ? Number(saved) : 2450;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mb_gaming_wallet', walletBalance.toString());
+  }, [walletBalance]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -109,30 +131,44 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Initial Transaction History
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 'tx-202601',
-      productId: 'garena-freefire',
-      productName: 'Garena Free Fire Diamonds',
-      provider: 'Garena',
-      category: 'top-up',
-      amount: 499,
-      timestamp: '2026-06-20 05:12',
-      status: 'SUCCESS',
-      targetAccount: 'UID: 928348293'
-    },
-    {
-      id: 'tx-202602',
-      productId: 'netflix-sub-card',
-      productName: 'Netflix Premium Subscription Room',
-      provider: 'Netflix Inc.',
-      category: 'subscription',
-      amount: 649,
-      timestamp: '2026-06-19 18:45',
-      status: 'SUCCESS',
-      targetAccount: 'profile@netflix.com'
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('mb_gaming_transactions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
     }
-  ]);
+    return [
+      {
+        id: 'tx-202601',
+        productId: 'garena-freefire',
+        productName: 'Garena Free Fire Diamonds',
+        provider: 'Garena',
+        category: 'top-up',
+        amount: 499,
+        timestamp: '2026-06-20 05:12',
+        status: 'SUCCESS',
+        targetAccount: 'UID: 928348293'
+      },
+      {
+        id: 'tx-202602',
+        productId: 'netflix-sub-card',
+        productName: 'Netflix Premium Subscription Room',
+        provider: 'Netflix Inc.',
+        category: 'subscription',
+        amount: 649,
+        timestamp: '2026-06-19 18:45',
+        status: 'SUCCESS',
+        targetAccount: 'profile@netflix.com'
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mb_gaming_transactions', JSON.stringify(transactions));
+  }, [transactions]);
 
   // Favorites state
   const [favoriteIds, setFavoriteIds] = useState<string[]>(['garena-freefire', 'pubg-mobile-uc']);
@@ -171,19 +207,19 @@ export default function App() {
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    return ACTIVE_PRODUCTS.filter((product) => {
+    return products.filter((product) => {
       const matchCategory = selectedCategory === 'all' || product.category === selectedCategory;
       const matchSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCategory && matchSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery]);
 
   // Memoized favorited products
   const favoritedProducts = useMemo(() => {
-    return ACTIVE_PRODUCTS.filter(p => favoriteIds.includes(p.id));
-  }, [favoriteIds]);
+    return products.filter(p => favoriteIds.includes(p.id));
+  }, [products, favoriteIds]);
 
   // Handle clicking a category tab
   const handleCategoryChange = (category: Category) => {
@@ -266,7 +302,7 @@ export default function App() {
       amount: checkoutAmount,
       targetAccount: checkoutTarget,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      status: 'SUCCESS',
+      status: 'PENDING',
       pinCode: pinString
     };
 
@@ -274,7 +310,7 @@ export default function App() {
     setLastCompletedTransaction(newTx);
     setSelectedProduct(null); // Close modal
     setShowSuccessOverlay(true); // Open success overlay
-    triggerToast('Purchase request approved successfully!');
+    triggerToast('Purchase request submitted for administrator review!');
   };
 
   // Trigger brief alert messages
@@ -305,6 +341,43 @@ export default function App() {
     setShowWalletModal(false);
     triggerToast(`Added Rs. ${amt} to Wallet Balance!`);
   };
+
+  // Router check for Admin Panel
+  const [isAdminRoute, setIsAdminRoute] = useState(() => {
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    return path === '/admin' || window.location.hash === '#/admin';
+  });
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+      setIsAdminRoute(path === '/admin' || window.location.hash === '#/admin');
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
+
+  if (isAdminRoute) {
+    return (
+      <AdminPanel
+        products={products}
+        setProducts={setProducts}
+        transactions={transactions}
+        setTransactions={setTransactions}
+        walletBalance={walletBalance}
+        setWalletBalance={setWalletBalance}
+        onClose={() => {
+          window.history.pushState({}, '', '/');
+          const navEvent = new PopStateEvent('popstate');
+          window.dispatchEvent(navEvent);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans pb-28 selection:bg-blue-600 selection:text-white">
@@ -474,7 +547,7 @@ export default function App() {
                 </span>
               </div>
               <div className="flex items-stretch gap-4 overflow-x-auto pb-2 scrollbar-none px-1">
-                {ALL_PRODUCTS.filter(product => product.popular).map((product) => (
+                {products.filter(product => product.popular).map((product) => (
                   <div
                     key={`popular-${product.id}`}
                     onClick={() => openCheckout(product)}
@@ -696,7 +769,7 @@ export default function App() {
                   <div key={tx.id} className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div className="flex items-start gap-3">
                       {(() => {
-                        const associatedProduct = ALL_PRODUCTS.find(p => p.id === tx.productId);
+                        const associatedProduct = products.find(p => p.id === tx.productId);
                         return associatedProduct?.imageUrl ? (
                           <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-155 shrink-0 shadow-sm mt-0.5">
                             <img
@@ -1054,6 +1127,27 @@ export default function App() {
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+              </div>
+
+              {/* Admin Portal Shortcut */}
+              <div 
+                onClick={() => {
+                  window.history.pushState({}, '', '/admin');
+                  const navEvent = new PopStateEvent('popstate');
+                  window.dispatchEvent(navEvent);
+                }}
+                className="flex items-center justify-between p-2.5 bg-blue-50/40 hover:bg-blue-50 border border-blue-100/30 rounded-xl cursor-pointer transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center border border-blue-200/50">
+                    <ShieldCheck className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-[11px] font-extrabold text-blue-950">Admin Portal 🔑</h5>
+                    <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Manage products & orders</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
               </div>
 
             </div>
