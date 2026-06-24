@@ -55,12 +55,13 @@ export default function AdminPanel({
   
   // Forgot Password flow states: 'login' | 'forgot_email' | 'enter_code' | 'reset_password' | 'reset_success'
   const [authStep, setAuthStep] = useState<'login' | 'forgot_email' | 'enter_code' | 'reset_password' | 'reset_success'>('login');
-  const [recoveryEmail, setRecoveryEmail] = useState('mandipmahato95@gmail.com');
+  const [recoveryEmail, setRecoveryEmail] = useState('mandipmahato717@gmail.com');
   const [codeInputValue, setCodeInputValue] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [isActivationPending, setIsActivationPending] = useState(false);
 
   // Errors & success
   const [loginError, setLoginError] = useState('');
@@ -123,6 +124,7 @@ export default function AdminPanel({
   const sendVerificationCode = async () => {
     setIsSendingCode(true);
     setResetError('');
+    setIsActivationPending(false);
     try {
       const res = await fetch('/api/send-code', {
         method: 'POST',
@@ -130,8 +132,14 @@ export default function AdminPanel({
       });
       const data = await res.json();
       if (data.success) {
-        setAuthStep('enter_code');
-        triggerToast('Verification code sent to mandipmahato95@gmail.com!');
+        if (data.isActivationPending) {
+          setIsActivationPending(true);
+          setResetError('Email activation required! Please check your Gmail (including Spam/Promotions folder) and click "Confirm" in FormSubmit email to activate.');
+          triggerToast('Activation email sent! Confirm your email to receive reset codes.');
+        } else {
+          setAuthStep('enter_code');
+          triggerToast('Verification code sent to mandipmahato717@gmail.com!');
+        }
       } else {
         setResetError(data.error || 'Failed to send verification code.');
       }
@@ -440,7 +448,7 @@ export default function AdminPanel({
                       For absolute security, the reset code is sent directly to your registered administrator recovery email:
                     </p>
                     <div className="font-mono text-xs bg-zinc-950/80 px-3 py-1.5 rounded border border-blue-950 text-white font-bold select-all text-center">
-                      mandipmahato95@gmail.com
+                      mandipmahato717@gmail.com
                     </div>
                   </div>
 
@@ -483,7 +491,7 @@ export default function AdminPanel({
                 <form onSubmit={handleVerifyCode} className="space-y-4">
                   <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
                     <h2 className="text-sm font-bold text-zinc-200">Enter Verification Code</h2>
-                    <p className="text-[11px] text-zinc-500">Check your <b>Gmail App</b> for the 6-digit code sent to mandipmahato95@gmail.com</p>
+                    <p className="text-[11px] text-zinc-500">Check your <b>Gmail App</b> for the 6-digit code sent to mandipmahato717@gmail.com</p>
                   </div>
 
                   {resetError && (

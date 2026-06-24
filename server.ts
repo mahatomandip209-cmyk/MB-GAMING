@@ -21,9 +21,9 @@ app.post("/api/send-code", async (req, res) => {
     currentCode = code;
     codeExpiry = Date.now() + 10 * 60 * 1000; // Code valid for 10 minutes
 
-    const recipientEmail = "mandipmahato95@gmail.com";
+    const recipientEmail = "mandipmahato717@gmail.com";
 
-    // Send the email to mandipmahato95@gmail.com using FormSubmit AJAX API
+    // Send the email to mandipmahato717@gmail.com using FormSubmit AJAX API
     const response = await fetch(`https://formsubmit.co/ajax/${recipientEmail}`, {
       method: "POST",
       headers: {
@@ -52,7 +52,28 @@ MB GAMING STORE Security Team`,
     const data = await response.json();
     console.log("FormSubmit response:", data);
 
-    res.json({ success: true, message: "Verification code sent to Gmail app!" });
+    // FormSubmit returns success as a string or a boolean, or might indicate email activation is pending
+    const isSuccess = data.success === true || data.success === "true";
+    const msg = data.message || "";
+
+    if (msg.toLowerCase().includes("activation") || msg.toLowerCase().includes("first submit")) {
+      res.json({ 
+        success: true, 
+        isActivationPending: true,
+        message: "Activation email sent! Please check your Gmail (including Spam folder) and click 'Confirm' to enable reset codes." 
+      });
+      return;
+    }
+
+    if (!isSuccess) {
+      res.status(400).json({ 
+        success: false, 
+        error: msg || "Failed to send verification code. Please make sure the recovery email is correct." 
+      });
+      return;
+    }
+
+    res.json({ success: true, isActivationPending: false, message: "Verification code sent to Gmail app!" });
   } catch (error) {
     console.error("Error sending verification code:", error);
     res.status(500).json({ success: false, error: "Failed to send verification code via mail service." });
