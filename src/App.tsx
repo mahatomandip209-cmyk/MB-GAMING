@@ -330,15 +330,20 @@ export default function App() {
           
           {/* Logo element representing MB GAMING */}
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setSelectedCategory('all')}>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md">
-              <span className="text-white text-sm font-black tracking-tighter">MB</span>
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
+              <img 
+                src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
+                alt="MB GAMING STORE Logo" 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-extrabold text-[#2563eb] font-display tracking-tight leading-none">
+              <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
                 MB GAMING
               </span>
-              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5 leading-none">
-                S h o p
+              <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
+                S T O R E
               </span>
             </div>
           </div>

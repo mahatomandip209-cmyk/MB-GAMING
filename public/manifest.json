@@ -1,0 +1,17 @@
+{
+  "short_name": "MB GAMING",
+  "name": "MB GAMING STORE",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#2563eb",
+  "description": "MB GAMING STORE - Your ultimate destination for gaming top-ups, subscriptions, and vouchers."
+}
