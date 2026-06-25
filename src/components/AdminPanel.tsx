@@ -159,7 +159,13 @@ export default function AdminPanel({
   const [isSendingPush, setIsSendingPush] = useState(false);
 
   const getBackendUrl = (path: string): string => {
-    return path;
+    const isLocalOrPreview = window.location.hostname.includes('run.app') || 
+                             window.location.hostname.includes('localhost') || 
+                             window.location.hostname.includes('127.0.0.1');
+    const backendBase = isLocalOrPreview 
+      ? '' 
+      : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+    return `${backendBase}${path}`;
   };
 
   const fetchPushLogs = async () => {
