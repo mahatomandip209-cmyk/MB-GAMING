@@ -283,6 +283,7 @@ export default function App() {
   const [serverNotifications, setServerNotifications] = useState<any[]>([]);
   const [showNotifModal, setShowNotifModal] = useState<boolean>(false);
   const [notifPermission, setNotifPermission] = useState<string>('default');
+  const [showAutoNotifPrompt, setShowAutoNotifPrompt] = useState<boolean>(false);
 
   const fetchNotifications = async () => {
     try {
@@ -312,7 +313,17 @@ export default function App() {
     }
 
     if ('Notification' in window) {
-      setNotifPermission(Notification.permission);
+      const currentPerm = Notification.permission;
+      setNotifPermission(currentPerm);
+      if (currentPerm === 'default') {
+        const timer = setTimeout(() => {
+          setShowAutoNotifPrompt(true);
+        }, 2000);
+        return () => {
+          clearInterval(pollInterval);
+          clearTimeout(timer);
+        };
+      }
     }
 
     return () => clearInterval(pollInterval);
@@ -744,21 +755,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Area: Blue Points Pill Button & Notification Bell */}
+            {/* Right Area: Blue Points Pill Button */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowNotifModal(true)}
-                className="relative p-2 rounded-full bg-zinc-100 hover:bg-zinc-200/85 text-zinc-700 transition-all cursor-pointer shadow-xs active:scale-95 border-none"
-                title="Notifications Hub"
-              >
-                <Bell className="w-4 h-4 text-zinc-700" />
-                {serverNotifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-red-500 text-white font-extrabold text-[8px] flex items-center justify-center border-2 border-white shadow-xs">
-                    {serverNotifications.length}
-                  </span>
-                )}
-              </button>
-
               <button
                 onClick={() => { setShowWalletModal(true); setWalletError(''); }}
                 className="px-4 py-1.5 rounded-full bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#3b82f6] flex items-center gap-1.5 text-xs font-black tracking-wide transition-all cursor-pointer shadow-sm active:scale-95 border-none"
@@ -2648,6 +2646,66 @@ export default function App() {
                   className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
                 >
                   Dismiss Receipt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* POPUP: AUTOMATIC NOTIFICATION PROMPT */}
+      <AnimatePresence>
+        {showAutoNotifPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAutoNotifPrompt(false)}
+              className="absolute inset-0 bg-neutral-900/60 backdrop-blur-xs"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white border border-zinc-200 shadow-2xl rounded-3xl w-full max-w-sm p-6 relative z-10 space-y-4"
+            >
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto border border-blue-100 animate-bounce">
+                  <Bell className="w-7 h-7 text-blue-600" />
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="text-base font-black text-zinc-900 tracking-tight">Enable Push Alerts? 🔔</h4>
+                  <p className="text-xs text-zinc-505 font-semibold leading-relaxed">
+                    Get real-time updates for Free Fire, PUBG recharges, automatic processing statuses, and flash discount sales on your device!
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-zinc-50 rounded-2xl border border-zinc-150 text-[10px] text-zinc-500 font-medium text-center flex items-center justify-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                <span>Works instantly even when the app is completely closed</span>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAutoNotifPrompt(false)}
+                  className="flex-1 py-3 border border-zinc-200 hover:bg-zinc-50 text-zinc-600 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer bg-white"
+                >
+                  Later
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAutoNotifPrompt(false);
+                    requestNotificationPermission();
+                  }}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/10 cursor-pointer"
+                >
+                  Yes, Notify Me
                 </button>
               </div>
             </motion.div>
