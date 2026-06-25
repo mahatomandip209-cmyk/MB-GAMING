@@ -295,6 +295,43 @@ export default function App() {
       const data = await res.json();
       if (data.success && data.notifications) {
         setServerNotifications(data.notifications);
+        
+        if (data.notifications.length > 0) {
+          const latest = data.notifications[0];
+          const lastSeenId = localStorage.getItem('mb_gaming_last_seen_notif_id');
+          
+          if (lastSeenId) {
+            if (lastSeenId !== latest.id) {
+              // Display a beautiful in-app toast notification instantly!
+              triggerToast(`🔔 ${latest.title}: ${latest.body}`);
+              
+              // Also trigger a device native push notification if permission is granted
+              if ('Notification' in window && Notification.permission === 'granted') {
+                if ('serviceWorker' in navigator) {
+                  const reg = await navigator.serviceWorker.ready;
+                  reg.showNotification(latest.title, {
+                    body: latest.body,
+                    icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+                    badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+                    vibrate: [300, 100, 300],
+                    tag: latest.id,
+                    data: {
+                      url: '/'
+                    }
+                  } as any);
+                } else {
+                  new Notification(latest.title, {
+                    body: latest.body,
+                    icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+                  });
+                }
+              }
+            }
+          }
+          
+          // Record the ID so we only alert on brand new incoming notifications
+          localStorage.setItem('mb_gaming_last_seen_notif_id', latest.id);
+        }
       }
     } catch (err) {
       console.error("Error fetching notifications:", err);

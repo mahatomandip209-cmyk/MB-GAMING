@@ -23,8 +23,8 @@ async function checkForNewPushNotifications() {
         // Let's inspect the latest notification
         const latest = list[0];
         
-        // Ensure it's very recent (sent in the last 20 seconds) so we don't spam historical messages
-        const isRecent = (Date.now() - latest.timestamp) < 20000;
+        // Ensure it's very recent (sent in the last 15 minutes) so we don't spam historical messages and we handle clock drift easily
+        const isRecent = (Date.now() - latest.timestamp) < 900000;
         
         if (isRecent && !displayedNotificationIds.has(latest.id)) {
           displayedNotificationIds.add(latest.id);
