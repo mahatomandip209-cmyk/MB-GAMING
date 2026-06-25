@@ -873,7 +873,7 @@ export default function App() {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
-                        Alic Digital Store
+                        MB Gaming Store
                       </span>
                       <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mt-1">
                         NEPAL'S PREMIUM TOP-UP
@@ -900,9 +900,6 @@ export default function App() {
                     </li>
                     <li>
                       <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('profile'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">Profile</button>
-                    </li>
-                    <li>
-                      <button onClick={() => { setSelectedProduct(null); setActiveBottomNav('profile'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">Support</button>
                     </li>
                   </ul>
                 </div>
@@ -944,7 +941,7 @@ export default function App() {
               {/* Bottom Copyright Area */}
               <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
                 <div>
-                  © 2026 <span className="text-zinc-750 font-extrabold">Alic Digital Store</span>. All rights reserved.
+                  © 2026 <span className="text-zinc-750 font-extrabold">MB Gaming Store</span>. All rights reserved.
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Developed by</span>
@@ -1393,15 +1390,6 @@ export default function App() {
                     >
                       <Facebook className="w-4 h-4" />
                     </a>
-                    <button 
-                      onClick={() => {
-                        setActiveBottomNav('profile');
-                        triggerToast('Direct customer support chat is online under your profile section!');
-                      }}
-                      className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-600 flex items-center justify-center transition-all shadow-sm cursor-pointer"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
 
@@ -1427,11 +1415,6 @@ export default function App() {
                     <li>
                       <button onClick={() => { setActiveBottomNav('profile'); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
                         Profile
-                      </button>
-                    </li>
-                    <li>
-                      <button onClick={() => { setActiveBottomNav('profile'); triggerToast("Opening Support tickets..."); }} className="hover:text-blue-600 transition-colors cursor-pointer text-left">
-                        Support
                       </button>
                     </li>
                   </ul>
@@ -1725,14 +1708,13 @@ export default function App() {
                 <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 shadow-md">
                   <img 
                     src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&h=150&q=80" 
-                    alt="Abhishek Admin" 
+                    alt="Mandip Mahato" 
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="space-y-0.5">
-                  <h4 className="text-sm font-black text-zinc-800 leading-tight">Abhishek Admin</h4>
-                  <p className="text-xs text-zinc-400 font-medium">abhisheknabik01@gmail.com</p>
+                  <h4 className="text-sm font-black text-zinc-800 leading-tight">Mandip Mahato</h4>
                   
                   {/* Points Indicator with link icon */}
                   <div className="pt-1 flex items-center gap-1 text-blue-600 font-extrabold">
@@ -1815,23 +1797,6 @@ export default function App() {
                   <div>
                     <h5 className="text-[11px] font-extrabold text-zinc-800">Notifications</h5>
                     <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Stay updated</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* Support Chat */}
-              <div 
-                onClick={() => triggerToast("Connecting to live support chat...")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/50">
-                    <MessageSquare className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">Support Chat</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Chat with our team</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
@@ -1980,22 +1945,7 @@ export default function App() {
 
       </main>
 
-      {/* SCROLL TO TOP BUTTON (Dynamic with smooth Framer Motion transition) */}
-      <AnimatePresence>
-        {showScrollToTop && activeBottomNav === 'home' && (
-          <motion.button
-            id="scroll-to-top-btn"
-            initial={{ opacity: 0, scale: 0.85, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 15 }}
-            onClick={scrollToTop}
-            className="fixed bottom-24 right-5 sm:right-8 z-45 bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-full shadow-2xl border border-blue-500 cursor-pointer flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-            aria-label="Scroll to top"
-          >
-            <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* SCROLL TO TOP BUTTON (Disabled per user request) */}
 
 
       {/* FIXED FLOATING STEADY BOTTOM NAVIGATION BAR (As on alicdigitalshop.com) */}
