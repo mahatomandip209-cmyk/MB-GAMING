@@ -101,6 +101,59 @@ app.post("/api/verify-code", (req, res) => {
   }
 });
 
+// Store notifications in-memory with initial sample notifications
+let systemNotifications = [
+  {
+    id: "notif-sample-1",
+    title: "🔥 Welcome to MB Gaming Store!",
+    body: "Get instant recharges, game diamonds, vouchers and subscriptions with 24/7 automatic processing. Enable push notifications for flash sales!",
+    iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+    linkUrl: "/",
+    timestamp: Date.now() - 3600000 * 2 // 2 hours ago
+  },
+  {
+    id: "notif-sample-2",
+    title: "⚡ Free Fire Weekly Membership Special Offer",
+    body: "Claim extra bonus points on every Free Fire diamond purchase this week. Live validation takes less than 3 minutes!",
+    iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+    linkUrl: "/",
+    timestamp: Date.now() - 3600000 * 24 // 24 hours ago
+  }
+];
+
+// GET api/notifications - retrieve list
+app.get("/api/notifications", (req, res) => {
+  res.json({ success: true, notifications: systemNotifications });
+});
+
+// POST api/notifications - publish a new push notification from Admin Panel
+app.post("/api/notifications", (req, res) => {
+  const { title, body, iconUrl, linkUrl } = req.body;
+  
+  if (!title || !body) {
+    res.status(400).json({ success: false, error: "Title and description are required." });
+    return;
+  }
+
+  const newNotif = {
+    id: `notif-${Date.now()}`,
+    title: title.trim(),
+    body: body.trim(),
+    iconUrl: iconUrl ? iconUrl.trim() : "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+    linkUrl: linkUrl ? linkUrl.trim() : "/",
+    timestamp: Date.now()
+  };
+
+  systemNotifications.unshift(newNotif);
+  
+  // Keep last 40 notifications
+  if (systemNotifications.length > 40) {
+    systemNotifications = systemNotifications.slice(0, 40);
+  }
+
+  res.json({ success: true, notification: newNotif });
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

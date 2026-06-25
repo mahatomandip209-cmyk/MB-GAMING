@@ -7,6 +7,7 @@ import {
   Music,
   Search,
   Plus,
+  Minus,
   X,
   Wallet,
   Wifi,
@@ -243,6 +244,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mb_gaming_wallet', walletBalance.toString());
   }, [walletBalance]);
+
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(() => {
+    const saved = localStorage.getItem('mb_gaming_loyalty');
+    return saved ? Number(saved) : 86534;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mb_gaming_loyalty', loyaltyPoints.toString());
+  }, [loyaltyPoints]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -256,6 +266,7 @@ export default function App() {
   const [mlbbZoneId, setMlbbZoneId] = useState<string>('');
   const [checkoutAmount, setCheckoutAmount] = useState<number>(0);
   const [customAmountText, setCustomAmountText] = useState<string>('');
+  const [quantity, setQuantity] = useState<number>(1);
   
   // Wallet top-up state
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
@@ -267,6 +278,75 @@ export default function App() {
 
   // Active Promo Index for the main slider
   const [promoIndex, setPromoIndex] = useState<number>(0);
+
+  // Client Notification states
+  const [serverNotifications, setServerNotifications] = useState<any[]>([]);
+  const [showNotifModal, setShowNotifModal] = useState<boolean>(false);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      const data = await res.json();
+      if (data.success && data.notifications) {
+        setServerNotifications(data.notifications);
+      }
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  // Register PWA Service Worker & fetch initial lists
+  useEffect(() => {
+    fetchNotifications();
+    const pollInterval = setInterval(fetchNotifications, 10000);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('[App] Service Worker registered with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.error('[App] Service Worker registration failed:', err);
+        });
+    }
+
+    if ('Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
+
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      triggerToast("Notifications are not supported on this browser.");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotifPermission(permission);
+      if (permission === 'granted') {
+        triggerToast("🎉 Push Notifications successfully enabled!");
+        
+        // Show immediate confirmation message using Service Worker
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          reg.showNotification("MB GAMING STORE", {
+            body: "You will now receive alerts for recharges & flash sales! 🔔",
+            icon: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+            badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+          });
+        }
+      } else {
+        triggerToast("Notification permission denied.");
+      }
+    } catch (error) {
+      console.error("Permission request error:", error);
+      triggerToast("Could not request notification permissions.");
+    }
+  };
 
   // Scroll to Top state & logic
   const [showScrollToTop, setShowScrollToTop] = useState<boolean>(false);
@@ -410,13 +490,10 @@ export default function App() {
     setMlbbZoneId('');
     setModalError('');
     
-    // Set default standard amount
-    if (product.fixedAmounts && product.fixedAmounts.length > 0) {
-      setCheckoutAmount(product.popularAmount || product.fixedAmounts[0]);
-    } else {
-      setCheckoutAmount(product.popularAmount || product.minAmount);
-    }
-    setCustomAmountText(product.popularAmount ? product.popularAmount.toString() : product.minAmount.toString());
+    // Set amount to 0 initially so no package is pre-selected from before
+    setCheckoutAmount(0);
+    setCustomAmountText('');
+    setQuantity(1);
   };
 
   // Handle custom manual balance amount
@@ -471,13 +548,14 @@ export default function App() {
     }
 
     // Check balance
-    if (walletBalance < checkoutAmount) {
+    const totalCost = checkoutAmount * quantity;
+    if (walletBalance < totalCost) {
       setModalError(`Insufficient funds in wallet! Your balance is Rs. ${walletBalance}. Click "Wallet" in the top right to refill.`);
       return;
     }
 
     // Success flow! Deduct balance and create transaction
-    const newBalance = walletBalance - checkoutAmount;
+    const newBalance = walletBalance - totalCost;
     setWalletBalance(newBalance);
 
     // Create unique pin for vouchers
@@ -486,14 +564,16 @@ export default function App() {
       : undefined;
 
     const finalTarget = isMlbb ? `${mlbbUserId.trim()} (${mlbbZoneId.trim()})` : checkoutTarget.trim();
+    const selectedPkgName = getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`;
+    const finalProdName = quantity > 1 ? `${selectedPkgName} (Qty: ${quantity})` : selectedPkgName;
 
     const newTx: Transaction = {
       id: `tx-${Math.floor(100000 + Math.random() * 900000)}`,
       productId: selectedProduct.id,
-      productName: selectedProduct.name,
+      productName: finalProdName,
       provider: selectedProduct.provider,
       category: selectedProduct.category,
-      amount: checkoutAmount,
+      amount: totalCost,
       targetAccount: finalTarget,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'PENDING',
@@ -664,17 +744,27 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Area: Blue Wallet Outline Button */}
+            {/* Right Area: Blue Points Pill Button & Notification Bell */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => { setShowWalletModal(true); setWalletError(''); }}
-                className="px-4 py-1.5 rounded-full border border-blue-500 hover:bg-blue-50/50 text-blue-600 flex items-center gap-1.5 text-xs font-semibold tracking-wide transition-all cursor-pointer shadow-sm active:scale-95"
+                onClick={() => setShowNotifModal(true)}
+                className="relative p-2 rounded-full bg-zinc-100 hover:bg-zinc-200/85 text-zinc-700 transition-all cursor-pointer shadow-xs active:scale-95 border-none"
+                title="Notifications Hub"
               >
-                <Wallet className="w-3.5 h-3.5" />
-                <span>Wallet</span>
-                <span className="ml-1 px-1.5 py-0.2 bg-blue-550/10 text-[10px] rounded font-mono font-bold text-blue-600">
-                  Rs.{walletBalance}
-                </span>
+                <Bell className="w-4 h-4 text-zinc-700" />
+                {serverNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-red-500 text-white font-extrabold text-[8px] flex items-center justify-center border-2 border-white shadow-xs">
+                    {serverNotifications.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => { setShowWalletModal(true); setWalletError(''); }}
+                className="px-4 py-1.5 rounded-full bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#3b82f6] flex items-center gap-1.5 text-xs font-black tracking-wide transition-all cursor-pointer shadow-sm active:scale-95 border-none"
+              >
+                <Link className="w-3.5 h-3.5 text-blue-600 stroke-[2.5]" />
+                <span>Pts {loyaltyPoints.toLocaleString()}</span>
               </button>
             </div>
           </div>
@@ -794,40 +884,40 @@ export default function App() {
               </div>
             </div>
 
-            {/* SUB TOTAL BILL & PAY BUTTON */}
-            <form onSubmit={executeRecharge} className="bg-white border border-zinc-200/80 rounded-[24px] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
-              <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">
-                Order Summary
-              </span>
-              
-              <div className="space-y-2.5 text-xs font-semibold">
-                <div className="flex justify-between text-zinc-500">
-                  <span>Selected Option:</span>
-                  <span className="font-extrabold text-zinc-900 uppercase">
-                    {getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`}
+            {/* SELECT QUANTITY */}
+            {checkoutAmount > 0 && (
+              <div className="bg-white rounded-[24px] p-5 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex items-center justify-between animate-fade-in">
+                <div className="space-y-0.5 text-left">
+                  <span className="block text-[10px] font-black text-blue-600 tracking-wider uppercase">
+                    Select Quantity
+                  </span>
+                  <span className="text-[11px] text-zinc-400 font-semibold leading-none block">
+                    Choose quantity for this purchase
                   </span>
                 </div>
-                <div className="flex justify-between text-zinc-500">
-                  <span>Processor Handling Fee:</span>
-                  <span className="text-emerald-600 font-black uppercase">FREE (Rs. 0)</span>
-                </div>
-                <div className="h-px bg-zinc-100 my-1.5" />
-                <div className="flex justify-between items-center text-sm">
-                  <span className="font-black text-zinc-950 uppercase">Estimated Total Cost:</span>
-                  <span className="font-mono font-black text-blue-600 text-base">
-                    NPR {checkoutAmount}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    className="w-10 h-10 rounded-xl border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 flex items-center justify-center text-zinc-700 transition-all font-bold cursor-pointer active:scale-95 bg-white"
+                  >
+                    <Minus className="w-4 h-4 text-zinc-600" />
+                  </button>
+                  <span className="w-8 text-center text-sm font-black text-zinc-900 font-mono">
+                    {quantity}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => Math.min(100, prev + 1))}
+                    className="w-10 h-10 rounded-xl border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 flex items-center justify-center text-zinc-700 transition-all font-bold cursor-pointer active:scale-95 bg-white"
+                  >
+                    <Plus className="w-4 h-4 text-zinc-600" />
+                  </button>
                 </div>
               </div>
+            )}
 
-              <button
-                type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2 cursor-pointer mt-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Pay NPR {checkoutAmount}</span>
-              </button>
-            </form>
+            {/* SUB TOTAL BILL & PAY BUTTON (Removed from flow and locked at the bottom) */}
 
             {/* TRUST BADGES CONTAINER */}
             <div className="grid grid-cols-3 gap-2 py-4 border-t border-b border-zinc-100 mt-6 text-center">
@@ -955,7 +1045,9 @@ export default function App() {
                 </div>
               </div>
             </footer>
-
+            {checkoutAmount > 0 && (
+              <div className="h-64 w-full" />
+            )}
           </div>
         ) : (
           <>
@@ -1268,63 +1360,64 @@ export default function App() {
             {/* WHY CHOOSE US? SECTION (Matching design from screenshots, fully responsive and interactive) */}
             <section className="pt-10 pb-6 border-t border-zinc-100">
               <div className="text-center space-y-2 mb-10">
-                <span className="text-[10px] font-black text-blue-600 tracking-widest uppercase">TRUSTED GATEWAY</span>
-                <h3 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">WHY CHOOSE US?</h3>
+                <h3 className="text-base sm:text-lg font-black tracking-widest text-zinc-900 uppercase">
+                  WHY CHOOSE <span className="text-blue-600">MB GAMING</span>?
+                </h3>
                 <p className="text-xs sm:text-sm text-zinc-500 max-w-lg mx-auto font-medium">
-                  We provide the fastest, most secure, and affordable top-up service in Nepal.
+                  We provide the fastest, most secure, and affordable top-up service.
                 </p>
               </div>
 
               {/* 2x2 Feature Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-4">
                 {/* Feature 1 */}
-                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
-                    <Zap className="w-5.5 h-5.5 text-blue-600 fill-blue-600/10" />
+                <div className="bg-white border border-zinc-100 rounded-[32px] p-5 sm:p-8 hover:shadow-md transition-all flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#eef2ff] text-blue-600 flex items-center justify-center shrink-0">
+                    <Zap className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="space-y-1.5">
-                    <h4 className="text-sm font-extrabold text-zinc-900">Instant Delivery</h4>
-                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                      Get your gaming credits, diamonds, and subscription vouchers instantly after automated verification.
+                  <div className="space-y-1">
+                    <h4 className="text-xs sm:text-sm font-extrabold text-zinc-900">Instant Delivery</h4>
+                    <p className="text-[10px] sm:text-xs text-zinc-400 font-semibold leading-normal">
+                      Get your credits instantly after payment
                     </p>
                   </div>
                 </div>
 
                 {/* Feature 2 */}
-                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
-                    <Shield className="w-5.5 h-5.5 text-blue-600" />
+                <div className="bg-white border border-zinc-100 rounded-[32px] p-5 sm:p-8 hover:shadow-md transition-all flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#eef2ff] text-blue-600 flex items-center justify-center shrink-0">
+                    <Shield className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="space-y-1.5">
-                    <h4 className="text-sm font-extrabold text-zinc-900">Secure Payment</h4>
-                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                      100% safe and encrypted transactions. Your account data remains fully protected at all times.
+                  <div className="space-y-1">
+                    <h4 className="text-xs sm:text-sm font-extrabold text-zinc-900">Secure Payment</h4>
+                    <p className="text-[10px] sm:text-xs text-zinc-400 font-semibold leading-normal">
+                      100% safe and encrypted transactions
                     </p>
                   </div>
                 </div>
 
                 {/* Feature 3 */}
-                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
-                    <Headphones className="w-5.5 h-5.5 text-blue-600" />
+                <div className="bg-white border border-zinc-100 rounded-[32px] p-5 sm:p-8 hover:shadow-md transition-all flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#eef2ff] text-blue-600 flex items-center justify-center shrink-0">
+                    <Headphones className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="space-y-1.5">
-                    <h4 className="text-sm font-extrabold text-zinc-900">24/7 Support</h4>
-                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                      We are always online here to help you solve any issues, query, or recharge trouble, any time of the day.
+                  <div className="space-y-1">
+                    <h4 className="text-xs sm:text-sm font-extrabold text-zinc-900">24/7 Support</h4>
+                    <p className="text-[10px] sm:text-xs text-zinc-400 font-semibold leading-normal">
+                      Always here to help you anytime
                     </p>
                   </div>
                 </div>
 
                 {/* Feature 4 */}
-                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 hover:shadow-md hover:border-blue-500/30 transition-all group flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50 shrink-0 group-hover:scale-110 transition-transform">
-                    <Percent className="w-5.5 h-5.5 text-blue-600" />
+                <div className="bg-white border border-zinc-100 rounded-[32px] p-5 sm:p-8 hover:shadow-md transition-all flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#eef2ff] text-blue-600 flex items-center justify-center shrink-0">
+                    <Percent className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="space-y-1.5">
-                    <h4 className="text-sm font-extrabold text-zinc-900">Best Prices</h4>
-                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                      Guaranteed cheapest rates in the Nepali digital recharge market with custom loyalty reward points.
+                  <div className="space-y-1">
+                    <h4 className="text-xs sm:text-sm font-extrabold text-zinc-900">Best Prices</h4>
+                    <p className="text-[10px] sm:text-xs text-zinc-400 font-semibold leading-normal">
+                      Guaranteed cheapest rates in market
                     </p>
                   </div>
                 </div>
@@ -1332,21 +1425,27 @@ export default function App() {
             </section>
 
             {/* THREE-ROW QUICK BADGE STRIP */}
-            <div className="bg-zinc-50/50 border border-zinc-150 rounded-[24px] p-5.5 grid grid-cols-1 sm:grid-cols-3 gap-4.5 sm:gap-2.5 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/60 text-center">
-              <div className="flex flex-col items-center justify-center gap-1.5 py-1.5 sm:py-0">
-                <Zap className="w-5.5 h-5.5 text-blue-600 animate-pulse" />
-                <span className="text-xs font-black text-zinc-900">Instant Delivery</span>
-                <span className="text-[10.5px] font-bold text-zinc-400">Under 5 mins</span>
+            <div className="bg-white border border-zinc-100 rounded-[28px] p-5 grid grid-cols-3 gap-2 text-center mt-8">
+              <div className="flex flex-col items-center justify-center gap-1">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Zap className="w-5.5 h-5.5 text-blue-600" />
+                </div>
+                <span className="text-[10px] sm:text-xs font-black text-zinc-900 mt-1 truncate max-w-full">Instant Delivery</span>
+                <span className="text-[9px] sm:text-[10.5px] font-bold text-zinc-400 truncate max-w-full">Under 5 mins</span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-1.5 pt-4 sm:pt-0 py-1.5 sm:py-0">
-                <ShieldCheck className="w-5.5 h-5.5 text-blue-600" />
-                <span className="text-xs font-black text-zinc-900">100% Secure</span>
-                <span className="text-[10.5px] font-bold text-zinc-400">Trusted by 10K+</span>
+              <div className="flex flex-col items-center justify-center gap-1">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5.5 h-5.5 text-blue-600" />
+                </div>
+                <span className="text-[10px] sm:text-xs font-black text-zinc-900 mt-1 truncate max-w-full">100% Secure</span>
+                <span className="text-[9px] sm:text-[10.5px] font-bold text-zinc-400 truncate max-w-full">Trusted by 10K+</span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-1.5 pt-4 sm:pt-0 py-1.5 sm:py-0">
-                <Headphones className="w-5.5 h-5.5 text-blue-600" />
-                <span className="text-xs font-black text-zinc-900">24/7 Support</span>
-                <span className="text-[10.5px] font-bold text-zinc-400">Always here</span>
+              <div className="flex flex-col items-center justify-center gap-1">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Headphones className="w-5.5 h-5.5 text-blue-600" />
+                </div>
+                <span className="text-[10px] sm:text-xs font-black text-zinc-900 mt-1 truncate max-w-full">24/7 Support</span>
+                <span className="text-[9px] sm:text-[10.5px] font-bold text-zinc-400 truncate max-w-full">Always here</span>
               </div>
             </div>
 
@@ -1719,7 +1818,7 @@ export default function App() {
                   {/* Points Indicator with link icon */}
                   <div className="pt-1 flex items-center gap-1 text-blue-600 font-extrabold">
                     <Link className="w-3.5 h-3.5" />
-                    <span className="text-[11px] hover:underline cursor-pointer">37903 Points</span>
+                    <span className="text-[11px] hover:underline cursor-pointer">{loyaltyPoints.toLocaleString()} Points</span>
                   </div>
                 </div>
               </div>
@@ -1745,7 +1844,7 @@ export default function App() {
                   </div>
                   <div>
                     <h5 className="text-[11px] font-extrabold text-zinc-800">Store Points</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: 37903 Points</p>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: {loyaltyPoints.toLocaleString()} Points</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
@@ -1787,7 +1886,7 @@ export default function App() {
 
               {/* Notifications */}
               <div 
-                onClick={() => triggerToast("Your notifications are all up to date!")}
+                onClick={() => setShowNotifModal(true)}
                 className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
               >
                 <div className="flex items-center gap-3">
@@ -1948,80 +2047,245 @@ export default function App() {
       {/* SCROLL TO TOP BUTTON (Disabled per user request) */}
 
 
-      {/* FIXED FLOATING STEADY BOTTOM NAVIGATION BAR (As on alicdigitalshop.com) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-150 px-4 py-2 flex items-center justify-center shadow-[0_-2px_12px_rgba(0,0,0,0.04)]">
-        <div className="w-full max-w-lg flex items-center justify-between">
-          
-          {/* Home Option */}
-          <button
-            onClick={() => setActiveBottomNav('home')}
-            className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-              activeBottomNav === 'home' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
-            }`}
-          >
-            <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'home' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Gamepad className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold">Home</span>
-          </button>
+      {/* FIXED FLOATING STEADY BOTTOM NAVIGATION BAR OR LOCKED CONFIRM BAR FOR SEAMLESS FLOW */}
+      {selectedProduct ? (
+        /* LOCKED/STICKY PAYMENT CONFIRM BAR FOR SELECTED PRODUCT (No need to scroll) */
+        checkoutAmount > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-200/90 shadow-[0_-10px_30px_rgba(0,0,0,0.12)] sm:rounded-t-3xl flex justify-center">
+            <form 
+              onSubmit={executeRecharge} 
+              className="w-full max-w-lg p-5 space-y-4 pb-6 bg-white sm:rounded-t-3xl"
+            >
+              <div className="flex items-center justify-between">
+                <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">
+                  Order Summary
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-600">
+                  Secure Checkout
+                </span>
+              </div>
+              
+              <div className="space-y-2.5 text-xs font-semibold">
+                <div className="flex justify-between text-zinc-500">
+                  <span>Selected Option:</span>
+                  <span className="font-extrabold text-zinc-900 uppercase truncate max-w-[220px]" title={getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`}>
+                    {getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`}
+                  </span>
+                </div>
+                {quantity > 1 && (
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Quantity:</span>
+                    <span className="font-extrabold text-zinc-900 font-mono">
+                      x {quantity}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-zinc-500">
+                  <span>Processor Handling Fee:</span>
+                  <span className="text-emerald-600 font-black uppercase">FREE (Rs. 0)</span>
+                </div>
+                <div className="h-px bg-zinc-100 my-1.5" />
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-black text-zinc-950 uppercase">Estimated Total Cost:</span>
+                  <span className="font-mono font-black text-blue-600 text-base">
+                    NPR {checkoutAmount * quantity}
+                  </span>
+                </div>
+              </div>
 
-          {/* Orders Option */}
-          <button
-            onClick={() => setActiveBottomNav('orders')}
-            className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-              activeBottomNav === 'orders' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
-            }`}
-          >
-            <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'orders' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold">Orders</span>
-          </button>
+              <button
+                type="submit"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2 cursor-pointer mt-2 active:scale-98"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>Pay NPR {checkoutAmount * quantity}</span>
+              </button>
+            </form>
+          </div>
+        )
+      ) : (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-150 px-4 py-2 flex items-center justify-center shadow-[0_-2px_12px_rgba(0,0,0,0.04)]">
+          <div className="w-full max-w-lg flex items-center justify-between">
+            
+            {/* Home Option */}
+            <button
+              onClick={() => setActiveBottomNav('home')}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+                activeBottomNav === 'home' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'home' ? 'bg-blue-50 text-blue-600' : ''}`}>
+                <Gamepad className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold">Home</span>
+            </button>
 
-          {/* Wallet Option */}
-          <button
-            onClick={() => {
-              setActiveBottomNav('wallet');
-              setShowWalletModal(false);
-            }}
-            className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-              activeBottomNav === 'wallet' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
-            }`}
-          >
-            <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'wallet' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Wallet className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold">Wallet</span>
-          </button>
+            {/* Orders Option */}
+            <button
+              onClick={() => setActiveBottomNav('orders')}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+                activeBottomNav === 'orders' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'orders' ? 'bg-blue-50 text-blue-600' : ''}`}>
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold">Orders</span>
+            </button>
 
-          {/* Favorites Option */}
-          <button
-            onClick={() => setActiveBottomNav('favorites')}
-            className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-              activeBottomNav === 'favorites' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
-            }`}
-          >
-            <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'favorites' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Heart className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold">Favorites</span>
-          </button>
+            {/* Wallet Option */}
+            <button
+              onClick={() => {
+                setActiveBottomNav('wallet');
+                setShowWalletModal(false);
+              }}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+                activeBottomNav === 'wallet' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'wallet' ? 'bg-blue-50 text-blue-600' : ''}`}>
+                <Wallet className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold">Wallet</span>
+            </button>
 
-          {/* Profile Option */}
-          <button
-            onClick={() => setActiveBottomNav('profile')}
-            className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-              activeBottomNav === 'profile' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
-            }`}
-          >
-            <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'profile' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <User className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-bold">Profile</span>
-          </button>
+            {/* Favorites Option */}
+            <button
+              onClick={() => setActiveBottomNav('favorites')}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+                activeBottomNav === 'favorites' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'favorites' ? 'bg-blue-50 text-blue-600' : ''}`}>
+                <Heart className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold">Favorites</span>
+            </button>
 
+            {/* Profile Option */}
+            <button
+              onClick={() => setActiveBottomNav('profile')}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+                activeBottomNav === 'profile' ? 'text-blue-600' : 'text-zinc-400 hover:text-zinc-650'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-all ${activeBottomNav === 'profile' ? 'bg-blue-50 text-blue-600' : ''}`}>
+                <User className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-bold">Profile</span>
+            </button>
+
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* POPUP: NOTIFICATIONS HUB MODAL */}
+      <AnimatePresence>
+        {showNotifModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowNotifModal(false)}
+              className="absolute inset-0 bg-neutral-900/45 backdrop-blur-xs"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white border border-zinc-200 shadow-2xl rounded-3xl w-full max-w-md p-6 relative z-10 space-y-4 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex justify-between items-start shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100/50">
+                    <Bell className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-black text-zinc-900 tracking-tight">Notifications Hub</h4>
+                    <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Stay updated with top-ups & deals</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowNotifModal(false)}
+                  className="p-1 rounded-lg text-zinc-300 hover:text-zinc-500 hover:bg-zinc-50 transition-all cursor-pointer border-none bg-transparent"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Push Permission Prompt Status card */}
+              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80 flex items-center justify-between shrink-0">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Mobile Push Status</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${notifPermission === 'granted' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`} />
+                    <span className="text-xs font-black text-zinc-800">
+                      {notifPermission === 'granted' ? 'PUSH ALERTS ACTIVE 🔔' : 'NOT ENABLED YET ⚠️'}
+                    </span>
+                  </div>
+                </div>
+                
+                {notifPermission !== 'granted' && (
+                  <button
+                    onClick={requestNotificationPermission}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-xs border-none cursor-pointer"
+                  >
+                    Enable Push
+                  </button>
+                )}
+              </div>
+
+              {/* Notifications List Container */}
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+                <span className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">Recent Alerts</span>
+                
+                {serverNotifications.length === 0 ? (
+                  <div className="text-center py-8 space-y-2">
+                    <Bell className="w-8 h-8 text-zinc-350 mx-auto opacity-40" />
+                    <p className="text-xs text-zinc-400 font-bold">Your notification feed is clear.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {serverNotifications.map((notif: any) => (
+                      <div 
+                        key={notif.id}
+                        onClick={() => {
+                          if (notif.linkUrl) {
+                            if (notif.linkUrl.startsWith('/#') || notif.linkUrl === '/') {
+                              // Standard local anchors or routes
+                              setShowNotifModal(false);
+                            } else {
+                              window.open(notif.linkUrl, '_blank');
+                            }
+                          }
+                        }}
+                        className="p-3.5 bg-white hover:bg-zinc-50 border border-zinc-150 rounded-2xl transition-all cursor-pointer flex items-start gap-3 group text-left"
+                      >
+                        <div className="w-8 h-8 rounded-lg overflow-hidden border border-zinc-150 bg-zinc-50 shrink-0 flex items-center justify-center">
+                          <img src={notif.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"} alt="logo" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 space-y-0.5">
+                          <h5 className="text-xs font-extrabold text-zinc-900 group-hover:text-blue-600 transition-colors">{notif.title}</h5>
+                          <p className="text-[11px] text-zinc-500 leading-normal">{notif.body}</p>
+                          <span className="block text-[8px] font-bold text-zinc-400 font-mono pt-1">
+                            {new Date(notif.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-zinc-100 flex items-center justify-center text-[9px] font-bold text-zinc-400 tracking-wider uppercase shrink-0">
+                🔒 Secured by MB Gaming PWA Gateway
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* POPUP 1: RELOAD WALLET CASH MODAL */}
       <AnimatePresence>

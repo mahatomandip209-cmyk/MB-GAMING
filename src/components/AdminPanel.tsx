@@ -151,6 +151,71 @@ export default function AdminPanel({
   const [newAnnMessage, setNewAnnMessage] = useState('');
   const [newAnnType, setNewAnnType] = useState<'info' | 'alert' | 'success'>('info');
 
+  // Push Notification inputs
+  const [pushTitle, setPushTitle] = useState('');
+  const [pushBody, setPushBody] = useState('');
+  const [pushLink, setPushLink] = useState('/');
+  const [sentPushLogs, setSentPushLogs] = useState<any[]>([]);
+  const [isSendingPush, setIsSendingPush] = useState(false);
+
+  const fetchPushLogs = async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      const data = await res.json();
+      if (data.success && data.notifications) {
+        setSentPushLogs(data.notifications);
+      }
+    } catch (err) {
+      console.error("Error fetching push logs:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchPushLogs();
+    }
+  }, [isLoggedIn]);
+
+  const handleSendPushNotification = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!pushTitle.trim() || !pushBody.trim()) {
+      triggerToast('Title and Body are required for push notification.');
+      return;
+    }
+
+    setIsSendingPush(true);
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: pushTitle.trim(),
+          body: pushBody.trim(),
+          linkUrl: pushLink.trim(),
+          iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" // MB Gaming Logo
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        triggerToast('🚀 Native push notification dispatched!');
+        setPushTitle('');
+        setPushBody('');
+        setPushLink('/');
+        fetchPushLogs();
+      } else {
+        triggerToast(data.error || 'Failed to dispatch push notification.');
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast('Network error while dispatching push.');
+    } finally {
+      setIsSendingPush(false);
+    }
+  };
+
   // User list additions
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -2026,30 +2091,107 @@ export default function AdminPanel({
               </div>
             )}
 
-            {/* 9. BROADCAST NOTIFICATIONS TAB */}
+            {/* 9. BROADCAST NOTIFICATIONS & PUSH DASHBOARD */}
             {activeTab === 'notifications' && (
-              <div className="space-y-4 max-w-2xl">
+              <div className="space-y-6 max-w-2xl">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Store Broadcasts</h2>
-                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">Post notification alert banners visible on the client home portal.</p>
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                    <Bell className="w-6 h-6 text-blue-600 animate-bounce" />
+                    Notification Dispatch Center
+                  </h2>
+                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">
+                    Broadcast alert banners, dispatch native push notifications to mobile/desktop, and monitor live delivery.
+                  </p>
                 </div>
 
-                {/* Form to add announcement */}
+                {/* Part 1: Push Notification Dispatch (Real PWA push that wakes closed device) */}
                 <div className="bg-white border border-zinc-200/80 p-5 rounded-3xl space-y-4 shadow-2xs">
-                  <h3 className="text-xs font-black uppercase text-zinc-800 tracking-tight flex items-center gap-1.5">
-                    <Bell className="w-4 h-4 text-blue-500" />
-                    Broadcast New System Banner
+                  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
+                    <h3 className="text-xs font-black uppercase text-blue-600 tracking-tight flex items-center gap-1.5">
+                      <Bot className="w-4 h-4 text-blue-500" />
+                      Dispatch Native Mobile Push
+                    </h3>
+                    <span className="bg-emerald-50 text-emerald-600 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Wakes App When Closed
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleSendPushNotification} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
+                          Notification Title
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={pushTitle}
+                          onChange={(e) => setPushTitle(e.target.value)}
+                          placeholder="e.g. 🔥 WEEKLY PASS DEAL!"
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
+                          Action / Redirect URL
+                        </label>
+                        <input
+                          type="text"
+                          value={pushLink}
+                          onChange={(e) => setPushLink(e.target.value)}
+                          placeholder="e.g. / (opens app) or /#products"
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
+                        Notification Body (Alert text description)
+                      </label>
+                      <textarea
+                        required
+                        rows={2}
+                        value={pushBody}
+                        onChange={(e) => setPushBody(e.target.value)}
+                        placeholder="e.g. Get Weekly Diamonds Pass at just Rs. 265 instantly! Offer valid for today only."
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 pt-1">
+                      <div className="flex items-center gap-2 text-[10px] font-semibold text-zinc-400">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                        Includes MB Gaming logo as the notification icon
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isSendingPush}
+                        className="px-6 py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isSendingPush ? 'Sending...' : '🚀 Dispatch Push'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Part 2: Dynamic Home Broadcast Announcement banners */}
+                <div className="bg-white border border-zinc-200/80 p-5 rounded-3xl space-y-4 shadow-2xs">
+                  <h3 className="text-xs font-black uppercase text-zinc-800 tracking-tight flex items-center gap-1.5 pb-2 border-b border-zinc-100">
+                    <ImageIcon className="w-4 h-4 text-purple-500" />
+                    In-App Banner Announcement
                   </h3>
                   <form onSubmit={handleAddAnnouncement} className="space-y-3">
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-zinc-500">Banner Broadcast Text</label>
+                      <label className="block text-[10px] font-black uppercase text-zinc-500">Banner Alert Text</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. ⚠️ UPI auto-gateway is under maintenance from 1:00 AM to 3:00 AM"
+                        placeholder="e.g. 📢 Standard UPI payments are now fully online and fast."
                         value={newAnnMessage}
                         onChange={(e) => setNewAnnMessage(e.target.value)}
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
                     
@@ -2069,18 +2211,18 @@ export default function AdminPanel({
                       <div className="flex items-end">
                         <button
                           type="submit"
-                          className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
+                          className="w-full bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
                         >
-                          Publish Alert
+                          Publish Banner
                         </button>
                       </div>
                     </div>
                   </form>
                 </div>
 
-                {/* Active announcements */}
-                <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-xs p-5 space-y-3">
-                  <h4 className="text-xs font-black uppercase text-zinc-800 tracking-tight">Active Broadcast Queue</h4>
+                {/* Active in-app announcement queue */}
+                <div className="bg-white border border-zinc-200 rounded-3xl p-5 shadow-xs space-y-3">
+                  <h4 className="text-xs font-black uppercase text-zinc-800 tracking-tight">Active Home Banners</h4>
                   
                   {announcements.length === 0 ? (
                     <p className="text-xs text-zinc-400 font-bold">No active broadcast banners.</p>
@@ -2108,6 +2250,44 @@ export default function AdminPanel({
                           >
                             <X className="w-4 h-4" />
                           </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sent Native Push Logs History */}
+                <div className="bg-white border border-zinc-200 rounded-3xl p-5 shadow-xs space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs font-black uppercase text-zinc-800 tracking-tight">Sent Push History Logs</h4>
+                    <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                      {sentPushLogs.length} DISPATCHED
+                    </span>
+                  </div>
+
+                  {sentPushLogs.length === 0 ? (
+                    <p className="text-xs text-zinc-400 font-bold">No push notifications sent yet.</p>
+                  ) : (
+                    <div className="space-y-3 divide-y divide-zinc-100">
+                      {sentPushLogs.map((log: any, idx: number) => (
+                        <div key={log.id} className={`pt-3 ${idx === 0 ? 'pt-0' : ''} flex items-start justify-between gap-4`}>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-zinc-900">{log.title}</span>
+                              <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[9px] font-black uppercase font-mono">
+                                ACTIVE
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-500 leading-normal">{log.body}</p>
+                            <div className="flex items-center gap-2 text-[9px] text-zinc-400 font-mono">
+                              <span>REDIRECT: {log.linkUrl}</span>
+                              <span>•</span>
+                              <span>{new Date(log.timestamp).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-zinc-200 bg-zinc-50 shrink-0 flex items-center justify-center">
+                            <img src={log.iconUrl} alt="Icon" className="w-full h-full object-cover" />
+                          </div>
                         </div>
                       ))}
                     </div>
