@@ -158,14 +158,54 @@ export default function AdminPanel({
   const [sentPushLogs, setSentPushLogs] = useState<any[]>([]);
   const [isSendingPush, setIsSendingPush] = useState(false);
 
+  // Backend API URL configuration & connection verification states
+  const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
+    return localStorage.getItem('mb_backend_api_url') || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+  });
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [connectionError, setConnectionError] = useState<string>('');
+
   const getBackendUrl = (path: string): string => {
     const isLocalOrPreview = window.location.hostname.includes('run.app') || 
                              window.location.hostname.includes('localhost') || 
                              window.location.hostname.includes('127.0.0.1');
-    const backendBase = isLocalOrPreview 
-      ? '' 
-      : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+    const backendBase = isLocalOrPreview ? '' : customBackendUrl;
     return `${backendBase}${path}`;
+  };
+
+  const testConnection = async (targetUrl?: string) => {
+    const urlToTest = targetUrl || customBackendUrl;
+    setConnectionStatus('checking');
+    try {
+      const res = await fetch(`${urlToTest}/api/notifications`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP Error ${res.status}`);
+      }
+      const data = await res.json();
+      if (data && data.success) {
+        setConnectionStatus('connected');
+        setConnectionError('');
+        
+        // Propagate to Service Worker
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg.active) {
+            reg.active.postMessage({ type: 'SET_BACKEND_URL', url: urlToTest });
+          }
+        }
+        return true;
+      } else {
+        throw new Error("Response was not a success payload.");
+      }
+    } catch (err) {
+      console.error("Connection test failed:", err);
+      setConnectionStatus('disconnected');
+      setConnectionError(err instanceof Error ? err.message : String(err));
+      return false;
+    }
   };
 
   const fetchPushLogs = async () => {
@@ -182,6 +222,7 @@ export default function AdminPanel({
 
   useEffect(() => {
     if (isLoggedIn) {
+      testConnection();
       fetchPushLogs();
     }
   }, [isLoggedIn]);
@@ -2112,6 +2153,106 @@ export default function AdminPanel({
                   <p className="text-xs text-zinc-500 font-semibold mt-0.5">
                     Broadcast alert banners, dispatch native push notifications to mobile/desktop, and monitor live delivery.
                   </p>
+                </div>
+
+                {/* Visual Connection Settings & Status for Vercel External Users */}
+                <div className="bg-zinc-50 border border-zinc-200 p-5 rounded-3xl space-y-4 shadow-2xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-zinc-200 font-sans">
+                    <h3 className="text-xs font-black uppercase text-zinc-700 tracking-tight flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      Vercel Backend Link & Status
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2.5 h-2.5 rounded-full ${
+                        connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
+                        connectionStatus === 'checking' ? 'bg-amber-500 animate-ping' : 'bg-red-500'
+                      }`} />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-zinc-600">
+                        {connectionStatus === 'connected' ? '🟢 Connected' :
+                         connectionStatus === 'checking' ? '🟡 Checking...' : '🔴 Offline / Errored'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 font-sans">
+                    <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">
+                      Since <code className="font-mono bg-zinc-200/50 px-1 py-0.5 rounded text-zinc-800">mbgaming.vercel.app</code> is statically hosted on Vercel, it must connect to your Cloud Run server for API logic. Configure and verify your connection below:
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide font-mono">
+                        Active Backend Server Base URL
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customBackendUrl}
+                          onChange={(e) => {
+                            setCustomBackendUrl(e.target.value);
+                            localStorage.setItem('mb_backend_api_url', e.target.value);
+                          }}
+                          placeholder="https://ais-pre-..."
+                          className="flex-1 bg-white border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const success = await testConnection();
+                            if (success) {
+                              triggerToast('🟢 Backend connection test successful!');
+                              fetchPushLogs();
+                            } else {
+                              triggerToast('🔴 Backend connection failed! Check your server.');
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                        >
+                          Test & Save
+                        </button>
+                      </div>
+                    </div>
+
+                    {connectionError && (
+                      <div className="bg-red-50 border border-red-100 p-3 rounded-xl space-y-1">
+                        <p className="text-[10px] font-bold text-red-700 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Diagnostic Connection Error:
+                        </p>
+                        <p className="text-[10px] font-mono text-red-600 leading-normal break-all">
+                          {connectionError}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="pt-1 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const devUrl = 'https://ais-dev-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+                          setCustomBackendUrl(devUrl);
+                          localStorage.setItem('mb_backend_api_url', devUrl);
+                          triggerToast('Toggled to Dev server. Testing...');
+                          await testConnection(devUrl);
+                        }}
+                        className="bg-zinc-200/60 hover:bg-zinc-200 text-zinc-700 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        ⚡ Switch to Dev Backend
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const preUrl = 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+                          setCustomBackendUrl(preUrl);
+                          localStorage.setItem('mb_backend_api_url', preUrl);
+                          triggerToast('Toggled to Pre-Production server. Testing...');
+                          await testConnection(preUrl);
+                        }}
+                        className="bg-zinc-200/60 hover:bg-zinc-200 text-zinc-700 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        🌐 Switch to Pre Backend
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Part 1: Push Notification Dispatch (Real PWA push that wakes closed device) */}

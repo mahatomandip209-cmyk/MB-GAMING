@@ -289,9 +289,10 @@ export default function App() {
     const isLocalOrPreview = window.location.hostname.includes('run.app') || 
                              window.location.hostname.includes('localhost') || 
                              window.location.hostname.includes('127.0.0.1');
+    const savedBackend = localStorage.getItem('mb_backend_api_url');
     const backendBase = isLocalOrPreview 
       ? '' 
-      : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+      : (savedBackend || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app');
     return `${backendBase}${path}`;
   };
 
@@ -353,6 +354,25 @@ export default function App() {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => {
           console.log('[App] Service Worker registered with scope:', reg.scope);
+          // Send backend url to service worker
+          const savedBackend = localStorage.getItem('mb_backend_api_url') || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+          
+          // Send message immediately if there is an active worker
+          if (reg.active) {
+            reg.active.postMessage({ type: 'SET_BACKEND_URL', url: savedBackend });
+          }
+          
+          // Also set up a listener for controllerchange or statechange to send it as soon as a worker becomes active
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'activated') {
+                  newWorker.postMessage({ type: 'SET_BACKEND_URL', url: savedBackend });
+                }
+              });
+            }
+          });
         })
         .catch((err) => {
           console.error('[App] Service Worker registration failed:', err);

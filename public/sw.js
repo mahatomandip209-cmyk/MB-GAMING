@@ -11,6 +11,15 @@ self.addEventListener('activate', (event) => {
 
 // Set to track shown notification IDs to prevent duplicates
 let displayedNotificationIds = new Set();
+let customBackendBase = '';
+
+// Listen for backend URL changes from the React app
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SET_BACKEND_URL') {
+    customBackendBase = event.data.url;
+    console.log('[Service Worker] Custom backend base updated to:', customBackendBase);
+  }
+});
 
 // Periodically check for new notifications in the background
 async function checkForNewPushNotifications() {
@@ -18,9 +27,9 @@ async function checkForNewPushNotifications() {
     const isLocalOrPreview = self.location.hostname.includes('run.app') || 
                              self.location.hostname.includes('localhost') || 
                              self.location.hostname.includes('127.0.0.1');
-    const backendBase = isLocalOrPreview 
+    const backendBase = customBackendBase || (isLocalOrPreview 
       ? '' 
-      : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+      : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app');
       
     const response = await fetch(`${backendBase}/api/notifications`);
     const data = await response.json();
