@@ -15,7 +15,13 @@ let displayedNotificationIds = new Set();
 // Periodically check for new notifications in the background
 async function checkForNewPushNotifications() {
   try {
-    const response = await fetch('/api/notifications');
+    // If running on Vercel or external domain, poll the active Cloud Run server absolute URL
+    const isExternal = !self.location.hostname.includes('run.app') && !self.location.hostname.includes('localhost') && !self.location.hostname.includes('127.0.0.1');
+    const backendBase = isExternal 
+      ? 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app'
+      : '';
+      
+    const response = await fetch(`${backendBase}/api/notifications`);
     const data = await response.json();
     if (data && data.success && data.notifications) {
       const list = data.notifications;

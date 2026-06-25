@@ -158,9 +158,17 @@ export default function AdminPanel({
   const [sentPushLogs, setSentPushLogs] = useState<any[]>([]);
   const [isSendingPush, setIsSendingPush] = useState(false);
 
+  const getBackendUrl = (path: string): string => {
+    const isExternal = !window.location.hostname.includes('run.app') && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
+    const backendBase = isExternal 
+      ? 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app'
+      : '';
+    return `${backendBase}${path}`;
+  };
+
   const fetchPushLogs = async () => {
     try {
-      const res = await fetch('/api/notifications');
+      const res = await fetch(getBackendUrl('/api/notifications'));
       const data = await res.json();
       if (data.success && data.notifications) {
         setSentPushLogs(data.notifications);
@@ -185,7 +193,7 @@ export default function AdminPanel({
 
     setIsSendingPush(true);
     try {
-      const res = await fetch('/api/notifications', {
+      const res = await fetch(getBackendUrl('/api/notifications'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -210,7 +218,7 @@ export default function AdminPanel({
       }
     } catch (err) {
       console.error(err);
-      triggerToast('Network error while dispatching push.');
+      triggerToast('Network error: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSendingPush(false);
     }
