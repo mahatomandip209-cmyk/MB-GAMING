@@ -159,11 +159,7 @@ export default function AdminPanel({
   const [isSendingPush, setIsSendingPush] = useState(false);
 
   const getBackendUrl = (path: string): string => {
-    const isExternal = !window.location.hostname.includes('run.app') && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
-    const backendBase = isExternal 
-      ? 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app'
-      : '';
-    return `${backendBase}${path}`;
+    return path;
   };
 
   const fetchPushLogs = async () => {
@@ -2125,33 +2121,18 @@ export default function AdminPanel({
                   </div>
 
                   <form onSubmit={handleSendPushNotification} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
-                          Notification Title
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={pushTitle}
-                          onChange={(e) => setPushTitle(e.target.value)}
-                          placeholder="e.g. 🔥 WEEKLY PASS DEAL!"
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
-                          Action / Redirect URL
-                        </label>
-                        <input
-                          type="text"
-                          value={pushLink}
-                          onChange={(e) => setPushLink(e.target.value)}
-                          placeholder="e.g. / (opens app) or /#products"
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                        />
-                      </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
+                        Notification Title
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={pushTitle}
+                        onChange={(e) => setPushTitle(e.target.value)}
+                        placeholder="e.g. 🔥 WEEKLY PASS DEAL!"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                      />
                     </div>
 
                     <div className="space-y-1.5">
