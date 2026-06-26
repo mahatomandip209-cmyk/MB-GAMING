@@ -285,6 +285,44 @@ export default function App() {
   const [notifPermission, setNotifPermission] = useState<string>('default');
   const [showAutoNotifPrompt, setShowAutoNotifPrompt] = useState<boolean>(false);
 
+  // Connection states for other mobile devices
+  const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
+    return localStorage.getItem('mb_backend_api_url') || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+  });
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [connectionError, setConnectionError] = useState<string>('');
+
+  const testConnection = async (targetUrl?: string) => {
+    const urlToTest = targetUrl || customBackendUrl;
+    setConnectionStatus('checking');
+    try {
+      const data = await safeFetchJson(`${urlToTest}/api/notifications`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (data && data.success) {
+        setConnectionStatus('connected');
+        setConnectionError('');
+        
+        // Propagate to Service Worker
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg.active) {
+            reg.active.postMessage({ type: 'SET_BACKEND_URL', url: urlToTest });
+          }
+        }
+        return true;
+      } else {
+        throw new Error("Response is not successful");
+      }
+    } catch (err) {
+      console.error("Connection test failed:", err);
+      setConnectionStatus('disconnected');
+      setConnectionError(err instanceof Error ? err.message : String(err));
+      return false;
+    }
+  };
+
   const getBackendUrl = (path: string): string => {
     const isLocalOrPreview = window.location.hostname.includes('run.app') || 
                              window.location.hostname.includes('localhost') || 
@@ -377,6 +415,7 @@ export default function App() {
 
   // Register PWA Service Worker & fetch initial lists
   useEffect(() => {
+    testConnection();
     fetchNotifications();
     const pollInterval = setInterval(fetchNotifications, 10000);
 
@@ -2330,6 +2369,92 @@ export default function App() {
                     Enable Push
                   </button>
                 )}
+              </div>
+
+              {/* Visual Connection Settings & Status for Vercel External Users */}
+              <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-2xl space-y-3 shadow-2xs text-left font-sans shrink-0">
+                <div className="flex justify-between items-center pb-1 border-b border-zinc-200">
+                  <h5 className="text-[10px] font-black uppercase text-zinc-600 tracking-tight flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Gateway Server Status
+                  </h5>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${
+                      connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
+                      connectionStatus === 'checking' ? 'bg-amber-500 animate-ping' : 'bg-red-500'
+                    }`} />
+                    <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500">
+                      {connectionStatus === 'connected' ? '🟢 Online' :
+                       connectionStatus === 'checking' ? '🟡 Checking...' : '🔴 Offline'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={customBackendUrl}
+                      onChange={(e) => {
+                        setCustomBackendUrl(e.target.value);
+                        localStorage.setItem('mb_backend_api_url', e.target.value);
+                      }}
+                      placeholder="https://your-public-cloud-run-url"
+                      className="flex-1 bg-white border border-zinc-200 rounded-lg py-1 px-2 text-[10px] focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const success = await testConnection(customBackendUrl);
+                        if (success) {
+                          triggerToast('🟢 Gateway Server Connected!');
+                          fetchNotifications();
+                        } else {
+                          triggerToast('🔴 Server connection failed!');
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer font-black border-none"
+                    >
+                      Verify
+                    </button>
+                  </div>
+
+                  {connectionError && (
+                    <div className="bg-red-50 border border-red-100 p-2 rounded-xl space-y-0.5">
+                      <p className="text-[9px] font-bold text-red-700 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Offline Error Details:
+                      </p>
+                      <p className="text-[9px] font-mono text-red-600 leading-normal break-all">
+                        {connectionError}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Toggle details button */}
+                  <details className="group">
+                    <summary className="text-[9px] font-black uppercase text-zinc-500 cursor-pointer list-none flex items-center gap-1 select-none hover:text-zinc-700">
+                      <span>❓ Setup Guide & Nepglish Solution</span>
+                      <span className="transition-transform group-open:rotate-180">▼</span>
+                    </summary>
+                    <div className="mt-2 text-[9px] text-zinc-500 bg-white border border-zinc-150 p-3 rounded-xl space-y-2 font-medium leading-relaxed">
+                      <p className="text-zinc-800 font-bold border-b border-zinc-100 pb-1">
+                        🚨 Offline किन भनिरहेछ? (Why is it Offline?)
+                      </p>
+                      <p>
+                        यो pre-production (<code className="font-mono bg-zinc-100 px-0.5 rounded text-zinc-700 font-bold">ais-pre-...</code>) backend लिङ्क <strong>Google Security</strong> ले ब्लक गरेको हुन्छ। त्यसैले अरू मोबाइलहरूबाट डाइरेक्ट कनेक्ट हुन सक्दैन।
+                      </p>
+                      <p className="text-zinc-800 font-bold border-b border-zinc-100 pb-1 pt-1">
+                        🔥 १० सेकेन्डमा कसरी मिलाउने? (How to Fix in 10s?)
+                      </p>
+                      <ol className="list-decimal pl-3 space-y-1">
+                        <li>Google AI Studio को माथि दाहिनेतिर (top-right) रहेको <strong>"Deploy"</strong> बटन थिच्नुहोस्।</li>
+                        <li>यसो गर्दा तपाईंको आफ्नै <strong>Public Cloud Run URL</strong> बन्नेछ।</li>
+                        <li>त्यो नयाँ URL लाई माथिको बाकसमा पेस्ट गर्नुहोस् र <strong>"Verify"</strong> थिच्नुहोस्! त्यसपछि यो मोबाइल र अरू सबै मोबाइलमा नोटिफिकेसन तुरुन्तै आउन थाल्छ!</li>
+                      </ol>
+                    </div>
+                  </details>
+                </div>
               </div>
 
               {/* Notifications List Container */}
