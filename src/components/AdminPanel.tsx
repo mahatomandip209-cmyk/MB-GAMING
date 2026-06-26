@@ -446,11 +446,37 @@ export default function AdminPanel({
   };
 
   // Update Transaction Status
-  const handleUpdateTransactionStatus = (txId: string, status: 'SUCCESS' | 'PENDING' | 'FAILED') => {
+  const handleUpdateTransactionStatus = async (txId: string, status: 'SUCCESS' | 'PENDING' | 'FAILED') => {
     setTransactions(prev =>
       prev.map(t => (t.id === txId ? { ...t, status } : t))
     );
     triggerToast(`Transaction status updated to ${status}`);
+
+    try {
+      const tx = transactions.find(t => t.id === txId);
+      if (tx) {
+        const notifTitle = status === 'SUCCESS' ? '✅ Recharge Approved!' : '❌ Recharge Rejected';
+        const notifBody = status === 'SUCCESS'
+          ? `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) has been completed successfully!`
+          : `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) was rejected. Please contact support.`;
+
+        await safeFetchJson(getBackendUrl('/api/notifications'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            title: notifTitle,
+            body: notifBody,
+            linkUrl: '/',
+            iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+          })
+        });
+      }
+    } catch (err) {
+      console.error("Failed to trigger automatic push notification for order:", err);
+    }
   };
 
   // Open modal for Product creation
@@ -1504,17 +1530,19 @@ export default function AdminPanel({
                                     <div className="flex items-center justify-end gap-1.5">
                                       <button
                                         onClick={() => handleUpdateTransactionStatus(tx.id, 'SUCCESS')}
-                                        className="bg-emerald-500 hover:bg-emerald-400 text-white p-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
-                                        title="Approve Order"
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-wider border-none"
+                                        title="Complete Order"
                                       >
                                         <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                        <span>Complete</span>
                                       </button>
                                       <button
                                         onClick={() => handleUpdateTransactionStatus(tx.id, 'FAILED')}
-                                        className="bg-red-500 hover:bg-red-400 text-white p-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
+                                        className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-wider border-none"
                                         title="Reject Order"
                                       >
                                         <X className="w-3.5 h-3.5 stroke-[3]" />
+                                        <span>Reject</span>
                                       </button>
                                     </div>
                                   ) : (
@@ -2177,123 +2205,7 @@ export default function AdminPanel({
                   </p>
                 </div>
 
-                {/* Visual Connection Settings & Status for Vercel External Users */}
-                <div className="bg-zinc-50 border border-zinc-200 p-5 rounded-3xl space-y-4 shadow-2xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-200 font-sans">
-                    <h3 className="text-xs font-black uppercase text-zinc-700 tracking-tight flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      Vercel Backend Link & Status
-                    </h3>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-2.5 h-2.5 rounded-full ${
-                        connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
-                        connectionStatus === 'checking' ? 'bg-amber-500 animate-ping' : 'bg-red-500'
-                      }`} />
-                      <span className="text-[10px] font-black uppercase tracking-wider text-zinc-600">
-                        {connectionStatus === 'connected' ? '🟢 Connected' :
-                         connectionStatus === 'checking' ? '🟡 Checking...' : '🔴 Offline / Errored'}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="space-y-3 font-sans">
-                    <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">
-                      Since <code className="font-mono bg-zinc-200/50 px-1 py-0.5 rounded text-zinc-800">mbgaming.vercel.app</code> is statically hosted on Vercel, it must connect to your Cloud Run server for API logic. Configure and verify your connection below:
-                    </p>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide font-mono">
-                        Active Backend Server Base URL
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={customBackendUrl}
-                          onChange={(e) => {
-                            setCustomBackendUrl(e.target.value);
-                            localStorage.setItem('mb_backend_api_url', e.target.value);
-                          }}
-                          placeholder="https://ais-pre-..."
-                          className="flex-1 bg-white border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const success = await testConnection();
-                            if (success) {
-                              triggerToast('🟢 Backend connection test successful!');
-                              fetchPushLogs();
-                            } else {
-                              triggerToast('🔴 Backend connection failed! Check your server.');
-                            }
-                          }}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer font-black"
-                        >
-                          Test & Save
-                        </button>
-                      </div>
-                    </div>
-
-                    {connectionError && (
-                      <div className="bg-red-50 border border-red-100 p-3 rounded-xl space-y-1">
-                        <p className="text-[10px] font-bold text-red-700 flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          Diagnostic Connection Error:
-                        </p>
-                        <p className="text-[10px] font-mono text-red-600 leading-normal break-all">
-                          {connectionError}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Highly descriptive troubleshooting guide for why the preview URL fails */}
-                    <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl space-y-2.5">
-                      <h4 className="text-[10px] font-black uppercase text-amber-800 tracking-wider flex items-center gap-1">
-                        ⚠️ Why does it say Offline / Errored on Vercel?
-                      </h4>
-                      <ol className="text-[10px] text-amber-950 space-y-1.5 list-decimal pl-3.5 leading-normal font-medium">
-                        <li>
-                          <strong>Google Security Block:</strong> The development (<code className="font-mono bg-amber-100/50 px-0.5 rounded text-amber-900">ais-dev-ieaq...</code>) and pre-production (<code className="font-mono bg-amber-100/50 px-0.5 rounded text-amber-900">ais-pre-ieaq...</code>) server links are <strong>secured by Google account cookies</strong>. External websites like Vercel are blocked from requesting data from them.
-                        </li>
-                        <li>
-                          <strong>How to Get a Public URL:</strong> Open Google AI Studio, look at the top-right header, and click the <strong>"Deploy"</strong> button to deploy this application to Cloud Run.
-                        </li>
-                        <li>
-                          <strong>Connect Vercel:</strong> Once deployed, copy your newly generated <strong>Public Cloud Run URL</strong> and paste it into the field above, then click <strong>"Test & Save"</strong>!
-                        </li>
-                      </ol>
-                    </div>
-
-                    <div className="pt-1 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const devUrl = 'https://ais-dev-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
-                          setCustomBackendUrl(devUrl);
-                          localStorage.setItem('mb_backend_api_url', devUrl);
-                          triggerToast('Toggled to Dev server. Testing...');
-                          await testConnection(devUrl);
-                        }}
-                        className="bg-zinc-200/60 hover:bg-zinc-200 text-zinc-700 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
-                        ⚡ Switch to Dev Backend
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const preUrl = 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
-                          setCustomBackendUrl(preUrl);
-                          localStorage.setItem('mb_backend_api_url', preUrl);
-                          triggerToast('Toggled to Pre-Production server. Testing...');
-                          await testConnection(preUrl);
-                        }}
-                        className="bg-zinc-200/60 hover:bg-zinc-200 text-zinc-700 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
-                        🌐 Switch to Pre Backend
-                      </button>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Part 1: Push Notification Dispatch (Real PWA push that wakes closed device) */}
                 <div className="bg-white border border-zinc-200/80 p-5 rounded-3xl space-y-4 shadow-2xs">
