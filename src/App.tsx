@@ -2085,6 +2085,7 @@ export default function App() {
                   setCurrentUser(user);
                   setWalletBalance(user.walletBalance);
                   setLoyaltyPoints(user.loyaltyPoints);
+                  fetchNotifications();
                 }}
                 getBackendUrl={getBackendUrl}
                 triggerToast={triggerToast}

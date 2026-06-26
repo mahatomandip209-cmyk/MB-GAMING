@@ -274,6 +274,20 @@ app.post("/api/auth/register", (req, res) => {
   
   systemUsers.push(newUser);
   
+  // Add a server-side registration notification
+  const newNotif = {
+    id: `notif-reg-${Date.now()}`,
+    title: "🎉 Registration Successful!",
+    body: `Welcome, ${newUser.name}! Your account has been registered successfully.`,
+    iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+    linkUrl: "/",
+    timestamp: Date.now()
+  };
+  systemNotifications.unshift(newNotif);
+  if (systemNotifications.length > 40) {
+    systemNotifications = systemNotifications.slice(0, 40);
+  }
+  
   // Return the user session details (excluding password)
   const { password: _, ...userSession } = newUser;
   res.json({ success: true, user: userSession, message: "Account registered successfully!" });
@@ -294,6 +308,20 @@ app.post("/api/auth/login", (req, res) => {
   if (!user || user.password !== password) {
     res.status(400).json({ success: false, error: "Invalid email address or incorrect password. Please try again." });
     return;
+  }
+  
+  // Add a server-side login notification
+  const newNotif = {
+    id: `notif-login-${Date.now()}`,
+    title: "🔑 Login Successful!",
+    body: `Welcome back, ${user.name}! You have logged in successfully to your MB Gaming account.`,
+    iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+    linkUrl: "/",
+    timestamp: Date.now()
+  };
+  systemNotifications.unshift(newNotif);
+  if (systemNotifications.length > 40) {
+    systemNotifications = systemNotifications.slice(0, 40);
   }
   
   const { password: _, ...userSession } = user;

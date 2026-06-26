@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, Gamepad2, Shield, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, Gamepad2 } from 'lucide-react';
 
 interface LoginRegisterProps {
   onSuccess: (user: { name: string; email: string; walletBalance: number; loyaltyPoints: number }) => void;
@@ -177,10 +177,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           <h2 className="text-xl font-black text-zinc-950 tracking-tight">
             {isLogin ? "Sign In to MB Gaming" : "Create Gamer Account"}
           </h2>
-          <p className="text-[11px] text-zinc-400 font-bold tracking-wider uppercase flex items-center justify-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-            Instant Recharge & Rewards
-          </p>
         </div>
       </div>
 
@@ -263,19 +259,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
             <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-wider">
               Password
             </label>
-            {isLogin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('mandipmahato717@gmail.com');
-                  setPassword('password123');
-                  triggerToast('Quick demo credentials filled!');
-                }}
-                className="text-[10px] font-black text-blue-600 hover:underline cursor-pointer"
-              >
-                Autofill Demo?
-              </button>
-            )}
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -336,20 +319,6 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           )}
         </button>
       </form>
-
-      {/* QUICK INFO FOOTER */}
-      <div className="pt-2 text-center space-y-2">
-        <div className="text-[10px] text-zinc-400 font-semibold flex items-center justify-center gap-1">
-          <Shield className="w-3.5 h-3.5 text-blue-500" />
-          Secure 256-Bit SSL Encrypted Verification
-        </div>
-        {isLogin && (
-          <div className="p-3 bg-blue-50/60 border border-blue-100/50 rounded-2xl text-[10.5px] font-semibold text-blue-700 leading-normal text-left">
-            <span className="font-extrabold text-blue-900 block mb-0.5">💡 Demo Accounts:</span>
-            Default account is <strong className="font-extrabold">mandipmahato717@gmail.com</strong> with password <strong className="font-extrabold">password123</strong>. Or create a custom user account! New accounts automatically receive a <strong className="font-black">Rs. 2,500 welcome bonus balance</strong>.
-          </div>
-        )}
-      </div>
 
     </div>
   );
