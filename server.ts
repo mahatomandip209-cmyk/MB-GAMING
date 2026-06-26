@@ -166,6 +166,76 @@ app.post("/api/notifications", (req, res) => {
   res.json({ success: true, notification: newNotif });
 });
 
+// Store transactions/orders in-memory for server-side persistence & multi-device sync
+let systemTransactions = [
+  {
+    id: 'tx-202601',
+    productId: 'garena-freefire',
+    productName: 'Garena Free Fire Diamonds',
+    provider: 'Garena',
+    category: 'top-up',
+    amount: 499,
+    timestamp: '2026-06-20 05:12',
+    status: 'SUCCESS',
+    targetAccount: 'UID: 928348293'
+  },
+  {
+    id: 'tx-202602',
+    productId: 'netflix-sub-card',
+    productName: 'Netflix Premium Subscription Room',
+    provider: 'Netflix Inc.',
+    category: 'subscription',
+    amount: 649,
+    timestamp: '2026-06-19 18:45',
+    status: 'SUCCESS',
+    targetAccount: 'profile@netflix.com'
+  }
+];
+
+// GET api/transactions - retrieve orders list
+app.get("/api/transactions", (req, res) => {
+  res.json({ success: true, transactions: systemTransactions });
+});
+
+// POST api/transactions - submit new order (placed by users or admins)
+app.post("/api/transactions", (req, res) => {
+  const newTx = req.body;
+  if (!newTx || !newTx.id) {
+    res.status(400).json({ success: false, error: "Invalid transaction data." });
+    return;
+  }
+  
+  // Prepend new order
+  systemTransactions.unshift(newTx);
+  
+  // Keep last 150 transactions
+  if (systemTransactions.length > 150) {
+    systemTransactions = systemTransactions.slice(0, 150);
+  }
+  
+  res.json({ success: true, transaction: newTx });
+});
+
+// PUT api/transactions/:id - update order status (approve / reject)
+app.put("/api/transactions/:id", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  if (!status) {
+    res.status(400).json({ success: false, error: "Status is required." });
+    return;
+  }
+  
+  const tx = systemTransactions.find(t => t.id === id);
+  if (!tx) {
+    res.status(404).json({ success: false, error: "Order not found." });
+    return;
+  }
+  
+  tx.status = status;
+  res.json({ success: true, transaction: tx });
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

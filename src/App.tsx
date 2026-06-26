@@ -287,7 +287,15 @@ export default function App() {
 
   // Connection states for other mobile devices
   const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
-    return localStorage.getItem('mb_backend_api_url') || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+    const saved = localStorage.getItem('mb_backend_api_url');
+    if (saved) return saved;
+    const isLocalOrPreview = window.location.hostname.includes('run.app') || 
+                             window.location.hostname.includes('localhost') || 
+                             window.location.hostname.includes('127.0.0.1');
+    if (isLocalOrPreview) {
+      return window.location.origin;
+    }
+    return 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
   });
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [connectionError, setConnectionError] = useState<string>('');
@@ -413,11 +421,26 @@ export default function App() {
     }
   };
 
+  const fetchTransactions = async () => {
+    try {
+      const data = await safeFetchJson(getBackendUrl('/api/transactions'));
+      if (data.success && data.transactions) {
+        setTransactions(data.transactions);
+      }
+    } catch (err) {
+      console.error("Error fetching transactions from server:", err);
+    }
+  };
+
   // Register PWA Service Worker & fetch initial lists
   useEffect(() => {
     testConnection();
     fetchNotifications();
-    const pollInterval = setInterval(fetchNotifications, 10000);
+    fetchTransactions();
+    const pollInterval = setInterval(() => {
+      fetchNotifications();
+      fetchTransactions();
+    }, 8000);
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -732,6 +755,20 @@ export default function App() {
     setSelectedProduct(null); // Close modal/view
     setShowSuccessOverlay(true); // Open success overlay
     triggerToast('Purchase request submitted for administrator review!');
+
+    // Post to server for multi-device admin sync
+    safeFetchJson(getBackendUrl('/api/transactions'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(newTx)
+    }).then(() => {
+      fetchTransactions();
+    }).catch(err => {
+      console.error("Failed to sync new order with server:", err);
+    });
   };
 
   // Trigger brief alert messages
@@ -1769,10 +1806,24 @@ export default function App() {
                           </span>
                         )}
                       </div>
-                      <div className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] rounded font-bold flex items-center gap-1 border border-emerald-100">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>DISPATCHED</span>
-                      </div>
+                      {tx.status === 'PENDING' && (
+                        <div className="px-2.5 py-1 bg-amber-50 text-amber-750 text-[10px] rounded font-bold flex items-center gap-1 border border-amber-200/50 animate-pulse">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <span>PENDING</span>
+                        </div>
+                      )}
+                      {tx.status === 'SUCCESS' && (
+                        <div className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] rounded font-bold flex items-center gap-1 border border-emerald-100">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span>COMPLETED</span>
+                        </div>
+                      )}
+                      {tx.status === 'FAILED' && (
+                        <div className="px-2.5 py-1 bg-red-50 text-red-750 text-[10px] rounded font-bold flex items-center gap-1 border border-red-200/40">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>REJECTED</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

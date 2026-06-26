@@ -453,6 +453,16 @@ export default function AdminPanel({
     triggerToast(`Transaction status updated to ${status}`);
 
     try {
+      // Sync status change to the server backend
+      await safeFetchJson(getBackendUrl(`/api/transactions/${txId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ status })
+      });
+
       const tx = transactions.find(t => t.id === txId);
       if (tx) {
         const notifTitle = status === 'SUCCESS' ? '✅ Recharge Approved!' : '❌ Recharge Rejected';
@@ -475,7 +485,7 @@ export default function AdminPanel({
         });
       }
     } catch (err) {
-      console.error("Failed to trigger automatic push notification for order:", err);
+      console.error("Failed to sync status update with server or trigger notification:", err);
     }
   };
 
