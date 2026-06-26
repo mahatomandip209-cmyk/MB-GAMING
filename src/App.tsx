@@ -37,6 +37,7 @@ import {
   RotateCcw,
   XCircle,
   ShieldCheck,
+  LogIn,
   LogOut,
   Headphones,
   Shield,
@@ -977,15 +978,25 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Area: Blue Points Pill Button */}
+            {/* Right Area: Blue Points Pill Button or Log In Button */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setShowWalletModal(true); setWalletError(''); }}
-                className="px-4 py-1.5 rounded-full bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#3b82f6] flex items-center gap-1.5 text-xs font-black tracking-wide transition-all cursor-pointer shadow-sm active:scale-95 border-none"
-              >
-                <Link className="w-3.5 h-3.5 text-blue-600 stroke-[2.5]" />
-                <span>Pts {loyaltyPoints.toLocaleString()}</span>
-              </button>
+              {currentUser ? (
+                <button
+                  onClick={() => { setShowWalletModal(true); setWalletError(''); }}
+                  className="px-4 py-1.5 rounded-full bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#3b82f6] flex items-center gap-1.5 text-xs font-black tracking-wide transition-all cursor-pointer shadow-sm active:scale-95 border-none"
+                >
+                  <Link className="w-3.5 h-3.5 text-blue-600 stroke-[2.5]" />
+                  <span>Pts {loyaltyPoints.toLocaleString()}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setActiveBottomNav('profile')}
+                  className="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 text-xs font-black tracking-wide transition-all cursor-pointer shadow-sm active:scale-95 border-none"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                  <span>Log In</span>
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -1911,67 +1922,85 @@ export default function App() {
               <p className="text-xs text-zinc-400">Simulate cash addition to top-up orders instantly</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
-              {/* Left Display card */}
-              <div className="bg-zinc-950 text-white rounded-2xl p-6 flex flex-col justify-between min-h-[160px] relative overflow-hidden shadow-md">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">PRE-PAID APP WALLET</span>
-                  <Wallet className="w-5 h-5 text-zinc-400" />
+            {!currentUser ? (
+              <div className="py-12 text-center text-zinc-400 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-400 shadow-sm">
+                  <Wallet className="w-5.5 h-5.5 text-blue-600" />
                 </div>
-                <div>
-                  <span className="text-3xl font-extrabold text-white font-mono tracking-tight leading-none block">
-                    Rs. {walletBalance}
-                  </span>
-                  <span className="text-[10px] text-emerald-400 font-bold block mt-2">● Online Verification Connected</span>
+                <div className="max-w-xs mx-auto">
+                  <h4 className="text-xs font-black text-zinc-800 uppercase">Manage App Wallet</h4>
+                  <p className="text-[10px] text-zinc-400 font-semibold mt-1">Please log in or register to load extra credit, view wallet status, and run secure transactions.</p>
                 </div>
+                <button
+                  onClick={() => setActiveBottomNav('profile')}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md transition-all active:scale-98 cursor-pointer border-none"
+                >
+                  Log In / Register
+                </button>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                
+                {/* Left Display card */}
+                <div className="bg-zinc-950 text-white rounded-2xl p-6 flex flex-col justify-between min-h-[160px] relative overflow-hidden shadow-md">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">PRE-PAID APP WALLET</span>
+                    <Wallet className="w-5 h-5 text-zinc-400" />
+                  </div>
+                  <div>
+                    <span className="text-3xl font-extrabold text-white font-mono tracking-tight leading-none block">
+                      Rs. {walletBalance}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-bold block mt-2">● Online Verification Connected</span>
+                  </div>
+                </div>
 
-              {/* Right Presets and Quick tools */}
-              <div className="space-y-4">
-                <span className="block text-xs font-extrabold text-zinc-400">LOAD EXTRA CREDIT</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[200, 500, 1000].map(amt => (
+                {/* Right Presets and Quick tools */}
+                <div className="space-y-4">
+                  <span className="block text-xs font-extrabold text-zinc-400">LOAD EXTRA CREDIT</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[200, 500, 1000].map(amt => (
+                      <button
+                        key={amt}
+                        onClick={() => {
+                          setWalletBalance(prev => prev + amt);
+                          triggerToast(`Added Rs. ${amt} via simulated UPI bank transfer!`);
+                        }}
+                        className="py-2.5 bg-zinc-50 border border-zinc-200 hover:bg-zinc-950 hover:text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+                      >
+                        + Rs. {amt}
+                      </button>
+                    ))}
+                  </div>
+
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const amtVal = parseInt(customWalletAdd, 10);
+                    if (!isNaN(amtVal) && amtVal > 0) {
+                      setWalletBalance(prev => prev + amtVal);
+                      setCustomWalletAdd('');
+                      triggerToast(`Added Rs. ${amtVal} from virtual gateway!`);
+                    }
+                  }} className="flex gap-2">
+                    <input
+                      type="number"
+                      value={customWalletAdd}
+                      onChange={(e) => setCustomWalletAdd(e.target.value)}
+                      placeholder="Other cash amount..."
+                      className="flex-grow px-3.5 py-2 bg-zinc-50 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:border-zinc-400 font-bold"
+                    />
                     <button
-                      key={amt}
-                      onClick={() => {
-                        setWalletBalance(prev => prev + amt);
-                        triggerToast(`Added Rs. ${amt} via simulated UPI bank transfer!`);
-                      }}
-                      className="py-2.5 bg-zinc-50 border border-zinc-200 hover:bg-zinc-950 hover:text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+                      type="submit"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500"
                     >
-                      + Rs. {amt}
+                      Add Cash
                     </button>
-                  ))}
+                  </form>
                 </div>
 
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const amtVal = parseInt(customWalletAdd, 10);
-                  if (!isNaN(amtVal) && amtVal > 0) {
-                    setWalletBalance(prev => prev + amtVal);
-                    setCustomWalletAdd('');
-                    triggerToast(`Added Rs. ${amtVal} from virtual gateway!`);
-                  }
-                }} className="flex gap-2">
-                  <input
-                    type="number"
-                    value={customWalletAdd}
-                    onChange={(e) => setCustomWalletAdd(e.target.value)}
-                    placeholder="Other cash amount..."
-                    className="flex-grow px-3.5 py-2 bg-zinc-50 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:border-zinc-400 font-bold"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500"
-                  >
-                    Add Cash
-                  </button>
-                </form>
               </div>
-
-            </div>
+            )}
           </section>
         )}
 
