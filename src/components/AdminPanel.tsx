@@ -173,18 +173,41 @@ export default function AdminPanel({
     return `${backendBase}${path}`;
   };
 
+  const safeFetchJson = async (url: string, options?: RequestInit) => {
+    const response = await fetch(url, options);
+    const contentType = response.headers.get("content-type") || "";
+    const text = await response.text();
+    
+    if (!response.ok) {
+      try {
+        const errJson = JSON.parse(text);
+        throw new Error(errJson.error || errJson.message || `HTTP ${response.status}`);
+      } catch {
+        const excerpt = text.length > 120 ? text.trim().substring(0, 120) + "..." : text.trim();
+        throw new Error(`HTTP ${response.status}: ${excerpt || response.statusText}`);
+      }
+    }
+    
+    if (!contentType.includes("application/json")) {
+      const excerpt = text.length > 120 ? text.trim().substring(0, 120) + "..." : text.trim();
+      throw new Error(`Response is not JSON (got "${contentType}"). Check if your backend URL is correct. Content preview: "${excerpt}"`);
+    }
+    
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Invalid JSON syntax: ${e instanceof Error ? e.message : String(e)}. Content preview: "${text.substring(0, 100)}"`);
+    }
+  };
+
   const testConnection = async (targetUrl?: string) => {
     const urlToTest = targetUrl || customBackendUrl;
     setConnectionStatus('checking');
     try {
-      const res = await fetch(`${urlToTest}/api/notifications`, {
+      const data = await safeFetchJson(`${urlToTest}/api/notifications`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' }
       });
-      if (!res.ok) {
-        throw new Error(`HTTP Error ${res.status}`);
-      }
-      const data = await res.json();
       if (data && data.success) {
         setConnectionStatus('connected');
         setConnectionError('');
@@ -210,8 +233,7 @@ export default function AdminPanel({
 
   const fetchPushLogs = async () => {
     try {
-      const res = await fetch(getBackendUrl('/api/notifications'));
-      const data = await res.json();
+      const data = await safeFetchJson(getBackendUrl('/api/notifications'));
       if (data.success && data.notifications) {
         setSentPushLogs(data.notifications);
       }
@@ -236,10 +258,11 @@ export default function AdminPanel({
 
     setIsSendingPush(true);
     try {
-      const res = await fetch(getBackendUrl('/api/notifications'), {
+      const data = await safeFetchJson(getBackendUrl('/api/notifications'), {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           title: pushTitle.trim(),
@@ -249,7 +272,6 @@ export default function AdminPanel({
         })
       });
 
-      const data = await res.json();
       if (data.success) {
         triggerToast('🚀 Native push notification dispatched!');
         setPushTitle('');
@@ -2205,7 +2227,7 @@ export default function AdminPanel({
                               triggerToast('🔴 Backend connection failed! Check your server.');
                             }
                           }}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer font-black"
                         >
                           Test & Save
                         </button>
@@ -2223,6 +2245,24 @@ export default function AdminPanel({
                         </p>
                       </div>
                     )}
+
+                    {/* Highly descriptive troubleshooting guide for why the preview URL fails */}
+                    <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl space-y-2.5">
+                      <h4 className="text-[10px] font-black uppercase text-amber-800 tracking-wider flex items-center gap-1">
+                        ⚠️ Why does it say Offline / Errored on Vercel?
+                      </h4>
+                      <ol className="text-[10px] text-amber-950 space-y-1.5 list-decimal pl-3.5 leading-normal font-medium">
+                        <li>
+                          <strong>Google Security Block:</strong> The development (<code className="font-mono bg-amber-100/50 px-0.5 rounded text-amber-900">ais-dev-ieaq...</code>) and pre-production (<code className="font-mono bg-amber-100/50 px-0.5 rounded text-amber-900">ais-pre-ieaq...</code>) server links are <strong>secured by Google account cookies</strong>. External websites like Vercel are blocked from requesting data from them.
+                        </li>
+                        <li>
+                          <strong>How to Get a Public URL:</strong> Open Google AI Studio, look at the top-right header, and click the <strong>"Deploy"</strong> button to deploy this application to Cloud Run.
+                        </li>
+                        <li>
+                          <strong>Connect Vercel:</strong> Once deployed, copy your newly generated <strong>Public Cloud Run URL</strong> and paste it into the field above, then click <strong>"Test & Save"</strong>!
+                        </li>
+                      </ol>
+                    </div>
 
                     <div className="pt-1 flex flex-wrap gap-2">
                       <button

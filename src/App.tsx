@@ -296,10 +296,40 @@ export default function App() {
     return `${backendBase}${path}`;
   };
 
+  const safeFetchJson = async (url: string, options?: RequestInit) => {
+    try {
+      const response = await fetch(url, options);
+      const contentType = response.headers.get("content-type") || "";
+      const text = await response.text();
+      
+      if (!response.ok) {
+        try {
+          const errJson = JSON.parse(text);
+          throw new Error(errJson.error || errJson.message || `HTTP ${response.status}`);
+        } catch {
+          const excerpt = text.length > 120 ? text.trim().substring(0, 120) + "..." : text.trim();
+          throw new Error(`HTTP ${response.status}: ${excerpt || response.statusText}`);
+        }
+      }
+      
+      if (!contentType.includes("application/json")) {
+        const excerpt = text.length > 120 ? text.trim().substring(0, 120) + "..." : text.trim();
+        throw new Error(`Response is not JSON (got "${contentType}"). Content preview: "${excerpt}"`);
+      }
+      
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Invalid JSON syntax: ${e instanceof Error ? e.message : String(e)}. Content preview: "${text.substring(0, 100)}"`);
+      }
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(getBackendUrl('/api/notifications'));
-      const data = await res.json();
+      const data = await safeFetchJson(getBackendUrl('/api/notifications'));
       if (data.success && data.notifications) {
         setServerNotifications(data.notifications);
         
