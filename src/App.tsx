@@ -48,6 +48,7 @@ import {
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
+import { LoginRegister } from './components/LoginRegister';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
   // Mobile Legends
@@ -236,6 +237,18 @@ export default function App() {
     localStorage.setItem('mb_gaming_products', JSON.stringify(products));
   }, [products]);
 
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; walletBalance: number; loyaltyPoints: number } | null>(() => {
+    const saved = localStorage.getItem('mb_current_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return null;
+  });
+
   const [walletBalance, setWalletBalance] = useState<number>(() => {
     const saved = localStorage.getItem('mb_gaming_wallet');
     return saved ? Number(saved) : 2450;
@@ -253,6 +266,35 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mb_gaming_loyalty', loyaltyPoints.toString());
   }, [loyaltyPoints]);
+
+  // Sync user profile state changes
+  useEffect(() => {
+    if (currentUser) {
+      const updated = {
+        ...currentUser,
+        walletBalance,
+        loyaltyPoints
+      };
+      localStorage.setItem('mb_current_user', JSON.stringify(updated));
+      
+      fetch(getBackendUrl('/api/auth/sync-profile'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: currentUser.email,
+          walletBalance,
+          loyaltyPoints
+        })
+      }).catch(err => {
+        console.warn("Background auth profile sync warning:", err);
+      });
+    } else {
+      localStorage.removeItem('mb_current_user');
+    }
+  }, [currentUser, walletBalance, loyaltyPoints]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -681,6 +723,13 @@ export default function App() {
   const executeRecharge = (e: FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
+
+    if (!currentUser) {
+      triggerToast('⚠️ Please Login or Register first to purchase products.');
+      setSelectedProduct(null);
+      setActiveBottomNav('profile');
+      return;
+    }
 
     // Validation
     const isMlbb = selectedProduct.id === 'mlbb-diamonds';
@@ -1758,7 +1807,23 @@ export default function App() {
               </div>
             </div>
 
-            {transactions.length > 0 ? (
+            {!currentUser ? (
+              <div className="py-12 text-center text-zinc-400 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-400 shadow-sm">
+                  <ShoppingBag className="w-5.5 h-5.5" />
+                </div>
+                <div className="max-w-xs mx-auto">
+                  <h4 className="text-xs font-black text-zinc-800 uppercase">View Order History</h4>
+                  <p className="text-[10px] text-zinc-400 font-semibold mt-1">Please sign in or register to view your order logs and track live top-up status updates.</p>
+                </div>
+                <button
+                  onClick={() => setActiveBottomNav('profile')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md transition-all active:scale-98 cursor-pointer"
+                >
+                  Sign In / Register
+                </button>
+              </div>
+            ) : transactions.length > 0 ? (
               <div className="divide-y divide-zinc-105">
                 {transactions.map((tx) => (
                   <div key={tx.id} className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -1806,20 +1871,20 @@ export default function App() {
                           </span>
                         )}
                       </div>
-                      {tx.status === 'PENDING' && (
-                        <div className="px-2.5 py-1 bg-amber-50 text-amber-750 text-[10px] rounded font-bold flex items-center gap-1 border border-amber-200/50 animate-pulse">
+                      {(tx.status === 'PENDING' || !tx.status) && (
+                        <div className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] rounded font-bold flex items-center gap-1 border border-amber-200/50 animate-pulse">
                           <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                           <span>PENDING</span>
                         </div>
                       )}
-                      {tx.status === 'SUCCESS' && (
+                      {(tx.status === 'SUCCESS' || tx.status === 'DISPATCHED') && (
                         <div className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] rounded font-bold flex items-center gap-1 border border-emerald-100">
                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           <span>COMPLETED</span>
                         </div>
                       )}
-                      {tx.status === 'FAILED' && (
-                        <div className="px-2.5 py-1 bg-red-50 text-red-750 text-[10px] rounded font-bold flex items-center gap-1 border border-red-200/40">
+                      {(tx.status === 'FAILED' || tx.status === 'REJECTED') && (
+                        <div className="px-2.5 py-1 bg-red-50 text-red-700 text-[10px] rounded font-bold flex items-center gap-1 border border-red-200/40">
                           <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
                           <span>REJECTED</span>
                         </div>
@@ -1985,241 +2050,263 @@ export default function App() {
               <div className="w-8"></div> {/* Spacer to keep centered balance */}
             </div>
 
-            {/* Profile Summary Card */}
-            <div className="bg-white rounded-2xl p-5 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                {/* User Profile Avatar Image from Unsplash */}
-                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 shadow-md">
-                  <img 
-                    src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&h=150&q=80" 
-                    alt="Mandip Mahato" 
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-black text-zinc-800 leading-tight">Mandip Mahato</h4>
-                  
-                  {/* Points Indicator with link icon */}
-                  <div className="pt-1 flex items-center gap-1 text-blue-600 font-extrabold">
-                    <Link className="w-3.5 h-3.5" />
-                    <span className="text-[11px] hover:underline cursor-pointer">{loyaltyPoints.toLocaleString()} Points</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Edit button with Pencil icon */}
-              <button 
-                onClick={() => triggerToast("Edit profile is restricted to administrators.")}
-                className="w-8 py-1.5 rounded-lg border border-blue-105 bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all flex items-center justify-center cursor-pointer"
-                title="Edit Profile"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Main Menu Links Grid */}
-            <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
-              
-              {/* Store Points Option */}
-              <div className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50">
-                    <Link className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">Store Points</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: {loyaltyPoints.toLocaleString()} Points</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* My Orders Option */}
-              <div 
-                onClick={() => setActiveBottomNav('orders')}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/50">
-                    <ShoppingBag className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">My Orders</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Track your purchases</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* Favorites Option */}
-              <div 
-                onClick={() => setActiveBottomNav('favorites')}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100/50">
-                    <Heart className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">Favorites</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Your favorite games</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* Notifications */}
-              <div 
-                onClick={() => setShowNotifModal(true)}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100/50">
-                    <Bell className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">Notifications</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Stay updated</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* Refer and earn */}
-              <div 
-                onClick={() => triggerToast("Get Rs. 50 bonus points upon inviting your first gamer friend!")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100/50">
-                    <Gift className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">Refer & Earn</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Share with friends & earn rewards</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* Settings */}
-              <div 
-                onClick={() => triggerToast("App settings are configured to optimal performance.")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-zinc-100 text-zinc-600 flex items-center justify-center border border-zinc-150">
-                    <Settings className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-zinc-800">Settings</h5>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">App preferences</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-              </div>
-
-              {/* Admin Portal Shortcut */}
-              <div 
-                onClick={() => {
-                  window.history.pushState({}, '', '/admin');
-                  const navEvent = new PopStateEvent('popstate');
-                  window.dispatchEvent(navEvent);
+            {!currentUser ? (
+              <LoginRegister 
+                onSuccess={(user) => {
+                  setCurrentUser(user);
+                  setWalletBalance(user.walletBalance);
+                  setLoyaltyPoints(user.loyaltyPoints);
                 }}
-                className="flex items-center justify-between p-2.5 bg-blue-50/40 hover:bg-blue-50 border border-blue-100/30 rounded-xl cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center border border-blue-200/50">
-                    <ShieldCheck className="w-4.5 h-4.5" />
+                getBackendUrl={getBackendUrl}
+                triggerToast={triggerToast}
+              />
+            ) : (
+              <>
+                {/* Profile Summary Card */}
+                <div className="bg-white rounded-2xl p-5 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    {/* User Profile Avatar Image from Unsplash or initials */}
+                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 shadow-md flex items-center justify-center bg-blue-50">
+                      {currentUser.email === 'mandipmahato717@gmail.com' ? (
+                        <img 
+                          src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&h=150&q=80" 
+                          alt={currentUser.name} 
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-550 to-indigo-600 flex items-center justify-center text-white text-base font-black uppercase">
+                          {currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-0.5">
+                      <h4 className="text-sm font-black text-zinc-800 leading-tight">{currentUser.name}</h4>
+                      <p className="text-[10px] text-zinc-400 font-bold">{currentUser.email}</p>
+                      
+                      {/* Points Indicator with link icon */}
+                      <div className="pt-1 flex items-center gap-1 text-blue-600 font-extrabold">
+                        <Link className="w-3.5 h-3.5" />
+                        <span className="text-[11px] hover:underline cursor-pointer">{loyaltyPoints.toLocaleString()} Points</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h5 className="text-[11px] font-extrabold text-blue-950">Admin Portal 🔑</h5>
-                    <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Manage products & orders</p>
+
+                  {/* Edit button with Pencil icon */}
+                  <button 
+                    onClick={() => triggerToast("Edit profile is restricted to administrators.")}
+                    className="w-8 py-1.5 rounded-lg border border-blue-105 bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all flex items-center justify-center cursor-pointer"
+                    title="Edit Profile"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Main Menu Links Grid */}
+                <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
+                  
+                  {/* Store Points Option */}
+                  <div className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100/50">
+                        <Link className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-zinc-800">Store Points</h5>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: {loyaltyPoints.toLocaleString()} Points</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+                  </div>
+
+                  {/* My Orders Option */}
+                  <div 
+                    onClick={() => setActiveBottomNav('orders')}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100/50">
+                        <ShoppingBag className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-zinc-800">My Orders</h5>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Track your purchases</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+                  </div>
+
+                  {/* Favorites Option */}
+                  <div 
+                    onClick={() => setActiveBottomNav('favorites')}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100/50">
+                        <Heart className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-zinc-800">Favorites</h5>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Your favorite games</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+                  </div>
+
+                  {/* Notifications */}
+                  <div 
+                    onClick={() => setShowNotifModal(true)}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100/50">
+                        <Bell className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-zinc-800">Notifications</h5>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Stay updated</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+                  </div>
+
+                  {/* Refer and earn */}
+                  <div 
+                    onClick={() => triggerToast("Get Rs. 50 bonus points upon inviting your first gamer friend!")}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100/50">
+                        <Gift className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-zinc-800">Refer & Earn</h5>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Share with friends & earn rewards</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+                  </div>
+
+                  {/* Settings */}
+                  <div 
+                    onClick={() => triggerToast("App settings are configured to optimal performance.")}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-zinc-100 text-zinc-600 flex items-center justify-center border border-zinc-150">
+                        <Settings className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-zinc-800">Settings</h5>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">App preferences</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
+                  </div>
+
+                  {/* Admin Portal Shortcut */}
+                  <div 
+                    onClick={() => {
+                      window.history.pushState({}, '', '/admin');
+                      const navEvent = new PopStateEvent('popstate');
+                      window.dispatchEvent(navEvent);
+                    }}
+                    className="flex items-center justify-between p-2.5 bg-blue-50/40 hover:bg-blue-50 border border-blue-100/30 rounded-xl cursor-pointer transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center border border-blue-200/50">
+                        <ShieldCheck className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-extrabold text-blue-950">Admin Portal 🔑</h5>
+                        <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Manage products & orders</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                  </div>
+
+                </div>
+
+                {/* Legal Links section */}
+                <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
+                  <span className="block text-[9.5px] font-black text-zinc-400 px-2 tracking-wider uppercase">LEGAL</span>
+                  
+                  {/* Terms & Conditions */}
+                  <div 
+                    onClick={() => triggerToast("Displaying Terms & Conditions document...")}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-extrabold text-zinc-850">Terms & Conditions</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+                  </div>
+
+                  {/* Refund Policy */}
+                  <div 
+                    onClick={() => triggerToast("Displaying Refund Policy details...")}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                        <RotateCcw className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-extrabold text-zinc-850">Refund Policy</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+                  </div>
+
+                  {/* Cancellation Policy */}
+                  <div 
+                    onClick={() => triggerToast("Displaying Cancellation Policy parameters...")}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                        <XCircle className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-extrabold text-zinc-850">Cancellation Policy</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+                  </div>
+
+                  {/* Privacy Policy */}
+                  <div 
+                    onClick={() => triggerToast("Displaying Privacy Policy details...")}
+                    className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-extrabold text-zinc-850">Privacy Policy</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
+                  </div>
+
+                </div>
+
+                {/* Logout Row */}
+                <div 
+                  onClick={() => {
+                    setCurrentUser(null);
+                    triggerToast("Session logged out successfully!");
+                  }}
+                  className="bg-rose-50 border border-rose-100 hover:bg-rose-100/50 rounded-2xl p-4 flex items-center gap-3.5 cursor-pointer transition-all active:scale-99"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-200">
+                    <LogOut className="w-5 h-5 shrink-0" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h5 className="text-[11px] font-black text-rose-700 leading-none">Logout</h5>
+                    <p className="text-[10px] text-rose-500 font-semibold">Sign out of your account</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
-              </div>
-
-            </div>
-
-            {/* Legal Links section */}
-            <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
-              <span className="block text-[9.5px] font-black text-zinc-400 px-2 tracking-wider uppercase">LEGAL</span>
-              
-              {/* Terms & Conditions */}
-              <div 
-                onClick={() => triggerToast("Displaying Terms & Conditions document...")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-extrabold text-zinc-850">Terms & Conditions</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
-              </div>
-
-              {/* Refund Policy */}
-              <div 
-                onClick={() => triggerToast("Displaying Refund Policy details...")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
-                    <RotateCcw className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-extrabold text-zinc-850">Refund Policy</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
-              </div>
-
-              {/* Cancellation Policy */}
-              <div 
-                onClick={() => triggerToast("Displaying Cancellation Policy parameters...")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
-                    <XCircle className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-extrabold text-zinc-850">Cancellation Policy</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
-              </div>
-
-              {/* Privacy Policy */}
-              <div 
-                onClick={() => triggerToast("Displaying Privacy Policy details...")}
-                className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-50 text-zinc-500 flex items-center justify-center border border-zinc-150">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-extrabold text-zinc-850">Privacy Policy</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500" />
-              </div>
-
-            </div>
-
-            {/* Logout Row */}
-            <div 
-              onClick={() => {
-                triggerToast("Session logged out successfully! Restarting profile context...");
-              }}
-              className="bg-rose-50 border border-rose-100 hover:bg-rose-100/50 rounded-2xl p-4 flex items-center gap-3.5 cursor-pointer transition-all active:scale-99"
-            >
-              <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-200">
-                <LogOut className="w-5 h-5 shrink-0" />
-              </div>
-              <div className="space-y-0.5">
-                <h5 className="text-[11px] font-black text-rose-700 leading-none">Logout</h5>
-                <p className="text-[10px] text-rose-500 font-semibold">Sign out of your account</p>
-              </div>
-            </div>
+              </>
+            )}
 
           </div>
         )}

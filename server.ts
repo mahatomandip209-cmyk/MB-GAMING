@@ -236,6 +236,102 @@ app.put("/api/transactions/:id", (req, res) => {
   res.json({ success: true, transaction: tx });
 });
 
+// Server-side in-memory user registry
+let systemUsers = [
+  {
+    name: "Mandip Mahato",
+    email: "mandipmahato717@gmail.com",
+    password: "password123",
+    walletBalance: 2450,
+    loyaltyPoints: 86534
+  }
+];
+
+// POST api/auth/register - Register a new account
+app.post("/api/auth/register", (req, res) => {
+  const { name, email, password } = req.body;
+  
+  if (!name || !email || !password) {
+    res.status(400).json({ success: false, error: "Please enter your name, email, and password." });
+    return;
+  }
+  
+  const emailLower = email.toLowerCase().trim();
+  const exists = systemUsers.some(u => u.email.toLowerCase() === emailLower);
+  
+  if (exists) {
+    res.status(400).json({ success: false, error: "An account with this email address already exists." });
+    return;
+  }
+  
+  const newUser = {
+    name: name.trim(),
+    email: emailLower,
+    password: password,
+    walletBalance: 2500, // starting gift balance
+    loyaltyPoints: 500 // starting sign-up bonus points
+  };
+  
+  systemUsers.push(newUser);
+  
+  // Return the user session details (excluding password)
+  const { password: _, ...userSession } = newUser;
+  res.json({ success: true, user: userSession, message: "Account registered successfully!" });
+});
+
+// POST api/auth/login - Log in with existing account
+app.post("/api/auth/login", (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    res.status(400).json({ success: false, error: "Please enter both email and password." });
+    return;
+  }
+  
+  const emailLower = email.toLowerCase().trim();
+  const user = systemUsers.find(u => u.email.toLowerCase() === emailLower);
+  
+  if (!user || user.password !== password) {
+    res.status(400).json({ success: false, error: "Invalid email address or incorrect password. Please try again." });
+    return;
+  }
+  
+  const { password: _, ...userSession } = user;
+  res.json({ success: true, user: userSession, message: "Welcome back!" });
+});
+
+// POST api/auth/sync-profile - Sync wallet and points with the server
+app.post("/api/auth/sync-profile", (req, res) => {
+  const { email, walletBalance, loyaltyPoints } = req.body;
+  
+  if (!email) {
+    res.status(400).json({ success: false, error: "Email is required to sync profile." });
+    return;
+  }
+  
+  const emailLower = email.toLowerCase().trim();
+  const user = systemUsers.find(u => u.email.toLowerCase() === emailLower);
+  
+  if (user) {
+    if (walletBalance !== undefined) user.walletBalance = walletBalance;
+    if (loyaltyPoints !== undefined) user.loyaltyPoints = loyaltyPoints;
+    
+    const { password: _, ...userSession } = user;
+    res.json({ success: true, user: userSession });
+  } else {
+    // If the server restarted and the session is local, register it in server memory
+    const newUser = {
+      name: emailLower.split('@')[0],
+      email: emailLower,
+      password: "password123",
+      walletBalance: walletBalance ?? 2500,
+      loyaltyPoints: loyaltyPoints ?? 500
+    };
+    systemUsers.push(newUser);
+    res.json({ success: true, user: newUser });
+  }
+});
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

@@ -1528,11 +1528,11 @@ export default function AdminPanel({
                                 <td className="py-4 px-4 text-[11.5px] font-black text-zinc-900">Rs. {tx.amount.toLocaleString()}</td>
                                 <td className="py-4 px-4">
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                    tx.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/30' :
-                                    tx.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border border-amber-200/30 auto-pulse' :
+                                    (tx.status === 'SUCCESS' || (tx.status as any) === 'DISPATCHED') ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/30' :
+                                    (tx.status === 'PENDING' || !tx.status) ? 'bg-amber-50 text-amber-600 border border-amber-200/30 animate-pulse' :
                                     'bg-red-50 text-red-600 border border-red-200/30'
                                   }`}>
-                                    ● {tx.status}
+                                    ● {tx.status || 'PENDING'}
                                   </span>
                                 </td>
                                 <td className="py-4 px-4 text-right">
@@ -2423,7 +2423,7 @@ export default function AdminPanel({
                           <div className="flex items-center justify-between">
                             <span className="font-extrabold text-zinc-900 text-xs">{tkt.user}</span>
                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
-                              tkt.status === 'PENDING' ? 'bg-amber-100 text-amber-700 auto-pulse' : 'bg-zinc-100 text-zinc-500'
+                              tkt.status === 'PENDING' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-zinc-100 text-zinc-500'
                             }`}>
                               {tkt.status}
                             </span>
