@@ -78,7 +78,7 @@ async function checkForNewPushNotifications() {
             await self.registration.showNotification(latest.title, {
               body: latest.body,
               icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-              badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+              badge: "https://img.icons8.com/ios-filled/96/ffffff/game-controller.png",
               vibrate: [300, 100, 300],
               sound: "https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3",
               data: {
@@ -128,7 +128,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: payload.body,
     icon: payload.icon || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
-    badge: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+    badge: 'https://img.icons8.com/ios-filled/96/ffffff/game-controller.png',
     vibrate: [200, 100, 200],
     sound: 'https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3',
     data: {

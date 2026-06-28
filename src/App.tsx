@@ -441,7 +441,7 @@ export default function App() {
               reg.showNotification(latest.title, {
                 body: latest.body,
                 icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-                badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+                badge: "https://img.icons8.com/ios-filled/96/ffffff/game-controller.png",
                 vibrate: [300, 100, 300],
                 tag: latest.id,
                 data: {
@@ -583,7 +583,7 @@ export default function App() {
           reg.showNotification("MB GAMING STORE", {
             body: "You will now receive alerts for recharges & flash sales! 🔔",
             icon: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-            badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+            badge: "https://img.icons8.com/ios-filled/96/ffffff/game-controller.png"
           });
         }
       } else {
