@@ -9,8 +9,29 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Set to track shown notification IDs to prevent duplicates
-let displayedNotificationIds = new Set();
+// Cache utility functions to persist last shown notification ID in service worker environment
+async function getLastSeenId() {
+  try {
+    const cache = await caches.open('mb-notifications-v1');
+    const response = await cache.match('/last-seen-id');
+    if (response) {
+      return await response.text();
+    }
+  } catch (e) {
+    console.warn('[Service Worker] Error reading last seen ID:', e);
+  }
+  return null;
+}
+
+async function setLastSeenId(id) {
+  try {
+    const cache = await caches.open('mb-notifications-v1');
+    await cache.put('/last-seen-id', new Response(id));
+  } catch (e) {
+    console.warn('[Service Worker] Error writing last seen ID:', e);
+  }
+}
+
 let customBackendBase = '';
 
 // Listen for backend URL changes from the React app
@@ -38,28 +59,38 @@ async function checkForNewPushNotifications() {
       if (list.length > 0) {
         // Let's inspect the latest notification
         const latest = list[0];
+        const lastSeenId = await getLastSeenId();
         
-        // Ensure it's very recent (sent in the last 15 minutes) so we don't spam historical messages and we handle clock drift easily
-        const isRecent = (Date.now() - latest.timestamp) < 900000;
-        
-        if (isRecent && !displayedNotificationIds.has(latest.id)) {
-          displayedNotificationIds.add(latest.id);
-          
-          console.log('[Service Worker] Displaying background notification:', latest.title);
-          
-          // Trigger native notification with custom MB Gaming Store logo!
-          await self.registration.showNotification(latest.title, {
-            body: latest.body,
-            icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-            badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-            vibrate: [300, 100, 300],
-            data: {
-              url: latest.linkUrl || '/'
-            },
-            actions: [
-              { action: 'open', title: 'Open Store' }
-            ]
-          });
+        // If it's a completely new notification we haven't shown yet
+        if (latest.id !== lastSeenId) {
+          // If this is the first time running (no cached lastSeenId),
+          // only show if it was sent in the last 24 hours to prevent historical spam.
+          // If there is an existing lastSeenId, show it regardless of age to ensure delivery.
+          const isFresh = lastSeenId === null 
+            ? (Date.now() - latest.timestamp) < 86400000 
+            : true;
+            
+          if (isFresh) {
+            await setLastSeenId(latest.id);
+            console.log('[Service Worker] Displaying background notification:', latest.title);
+            
+            // Trigger native notification with custom MB Gaming Store logo!
+            await self.registration.showNotification(latest.title, {
+              body: latest.body,
+              icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+              badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+              vibrate: [300, 100, 300],
+              data: {
+                url: latest.linkUrl || '/'
+              },
+              actions: [
+                { action: 'open', title: 'Open Store' }
+              ]
+            });
+          } else {
+            // Just mark it as seen without showing if it's very old historical data
+            await setLastSeenId(latest.id);
+          }
         }
       }
     }
