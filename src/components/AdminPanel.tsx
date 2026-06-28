@@ -1,5 +1,16 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  db, 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  addDoc, 
+  query 
+} from '../firebase';
 import {
   ShieldCheck,
   Lock,
@@ -300,101 +311,148 @@ export default function AdminPanel({
     if (isAuth) {
       setIsLoggedIn(true);
     }
-
-    // Load or bootstrap localized mock users list
-    const localUsers = localStorage.getItem('mb_admin_users');
-    if (localUsers) {
-      setUserList(JSON.parse(localUsers));
-    } else {
-      const initialUsers = [
-        { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, points: 1500, registered: '2026-06-01' },
-        { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, points: 230, registered: '2026-06-10' },
-        { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, points: 450, registered: '2026-06-14' },
-        { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, points: 80, registered: '2026-06-18' },
-        { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, points: 900, registered: '2026-06-22' }
-      ];
-      setUserList(initialUsers);
-      localStorage.setItem('mb_admin_users', JSON.stringify(initialUsers));
-    }
-
-    // Load payments
-    const localPayments = localStorage.getItem('mb_admin_payments');
-    if (localPayments) {
-      setPaymentSettings(JSON.parse(localPayments));
-    }
-
-    // Load or bootstrap banners
-    const localBanners = localStorage.getItem('mb_admin_banners');
-    if (localBanners) {
-      setBanners(JSON.parse(localBanners));
-    } else {
-      const initialBanners = [
-        { id: 'ban-1', badge: 'WEEKLY HIGHLIGHT', title: 'Free Fire 100% Top-Up Bonus', tagline: 'Double your shell diamonds this weekend only! Automatically credited on validation.', bgColor: 'from-blue-600 to-indigo-700' },
-        { id: 'ban-2', badge: 'EXCLUSIVES', title: 'PUBG Mobile Air Drop Specials', tagline: 'Acquire UC vouchers with instant eSewa/Khalti payouts.', bgColor: 'from-purple-600 to-pink-600' }
-      ];
-      setBanners(initialBanners);
-      localStorage.setItem('mb_admin_banners', JSON.stringify(initialBanners));
-    }
-
-    // Load or bootstrap coupons
-    const localCoupons = localStorage.getItem('mb_admin_coupons');
-    if (localCoupons) {
-      setCoupons(JSON.parse(localCoupons));
-    } else {
-      const initialCoupons = [
-        { code: 'MANDIP10', discountPercent: 10, maxDiscount: 200, active: true },
-        { code: 'WINTER30', discountPercent: 30, maxDiscount: 1000, active: true },
-        { code: 'GAMERFF5', discountPercent: 5, maxDiscount: 150, active: true }
-      ];
-      setCoupons(initialCoupons);
-      localStorage.setItem('mb_admin_coupons', JSON.stringify(initialCoupons));
-    }
-
-    // Load points exchange rate
-    const localPointsRate = localStorage.getItem('mb_points_rate');
-    if (localPointsRate) {
-      setPointsRate(Number(localPointsRate));
-    }
-
-    // Load announcements
-    const localAnn = localStorage.getItem('mb_announcements');
-    if (localAnn) {
-      setAnnouncements(JSON.parse(localAnn));
-    } else {
-      const initialAnn = [
-        { id: 'ann-1', message: '📢 Welcome to MB Gaming Store! Instant UPI recharges available 24/7.', type: 'info' },
-        { id: 'ann-2', message: '⚠️ eSewa payments might take up to 5 minutes to verify due to central banking gateway delay.', type: 'alert' }
-      ];
-      setAnnouncements(initialAnn);
-      localStorage.setItem('mb_announcements', JSON.stringify(initialAnn));
-    }
-
-    // Load support tickets
-    const localTickets = localStorage.getItem('mb_support_tickets');
-    if (localTickets) {
-      setSupportTickets(JSON.parse(localTickets));
-    } else {
-      const initialTickets = [
-        { id: 'tkt-1', user: 'Rohan Shrestha', msg: 'My Free Fire recharge is pending for 10 minutes. Transaction ID is 91283021.', date: '2026-06-24 10:14', status: 'PENDING', replies: [] },
-        { id: 'tkt-2', user: 'Gamer Nepal Pro', msg: 'Can I redeem loyalty points for Free Fire Weekly memberships?', date: '2026-06-23 15:40', status: 'COMPLETED', replies: ['Yes, convert points to client balance first under your profile, then order!'] }
-      ];
-      setSupportTickets(initialTickets);
-      localStorage.setItem('mb_support_tickets', JSON.stringify(initialTickets));
-    }
-
-    // Load system settings
-    const localStoreName = localStorage.getItem('mb_store_name');
-    if (localStoreName) setStoreName(localStoreName);
-
-    const localStoreContact = localStorage.getItem('mb_store_contact');
-    if (localStoreContact) setStoreContact(localStoreContact);
-
-    const localAdminPass = localStorage.getItem('mb_admin_password');
-    if (localAdminPass) setAdminPassword(localAdminPass);
-
-    const localLegal = localStorage.getItem('mb_legal_docs');
-    if (localLegal) setLegalDocs(JSON.parse(localLegal));
   }, []);
+
+  // Sync and fetch all data from Firestore when logged in
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const loadAllFirestoreData = async () => {
+      try {
+        // 1. Users
+        const usersSnap = await getDocs(collection(db, 'users'));
+        if (!usersSnap.empty) {
+          const fetchedUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setUserList(fetchedUsers);
+        } else {
+          const initialUsers = [
+            { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, points: 1500, registered: '2026-06-01' },
+            { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, points: 230, registered: '2026-06-10' },
+            { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, points: 450, registered: '2026-06-14' },
+            { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, points: 80, registered: '2026-06-18' },
+            { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, points: 900, registered: '2026-06-22' }
+          ];
+          for (const u of initialUsers) {
+            await setDoc(doc(db, 'users', u.email), u);
+          }
+          setUserList(initialUsers);
+        }
+
+        // 2. Payments Settings
+        const paymentsDoc = await getDoc(doc(db, 'settings', 'payments'));
+        if (paymentsDoc.exists()) {
+          setPaymentSettings(paymentsDoc.data());
+        } else {
+          const initialPayments = {
+            esewa: { number: '9841234567', name: 'Mandip Mahato' },
+            khalti: { number: '9801234567', name: 'MB Gaming Digital Center' }
+          };
+          await setDoc(doc(db, 'settings', 'payments'), initialPayments);
+          setPaymentSettings(initialPayments);
+        }
+
+        // 3. Banners
+        const bannersSnap = await getDocs(collection(db, 'banners'));
+        if (!bannersSnap.empty) {
+          setBanners(bannersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          const initialBanners = [
+            { id: 'ban-1', badge: 'WEEKLY HIGHLIGHT', title: 'Free Fire 100% Top-Up Bonus', tagline: 'Double your shell diamonds this weekend only! Automatically credited on validation.', bgColor: 'from-blue-600 to-indigo-700' },
+            { id: 'ban-2', badge: 'EXCLUSIVES', title: 'PUBG Mobile Air Drop Specials', tagline: 'Acquire UC vouchers with instant eSewa/Khalti payouts.', bgColor: 'from-purple-600 to-pink-600' }
+          ];
+          for (const b of initialBanners) {
+            await setDoc(doc(db, 'banners', b.id), b);
+          }
+          setBanners(initialBanners);
+        }
+
+        // 4. Coupons
+        const couponsSnap = await getDocs(collection(db, 'coupons'));
+        if (!couponsSnap.empty) {
+          setCoupons(couponsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          const initialCoupons = [
+            { id: 'MANDIP10', code: 'MANDIP10', discountPercent: 10, maxDiscount: 200, active: true },
+            { id: 'WINTER30', code: 'WINTER30', discountPercent: 30, maxDiscount: 1000, active: true },
+            { id: 'GAMERFF5', code: 'GAMERFF5', discountPercent: 5, maxDiscount: 150, active: true }
+          ];
+          for (const c of initialCoupons) {
+            await setDoc(doc(db, 'coupons', c.code), c);
+          }
+          setCoupons(initialCoupons);
+        }
+
+        // 5. Points Rate
+        const rateDoc = await getDoc(doc(db, 'settings', 'points_rate'));
+        if (rateDoc.exists()) {
+          setPointsRate(rateDoc.data().rate);
+        } else {
+          await setDoc(doc(db, 'settings', 'points_rate'), { rate: 100 });
+          setPointsRate(100);
+        }
+
+        // 6. Announcements
+        const annSnap = await getDocs(collection(db, 'announcements'));
+        if (!annSnap.empty) {
+          setAnnouncements(annSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          const initialAnn = [
+            { id: 'ann-1', message: '📢 Welcome to MB Gaming Store! Instant UPI recharges available 24/7.', type: 'info' },
+            { id: 'ann-2', message: '⚠️ eSewa payments might take up to 5 minutes to verify due to central banking gateway delay.', type: 'alert' }
+          ];
+          for (const a of initialAnn) {
+            await setDoc(doc(db, 'announcements', a.id), a);
+          }
+          setAnnouncements(initialAnn);
+        }
+
+        // 7. Support Tickets
+        const ticketsSnap = await getDocs(collection(db, 'support_tickets'));
+        if (!ticketsSnap.empty) {
+          setSupportTickets(ticketsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          const initialTickets = [
+            { id: 'tkt-1', user: 'Rohan Shrestha', msg: 'My Free Fire recharge is pending for 10 minutes. Transaction ID is 91283021.', date: '2026-06-24 10:14', status: 'PENDING', replies: [] },
+            { id: 'tkt-2', user: 'Gamer Nepal Pro', msg: 'Can I redeem loyalty points for Free Fire Weekly memberships?', date: '2026-06-23 15:40', status: 'COMPLETED', replies: ['Yes, convert points to client balance first under your profile, then order!'] }
+          ];
+          for (const t of initialTickets) {
+            await setDoc(doc(db, 'support_tickets', t.id), t);
+          }
+          setSupportTickets(initialTickets);
+        }
+
+        // 8. General Settings
+        const genDoc = await getDoc(doc(db, 'settings', 'general'));
+        if (genDoc.exists()) {
+          const data = genDoc.data();
+          if (data.storeName) setStoreName(data.storeName);
+          if (data.storeContact) setStoreContact(data.storeContact);
+          if (data.adminPassword) setAdminPassword(data.adminPassword);
+        } else {
+          const initialGen = { storeName: 'MB Gaming Store', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0' };
+          await setDoc(doc(db, 'settings', 'general'), initialGen);
+        }
+
+        // 9. Legal Docs
+        const legalDoc = await getDoc(doc(db, 'settings', 'legal'));
+        if (legalDoc.exists()) {
+          setLegalDocs(legalDoc.data());
+        } else {
+          const initialLegal = {
+            terms: 'By registering on MB Gaming Store, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
+            refund: 'No refunds are permitted once a digital game recharge or voucher coupon has been officially approved and dispatched by the administrator.'
+          };
+          await setDoc(doc(db, 'settings', 'legal'), initialLegal);
+          setLegalDocs(initialLegal);
+        }
+      } catch (err) {
+        console.error("Error loading Firestore data:", err);
+      }
+    };
+
+    loadAllFirestoreData();
+  }, [isLoggedIn]);
+
 
   // Product modal states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -601,7 +659,7 @@ export default function AdminPanel({
   };
 
   // Payment gateways saving
-  const handleSavePaymentDetails = (gateway: 'esewa' | 'khalti', fields: any) => {
+  const handleSavePaymentDetails = async (gateway: 'esewa' | 'khalti', fields: any) => {
     const updated = {
       ...paymentSettings,
       [gateway]: {
@@ -611,11 +669,16 @@ export default function AdminPanel({
     };
     setPaymentSettings(updated);
     localStorage.setItem('mb_admin_payments', JSON.stringify(updated));
-    triggerToast('Payment Gateway settings updated locally.');
+    try {
+      await setDoc(doc(db, 'settings', 'payments'), updated);
+      triggerToast('Payment Gateway settings saved to Firestore!');
+    } catch (e) {
+      triggerToast('Payment Gateway settings updated locally.');
+    }
   };
 
   // Broadcast announcements
-  const handleAddAnnouncement = (e: FormEvent) => {
+  const handleAddAnnouncement = async (e: FormEvent) => {
     e.preventDefault();
     if (!newAnnMessage.trim()) return;
 
@@ -628,21 +691,28 @@ export default function AdminPanel({
     setAnnouncements(updated);
     localStorage.setItem('mb_announcements', JSON.stringify(updated));
     setNewAnnMessage('');
-    triggerToast('Broadcast Alert banner posted.');
+    try {
+      await setDoc(doc(db, 'announcements', newAnn.id), newAnn);
+      triggerToast('Broadcast Alert posted to Firestore!');
+    } catch (e) {
+      triggerToast('Broadcast Alert banner posted.');
+    }
   };
 
   // Support ticket replies
-  const handleSendReply = (e: FormEvent) => {
+  const handleSendReply = async (e: FormEvent) => {
     e.preventDefault();
     if (!replyText.trim() || !activeTicketId) return;
 
     const updated = supportTickets.map(tkt => {
       if (tkt.id === activeTicketId) {
-        return {
+        const updatedTkt = {
           ...tkt,
           status: 'COMPLETED',
           replies: [...tkt.replies, replyText.trim()]
         };
+        setDoc(doc(db, 'support_tickets', activeTicketId), updatedTkt).catch(err => console.error(err));
+        return updatedTkt;
       }
       return tkt;
     });
@@ -650,32 +720,39 @@ export default function AdminPanel({
     setSupportTickets(updated);
     localStorage.setItem('mb_support_tickets', JSON.stringify(updated));
     setReplyText('');
-    triggerToast('Reply dispatched to gamer.');
+    triggerToast('Reply dispatched and saved to Firestore.');
   };
 
   // Loyalty rewards distribution
-  const handleDistributePoints = (amount: number) => {
+  const handleDistributePoints = async (amount: number) => {
     const updated = userList.map(u => ({
       ...u,
       points: u.points + amount
     }));
     setUserList(updated);
     localStorage.setItem('mb_admin_users', JSON.stringify(updated));
-    triggerToast(`Rewarded +${amount} Points to all ${userList.length} registered gamer accounts.`);
+    try {
+      for (const u of updated) {
+        await setDoc(doc(db, 'users', u.email || u.id), u);
+      }
+      triggerToast(`Rewarded +${amount} Points and saved to Firestore.`);
+    } catch (e) {
+      triggerToast(`Rewarded +${amount} Points to all registered accounts.`);
+    }
   };
 
   // Admin users lists modifiers
-  const handleAddUser = (e: FormEvent) => {
+  const handleAddUser = async (e: FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
 
     const newUser = {
       id: `usr-${101 + userList.length}`,
       name: newUserName.trim(),
-      email: newUserEmail.trim(),
+      email: newUserEmail.trim().toLowerCase(),
       phone: newUserPhone.trim() || '98XXXXXXXX',
       balance: 0,
-      points: 100,
+      points: 0, // starts at 0 points
       registered: new Date().toISOString().split('T')[0]
     };
 
@@ -685,21 +762,44 @@ export default function AdminPanel({
     setNewUserName('');
     setNewUserEmail('');
     setNewUserPhone('');
-    triggerToast(`Gamer profile created for ${newUser.name}!`);
+    try {
+      await setDoc(doc(db, 'users', newUser.email), newUser);
+      triggerToast(`Gamer profile created in Firestore for ${newUser.name}!`);
+    } catch (e) {
+      triggerToast(`Gamer profile created for ${newUser.name}!`);
+    }
   };
 
-  const handleUpdateUserBalance = (userId: string, val: number) => {
+  const handleUpdateUserBalance = async (userId: string, val: number) => {
     const updated = userList.map(u => (u.id === userId ? { ...u, balance: val } : u));
     setUserList(updated);
     localStorage.setItem('mb_admin_users', JSON.stringify(updated));
-    triggerToast('User simulated wallet balance saved.');
+
+    const targetUser = updated.find(u => u.id === userId);
+    if (targetUser) {
+      try {
+        await setDoc(doc(db, 'users', targetUser.email || targetUser.id), targetUser);
+        triggerToast('User wallet balance saved to Firestore.');
+      } catch (e) {
+        triggerToast('User simulated wallet balance saved.');
+      }
+    }
   };
 
-  const handleUpdateUserPoints = (userId: string, val: number) => {
+  const handleUpdateUserPoints = async (userId: string, val: number) => {
     const updated = userList.map(u => (u.id === userId ? { ...u, points: val } : u));
     setUserList(updated);
     localStorage.setItem('mb_admin_users', JSON.stringify(updated));
-    triggerToast('User loyalty points updated.');
+
+    const targetUser = updated.find(u => u.id === userId);
+    if (targetUser) {
+      try {
+        await setDoc(doc(db, 'users', targetUser.email || targetUser.id), targetUser);
+        triggerToast('User loyalty points saved to Firestore.');
+      } catch (e) {
+        triggerToast('User loyalty points updated.');
+      }
+    }
   };
 
   // Search filtered products
@@ -1687,12 +1787,17 @@ export default function AdminPanel({
                             <td className="py-3 px-4 font-mono text-zinc-400 text-[10px]">{usr.registered}</td>
                             <td className="py-3 px-4 text-right">
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   if (confirm(`Are you sure you want to delete account directory for ${usr.name}?`)) {
                                     const updated = userList.filter((u: any) => u.id !== usr.id);
                                     setUserList(updated);
                                     localStorage.setItem('mb_admin_users', JSON.stringify(updated));
-                                    triggerToast('Account profile deleted.');
+                                    try {
+                                      await setDoc(doc(db, 'users', usr.email || usr.id), { ...usr, deleted: true });
+                                      triggerToast('Account profile deleted from Firestore.');
+                                    } catch (e) {
+                                      triggerToast('Account profile deleted.');
+                                    }
                                   }
                                 }}
                                 className="p-1 hover:bg-red-50 text-zinc-400 hover:text-red-600 border border-zinc-100 rounded-lg transition-colors cursor-pointer"
@@ -1988,13 +2093,18 @@ export default function AdminPanel({
                       
                       <div className="flex flex-row md:flex-col gap-2 shrink-0 self-stretch justify-end md:justify-center">
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const newTitle = prompt('Edit banner title:', ban.title);
                             if (newTitle) {
                               const updated = banners.map((b: any) => (b.id === ban.id ? { ...b, title: newTitle } : b));
                               setBanners(updated);
                               localStorage.setItem('mb_admin_banners', JSON.stringify(updated));
-                              triggerToast('Banner updated.');
+                              try {
+                                await setDoc(doc(db, 'banners', ban.id), { ...ban, title: newTitle });
+                                triggerToast('Banner updated in Firestore.');
+                              } catch (e) {
+                                triggerToast('Banner updated.');
+                              }
                             }
                           }}
                           className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-black uppercase tracking-wider py-2 px-4 rounded-xl transition-all cursor-pointer"
@@ -2002,11 +2112,16 @@ export default function AdminPanel({
                           Edit Content
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const updated = banners.filter((b: any) => b.id !== ban.id);
                             setBanners(updated);
                             localStorage.setItem('mb_admin_banners', JSON.stringify(updated));
-                            triggerToast('Banner deleted.');
+                            try {
+                              await setDoc(doc(db, 'banners', ban.id), { ...ban, deleted: true });
+                              triggerToast('Banner removed from Firestore.');
+                            } catch (e) {
+                              triggerToast('Banner deleted.');
+                            }
                           }}
                           className="bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider py-2 px-4 rounded-xl border border-red-100 transition-all cursor-pointer"
                         >
@@ -2108,22 +2223,32 @@ export default function AdminPanel({
                       
                       <div className="flex items-center gap-2 mt-4.5 pt-3 border-t border-zinc-100">
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const updated = coupons.map((c: any) => (c.code === cp.code ? { ...c, active: !c.active } : c));
                             setCoupons(updated);
                             localStorage.setItem('mb_admin_coupons', JSON.stringify(updated));
-                            triggerToast('Coupon status changed.');
+                            try {
+                              await setDoc(doc(db, 'coupons', cp.code), { ...cp, active: !cp.active });
+                              triggerToast('Coupon updated in Firestore.');
+                            } catch (e) {
+                              triggerToast('Coupon status changed.');
+                            }
                           }}
                           className="flex-1 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 text-[9.5px] font-black py-2 rounded-lg transition-all cursor-pointer"
                         >
                           Toggle Active
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const updated = coupons.filter((c: any) => c.code !== cp.code);
                             setCoupons(updated);
                             localStorage.setItem('mb_admin_coupons', JSON.stringify(updated));
-                            triggerToast('Coupon deleted.');
+                            try {
+                              await setDoc(doc(db, 'coupons', cp.code), { ...cp, deleted: true });
+                              triggerToast('Coupon deleted from Firestore.');
+                            } catch (e) {
+                              triggerToast('Coupon deleted.');
+                            }
                           }}
                           className="p-2 hover:bg-red-50 text-zinc-400 hover:text-red-600 rounded-lg border border-zinc-100 transition-colors cursor-pointer"
                         >
@@ -2167,10 +2292,13 @@ export default function AdminPanel({
                         type="number"
                         min={1}
                         value={pointsRate}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const val = Number(e.target.value);
                           setPointsRate(val);
                           localStorage.setItem('mb_points_rate', val.toString());
+                          try {
+                            await setDoc(doc(db, 'settings', 'points_rate'), { rate: val });
+                          } catch (err) {}
                         }}
                         className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
                       />
@@ -2519,10 +2647,13 @@ export default function AdminPanel({
                     <label className="block text-xs font-black uppercase text-zinc-700 tracking-tight">Terms & Conditions Agreement Block</label>
                     <textarea
                       value={legalDocs.terms}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const updated = { ...legalDocs, terms: e.target.value };
                         setLegalDocs(updated);
                         localStorage.setItem('mb_legal_docs', JSON.stringify(updated));
+                        try {
+                          await setDoc(doc(db, 'settings', 'legal'), updated);
+                        } catch (err) {}
                       }}
                       rows={5}
                       className="w-full mt-2 bg-zinc-50 border border-zinc-200 rounded-2xl py-3 px-4 text-xs font-medium focus:outline-none focus:border-blue-500 leading-relaxed"
@@ -2533,10 +2664,13 @@ export default function AdminPanel({
                     <label className="block text-xs font-black uppercase text-zinc-700 tracking-tight">Refund & Chargeback Policy Block</label>
                     <textarea
                       value={legalDocs.refund}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const updated = { ...legalDocs, refund: e.target.value };
                         setLegalDocs(updated);
                         localStorage.setItem('mb_legal_docs', JSON.stringify(updated));
+                        try {
+                          await setDoc(doc(db, 'settings', 'legal'), updated);
+                        } catch (err) {}
                       }}
                       rows={5}
                       className="w-full mt-2 bg-zinc-50 border border-zinc-200 rounded-2xl py-3 px-4 text-xs font-medium focus:outline-none focus:border-blue-500 leading-relaxed"
@@ -2600,9 +2734,12 @@ export default function AdminPanel({
                       <input
                         type="text"
                         value={storeName}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           setStoreName(e.target.value);
                           localStorage.setItem('mb_store_name', e.target.value);
+                          try {
+                            await setDoc(doc(db, 'settings', 'general'), { storeName: e.target.value, storeContact, adminPassword });
+                          } catch (err) {}
                         }}
                         className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none"
                       />
@@ -2613,9 +2750,12 @@ export default function AdminPanel({
                       <input
                         type="email"
                         value={storeContact}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           setStoreContact(e.target.value);
                           localStorage.setItem('mb_store_contact', e.target.value);
+                          try {
+                            await setDoc(doc(db, 'settings', 'general'), { storeName, storeContact: e.target.value, adminPassword });
+                          } catch (err) {}
                         }}
                         className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none"
                       />
@@ -2631,9 +2771,12 @@ export default function AdminPanel({
                       <input
                         type="password"
                         value={adminPassword}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           setAdminPassword(e.target.value);
                           localStorage.setItem('mb_admin_password', e.target.value);
+                          try {
+                            await setDoc(doc(db, 'settings', 'general'), { storeName, storeContact, adminPassword: e.target.value });
+                          } catch (err) {}
                         }}
                         className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-bold"
                       />

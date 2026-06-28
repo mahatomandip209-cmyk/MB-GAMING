@@ -1,6 +1,8 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, setDoc, getDoc, doc, addDoc } from "firebase/firestore";
 
 // Initialize Express app
 const app = express();
@@ -20,6 +22,20 @@ app.use((req, res, next) => {
 
 // Enable JSON body parsing
 app.use(express.json());
+
+const firebaseConfig = {
+  projectId: "gen-lang-client-0930602584",
+  appId: "1:140989933378:web:1d77d39a8a7febe1a60adb",
+  apiKey: "AIzaSyCOyrRlJz8voqUF7UXSe7Lsz-OfEnZcAP4",
+  authDomain: "gen-lang-client-0930602584.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-topupapp-7cbcfc1d-d676-4eac-bf74-e4e2c2d49ceb",
+  storageBucket: "gen-lang-client-0930602584.firebasestorage.app",
+  messagingSenderId: "140989933378"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+
 
 // In-memory store for the verification code (single administrator scope)
 let currentCode: string | null = null;
@@ -113,127 +129,115 @@ app.post("/api/verify-code", (req, res) => {
   }
 });
 
-// Store notifications in-memory with initial sample notifications
-let systemNotifications = [
-  {
-    id: "notif-sample-1",
-    title: "🔥 Welcome to MB Gaming Store!",
-    body: "Get instant recharges, game diamonds, vouchers and subscriptions with 24/7 automatic processing. Enable push notifications for flash sales!",
-    iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-    linkUrl: "/",
-    timestamp: Date.now() - 3600000 * 2 // 2 hours ago
-  },
-  {
-    id: "notif-sample-2",
-    title: "⚡ Free Fire Weekly Membership Special Offer",
-    body: "Claim extra bonus points on every Free Fire diamond purchase this week. Live validation takes less than 3 minutes!",
-    iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-    linkUrl: "/",
-    timestamp: Date.now() - 3600000 * 24 // 24 hours ago
-  }
-];
-
 // GET api/notifications - retrieve list
-app.get("/api/notifications", (req, res) => {
-  res.json({ success: true, notifications: systemNotifications });
+app.get("/api/notifications", async (req, res) => {
+  try {
+    const snap = await getDocs(collection(db, "notifications"));
+    let notifications: any[] = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (notifications.length === 0) {
+      notifications = [
+        {
+          id: "notif-sample-1",
+          title: "🔥 Welcome to MB Gaming Store!",
+          body: "Get instant recharges, game diamonds, vouchers and subscriptions with 24/7 automatic processing. Enable push notifications for flash sales!",
+          iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+          linkUrl: "/",
+          timestamp: Date.now() - 3600000 * 2
+        }
+      ];
+    }
+    notifications.sort((a: any, b: any) => b.timestamp - a.timestamp);
+    res.json({ success: true, notifications });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
 });
 
 // POST api/notifications - publish a new push notification from Admin Panel
-app.post("/api/notifications", (req, res) => {
+app.post("/api/notifications", async (req, res) => {
   const { title, body, iconUrl, linkUrl } = req.body;
-  
   if (!title || !body) {
     res.status(400).json({ success: false, error: "Title and description are required." });
     return;
   }
-
   const newNotif = {
-    id: `notif-${Date.now()}`,
     title: title.trim(),
     body: body.trim(),
     iconUrl: iconUrl ? iconUrl.trim() : "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
     linkUrl: linkUrl ? linkUrl.trim() : "/",
     timestamp: Date.now()
   };
-
-  systemNotifications.unshift(newNotif);
-  
-  // Keep last 40 notifications
-  if (systemNotifications.length > 40) {
-    systemNotifications = systemNotifications.slice(0, 40);
+  try {
+    const docRef = await addDoc(collection(db, "notifications"), newNotif);
+    res.json({ success: true, notification: { id: docRef.id, ...newNotif } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
   }
-
-  res.json({ success: true, notification: newNotif });
 });
 
-// Store transactions/orders in-memory for server-side persistence & multi-device sync
-let systemTransactions = [
-  {
-    id: 'tx-202601',
-    productId: 'garena-freefire',
-    productName: 'Garena Free Fire Diamonds',
-    provider: 'Garena',
-    category: 'top-up',
-    amount: 499,
-    timestamp: '2026-06-20 05:12',
-    status: 'SUCCESS',
-    targetAccount: 'UID: 928348293'
-  },
-  {
-    id: 'tx-202602',
-    productId: 'netflix-sub-card',
-    productName: 'Netflix Premium Subscription Room',
-    provider: 'Netflix Inc.',
-    category: 'subscription',
-    amount: 649,
-    timestamp: '2026-06-19 18:45',
-    status: 'SUCCESS',
-    targetAccount: 'profile@netflix.com'
-  }
-];
-
 // GET api/transactions - retrieve orders list
-app.get("/api/transactions", (req, res) => {
-  res.json({ success: true, transactions: systemTransactions });
+app.get("/api/transactions", async (req, res) => {
+  try {
+    const snap = await getDocs(collection(db, "transactions"));
+    let transactions: any[] = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (transactions.length === 0) {
+      transactions = [
+        {
+          id: 'tx-202601',
+          productId: 'garena-freefire',
+          productName: 'Garena Free Fire Diamonds',
+          provider: 'Garena',
+          category: 'top-up',
+          amount: 499,
+          timestamp: '2026-06-20 05:12',
+          status: 'SUCCESS',
+          targetAccount: 'UID: 928348293'
+        }
+      ];
+    }
+    transactions.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    res.json({ success: true, transactions });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
+  }
 });
 
 // POST api/transactions - submit new order (placed by users or admins)
-app.post("/api/transactions", (req, res) => {
+app.post("/api/transactions", async (req, res) => {
   const newTx = req.body;
   if (!newTx || !newTx.id) {
     res.status(400).json({ success: false, error: "Invalid transaction data." });
     return;
   }
-  
-  // Prepend new order
-  systemTransactions.unshift(newTx);
-  
-  // Keep last 150 transactions
-  if (systemTransactions.length > 150) {
-    systemTransactions = systemTransactions.slice(0, 150);
+  try {
+    await setDoc(doc(db, "transactions", newTx.id), newTx);
+    res.json({ success: true, transaction: newTx });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
   }
-  
-  res.json({ success: true, transaction: newTx });
 });
 
 // PUT api/transactions/:id - update order status (approve / reject)
-app.put("/api/transactions/:id", (req, res) => {
+app.put("/api/transactions/:id", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  
   if (!status) {
     res.status(400).json({ success: false, error: "Status is required." });
     return;
   }
-  
-  const tx = systemTransactions.find(t => t.id === id);
-  if (!tx) {
-    res.status(404).json({ success: false, error: "Order not found." });
-    return;
+  try {
+    const txDoc = await getDoc(doc(db, "transactions", id));
+    if (!txDoc.exists()) {
+      res.status(404).json({ success: false, error: "Order not found." });
+      return;
+    }
+    const txData = txDoc.data();
+    txData.status = status;
+    await setDoc(doc(db, "transactions", id), txData);
+    res.json({ success: true, transaction: { id, ...txData } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) });
   }
-  
-  tx.status = status;
-  res.json({ success: true, transaction: tx });
 });
 
 // Server-side in-memory user registry
@@ -276,17 +280,14 @@ app.post("/api/auth/register", (req, res) => {
   
   // Add a server-side registration notification
   const newNotif = {
-    id: `notif-reg-${Date.now()}`,
     title: "🎉 Registration Successful!",
     body: `Welcome, ${newUser.name}! Your account has been registered successfully.`,
     iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
     linkUrl: "/",
     timestamp: Date.now()
   };
-  systemNotifications.unshift(newNotif);
-  if (systemNotifications.length > 40) {
-    systemNotifications = systemNotifications.slice(0, 40);
-  }
+  addDoc(collection(db, "notifications"), newNotif).catch(e => console.error(e));
+
   
   // Return the user session details (excluding password)
   const { password: _, ...userSession } = newUser;
@@ -312,17 +313,14 @@ app.post("/api/auth/login", (req, res) => {
   
   // Add a server-side login notification
   const newNotif = {
-    id: `notif-login-${Date.now()}`,
     title: "🔑 Login Successful!",
     body: `Welcome back, ${user.name}! You have logged in successfully to your MB Gaming account.`,
     iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
     linkUrl: "/",
     timestamp: Date.now()
   };
-  systemNotifications.unshift(newNotif);
-  if (systemNotifications.length > 40) {
-    systemNotifications = systemNotifications.slice(0, 40);
-  }
+  addDoc(collection(db, "notifications"), newNotif).catch(e => console.error(e));
+
   
   const { password: _, ...userSession } = user;
   res.json({ success: true, user: userSession, message: "Welcome back!" });

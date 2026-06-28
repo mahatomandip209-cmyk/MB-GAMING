@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, Gamepad2 } from 'lucide-react';
+import { 
+  auth, 
+  db, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile,
+  doc, 
+  setDoc, 
+  getDoc 
+} from '../firebase';
 
 interface LoginRegisterProps {
   onSuccess: (user: { name: string; email: string; walletBalance: number; loyaltyPoints: number }) => void;
@@ -59,109 +69,86 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const body = isLogin 
-        ? { email, password } 
-        : { name: name.trim(), email, password };
-
-      const response = await fetch(getBackendUrl(endpoint), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.user) {
-        triggerToast(data.message || (isLogin ? "Logged in successfully!" : "Registered successfully!"));
-        
-        // Save user state in local storage list of sessions
-        localStorage.setItem('mb_current_user', JSON.stringify(data.user));
-        
-        // Propagate success upwards
-        onSuccess(data.user);
-      } else {
-        setError(data.error || 'Authentication failed. Please try again.');
-      }
-    } catch (err) {
-      console.error("Auth API Error:", err);
-      // Client-side fallback if server connection is unavailable
-      handleLocalFallback();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Highly robust local fallback so authentication works even if server is reloading or temporary network drop
-  const handleLocalFallback = () => {
-    try {
       const emailLower = email.toLowerCase().trim();
-      const storedAccountsStr = localStorage.getItem('mb_gaming_accounts');
-      const accounts = storedAccountsStr ? JSON.parse(storedAccountsStr) : [
-        {
-          name: "Mandip Mahato",
-          email: "mandipmahato717@gmail.com",
-          password: "password123",
-          walletBalance: 2450,
-          loyaltyPoints: 86534
-        }
-      ];
 
       if (isLogin) {
-        const found = accounts.find((acc: any) => acc.email.toLowerCase() === emailLower);
-        if (!found) {
-          setError('Invalid email address or incorrect password.');
-          return;
-        }
-        if (found.password !== password) {
-          setError('Incorrect password. Please try again.');
-          return;
+        // Firebase Auth: Sign In
+        const userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
+        
+        // Fetch User profile from Firestore
+        const userDocRef = doc(db, 'users', emailLower);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        let userProfile;
+        if (userDocSnap.exists()) {
+          userProfile = userDocSnap.data();
+        } else {
+          // Fallback bootstrap if user profile doesn't exist in Firestore
+          userProfile = {
+            name: userCredential.user.displayName || emailLower.split('@')[0],
+            email: emailLower,
+            walletBalance: 2500,
+            loyaltyPoints: 0,
+            registered: new Date().toISOString().split('T')[0]
+          };
+          await setDoc(userDocRef, userProfile);
         }
 
-        // Successfully logged in locally
-        const userSession = {
-          name: found.name,
-          email: found.email,
-          walletBalance: found.walletBalance ?? 2500,
-          loyaltyPoints: found.loyaltyPoints ?? 0
-        };
-        localStorage.setItem('mb_current_user', JSON.stringify(userSession));
         triggerToast("Welcome back! Logged in successfully.");
-        onSuccess(userSession);
+        localStorage.setItem('mb_current_user', JSON.stringify(userProfile));
+        onSuccess(userProfile as any);
       } else {
-        const exists = accounts.some((acc: any) => acc.email.toLowerCase() === emailLower);
-        if (exists) {
-          setError('An account with this email address already exists.');
-          return;
-        }
+        // Firebase Auth: Register
+        const userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
+        await updateProfile(userCredential.user, { displayName: name.trim() });
 
-        const newUser = {
+        // Save User profile in Firestore with starting 0 points and 2500 balance
+        const userDocRef = doc(db, 'users', emailLower);
+        const newUserProfile = {
           name: name.trim(),
           email: emailLower,
-          password: password,
           walletBalance: 2500,
-          loyaltyPoints: 0
+          loyaltyPoints: 0,
+          registered: new Date().toISOString().split('T')[0]
         };
+        await setDoc(userDocRef, newUserProfile);
 
-        accounts.push(newUser);
-        localStorage.setItem('mb_gaming_accounts', JSON.stringify(accounts));
+        // Track a notification on server/db as well
+        try {
+          fetch(getBackendUrl('/api/notifications'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              title: "🎉 Registration Successful!",
+              body: `Welcome, ${name.trim()}! Your account has been registered successfully.`,
+              linkUrl: "/",
+              iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+            })
+          }).catch(() => {});
+        } catch (e) {}
 
-        const userSession = {
-          name: newUser.name,
-          email: newUser.email,
-          walletBalance: newUser.walletBalance,
-          loyaltyPoints: newUser.loyaltyPoints
-        };
-        localStorage.setItem('mb_current_user', JSON.stringify(userSession));
         triggerToast("Registration successful! Welcome to MB Gaming.");
-        onSuccess(userSession);
+        localStorage.setItem('mb_current_user', JSON.stringify(newUserProfile));
+        onSuccess(newUserProfile);
       }
-    } catch (e) {
-      console.error(e);
-      setError('An unexpected error occurred during local authentication.');
+    } catch (err: any) {
+      console.error("Firebase Auth Error:", err);
+      let errMsg = "Authentication failed. Please try again.";
+      if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+        errMsg = "Invalid email address or incorrect password.";
+      } else if (err.code === "auth/user-not-found") {
+        errMsg = "No account found with this email.";
+      } else if (err.code === "auth/email-already-in-use") {
+        errMsg = "An account with this email address already exists.";
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      setError(errMsg);
+    } finally {
+      setLoading(false);
     }
   };
 

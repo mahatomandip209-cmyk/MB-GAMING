@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "walletBalance": { "type": "number" },
+        "loyaltyPoints": { "type": "number" },
+        "registered": { "type": "string" }
+      },
+      "required": ["name", "email"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System or push notification",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "iconUrl": { "type": "string" },
+        "linkUrl": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["title", "body", "timestamp"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A top-up or product purchase transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "provider": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "status": { "type": "string" },
+        "targetAccount": { "type": "string" }
+      },
+      "required": ["id", "amount", "status"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Registered user profiles"
+    },
+    "notifications": {
+      "schema": "Notification",
+      "description": "System notifications"
+    },
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Purchase transaction records"
+    }
+  }
+}
