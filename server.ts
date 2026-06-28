@@ -269,7 +269,7 @@ app.post("/api/auth/register", (req, res) => {
     email: emailLower,
     password: password,
     walletBalance: 2500, // starting gift balance
-    loyaltyPoints: 500 // starting sign-up bonus points
+    loyaltyPoints: 0 // starting points are zero
   };
   
   systemUsers.push(newUser);

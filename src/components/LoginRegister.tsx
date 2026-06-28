@@ -126,7 +126,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           name: found.name,
           email: found.email,
           walletBalance: found.walletBalance ?? 2500,
-          loyaltyPoints: found.loyaltyPoints ?? 500
+          loyaltyPoints: found.loyaltyPoints ?? 0
         };
         localStorage.setItem('mb_current_user', JSON.stringify(userSession));
         triggerToast("Logged in successfully (offline fallback)!");
@@ -143,7 +143,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           email: emailLower,
           password: password,
           walletBalance: 2500,
-          loyaltyPoints: 500
+          loyaltyPoints: 0
         };
 
         accounts.push(newUser);

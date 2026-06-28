@@ -2234,33 +2234,6 @@ export default function App() {
                     <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
                   </div>
 
-                  {/* Admin Portal Shortcut */}
-                  <div 
-                    onClick={() => {
-                      window.history.pushState({}, '', '/admin');
-                      const navEvent = new PopStateEvent('popstate');
-                      window.dispatchEvent(navEvent);
-                    }}
-                    className="flex items-center justify-between p-2.5 bg-blue-50/40 hover:bg-blue-50 border border-blue-100/30 rounded-xl cursor-pointer transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center border border-blue-200/50">
-                        <ShieldCheck className="w-4.5 h-4.5" />
-                      </div>
-                      <div>
-                        <h5 className="text-[11px] font-extrabold text-blue-950">Admin Portal 🔑</h5>
-                        <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Manage products & orders</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
-                  </div>
-
-                </div>
-
-                {/* Legal Links section */}
-                <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
-                  <span className="block text-[9.5px] font-black text-zinc-400 px-2 tracking-wider uppercase">LEGAL</span>
-                  
                   {/* Terms & Conditions */}
                   <div 
                     onClick={() => triggerToast("Displaying Terms & Conditions document...")}
