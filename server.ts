@@ -2,7 +2,8 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, setDoc, getDoc, doc, addDoc } from "firebase/firestore";
+import { getFirestore, collection, getDocs, setDoc, getDoc, doc, addDoc, deleteDoc } from "firebase/firestore";
+import webpush from "web-push";
 
 // Initialize Express app
 const app = express();
@@ -35,6 +36,74 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+
+// VAPID keys for Web Push notifications
+let vapidKeys: { publicKey: string; privateKey: string } | null = null;
+
+async function initVapid() {
+  try {
+    const configDocRef = doc(db, "app_config", "vapid_keys");
+    const configDoc = await getDoc(configDocRef);
+    if (configDoc.exists()) {
+      const data = configDoc.data();
+      vapidKeys = {
+        publicKey: data.publicKey,
+        privateKey: data.privateKey
+      };
+      console.log("[Web Push] VAPID keys loaded successfully from Firestore.");
+    } else {
+      const keys = webpush.generateVAPIDKeys();
+      await setDoc(configDocRef, {
+        publicKey: keys.publicKey,
+        privateKey: keys.privateKey,
+        createdAt: Date.now()
+      });
+      vapidKeys = keys;
+      console.log("[Web Push] VAPID keys generated and persisted to Firestore.");
+    }
+    
+    // Set VAPID details with owner mail
+    webpush.setVapidDetails(
+      "mailto:mandipmahato717@gmail.com",
+      vapidKeys.publicKey,
+      vapidKeys.privateKey
+    );
+  } catch (err) {
+    console.error("[Web Push] Failed to initialize VAPID keys:", err);
+  }
+}
+
+// Send real-time Web Push notification to all active devices (runs 100% in background)
+async function sendPushToAll(payload: any) {
+  try {
+    const snap = await getDocs(collection(db, "push_subscriptions"));
+    console.log(`[Web Push] Broadcasting to ${snap.docs.length} active device subscriptions...`);
+    
+    const pushPromises = snap.docs.map(async (d) => {
+      const data = d.data();
+      const subscription = data.subscription;
+      try {
+        await webpush.sendNotification(subscription, JSON.stringify(payload));
+      } catch (err: any) {
+        // 410 Gone or 404 Not Found means the browser unsubscribed or subscription expired
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`[Web Push] Deleting expired push subscription: ${d.id}`);
+          try {
+            await deleteDoc(d.ref);
+          } catch (deleteErr) {
+            console.error(`[Web Push] Failed to delete expired subscription ${d.id}:`, deleteErr);
+          }
+        } else {
+          console.error(`[Web Push] Error sending push to ${d.id}:`, err);
+        }
+      }
+    });
+    
+    await Promise.all(pushPromises);
+  } catch (err) {
+    console.error("[Web Push] Error broadcasting push notifications:", err);
+  }
+}
 
 
 // In-memory store for the verification code (single administrator scope)
@@ -153,6 +222,37 @@ app.get("/api/notifications", async (req, res) => {
   }
 });
 
+// GET api/push/public-key - retrieve VAPID public key
+app.get("/api/push/public-key", (req, res) => {
+  if (vapidKeys) {
+    res.json({ success: true, publicKey: vapidKeys.publicKey });
+  } else {
+    res.status(500).json({ success: false, error: "Web Push system is still initializing. Please reload." });
+  }
+});
+
+// POST api/push/subscribe - subscribe device for background alerts
+app.post("/api/push/subscribe", async (req, res) => {
+  const { subscription, email } = req.body;
+  if (!subscription || !subscription.endpoint) {
+    res.status(400).json({ success: false, error: "Subscription payload is required." });
+    return;
+  }
+  try {
+    // Unique base64 hash of endpoint to prevent duplication in Firestore
+    const hash = Buffer.from(subscription.endpoint).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(-64);
+    await setDoc(doc(db, "push_subscriptions", hash), {
+      subscription,
+      email: email ? email.toLowerCase().trim() : null,
+      timestamp: Date.now()
+    });
+    res.json({ success: true, message: "PWA device successfully registered for background push alerts!" });
+  } catch (err) {
+    console.error("[Web Push] Subscription save error:", err);
+    res.status(500).json({ success: false, error: String(err) });
+  }
+});
+
 // POST api/notifications - publish a new push notification from Admin Panel
 app.post("/api/notifications", async (req, res) => {
   const { title, body, iconUrl, linkUrl } = req.body;
@@ -169,6 +269,17 @@ app.post("/api/notifications", async (req, res) => {
   };
   try {
     const docRef = await addDoc(collection(db, "notifications"), newNotif);
+    
+    // Broadcast Web Push instantly to all devices in background (even when browser/app is closed!)
+    sendPushToAll({
+      id: docRef.id,
+      title: newNotif.title,
+      body: newNotif.body,
+      iconUrl: newNotif.iconUrl,
+      linkUrl: newNotif.linkUrl,
+      timestamp: newNotif.timestamp
+    }).catch(err => console.error("[Web Push] Async broadcast error:", err));
+
     res.json({ success: true, notification: { id: docRef.id, ...newNotif } });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });
@@ -359,6 +470,9 @@ app.post("/api/auth/sync-profile", (req, res) => {
 });
 
 async function startServer() {
+  // Initialize Web Push VAPID keys
+  await initVapid();
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

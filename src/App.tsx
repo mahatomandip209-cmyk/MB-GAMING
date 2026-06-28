@@ -221,6 +221,21 @@ export function getProductPackages(product: Product): { name: string; price: num
   ];
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function App() {
   // STATE MANAGEMENT
   const [products, setProducts] = useState<Product[]>(() => {
@@ -529,6 +544,7 @@ export default function App() {
           // Send message immediately if there is an active worker
           if (reg.active) {
             reg.active.postMessage({ type: 'SET_BACKEND_URL', url: savedBackend });
+            syncPushSubscription();
           }
           
           // Also set up a listener for controllerchange or statechange to send it as soon as a worker becomes active
@@ -538,6 +554,7 @@ export default function App() {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'activated') {
                   newWorker.postMessage({ type: 'SET_BACKEND_URL', url: savedBackend });
+                  syncPushSubscription();
                 }
               });
             }
@@ -565,6 +582,56 @@ export default function App() {
     return () => clearInterval(pollInterval);
   }, []);
 
+  // Synchronize Push Subscription with Backend
+  const syncPushSubscription = async () => {
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      
+      // Get current subscription
+      let subscription = await reg.pushManager.getSubscription();
+      
+      // Fetch VAPID public key from backend
+      const response = await fetch(getBackendUrl('/api/push/public-key'));
+      const data = await response.json();
+      
+      if (data && data.success && data.publicKey) {
+        const convertedVapidKey = urlBase64ToUint8Array(data.publicKey);
+        
+        // If there's no subscription, subscribe
+        if (!subscription) {
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+        }
+        
+        console.log('[Push] Subscription synchronized successfully:', subscription);
+        
+        // Save/Sync on backend
+        await fetch(getBackendUrl('/api/push/subscribe'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            subscription,
+            email: currentUser ? currentUser.email : null
+          })
+        });
+      }
+    } catch (err) {
+      console.warn('[Push] Error synchronizing push subscription:', err);
+    }
+  };
+
+  // Sync push subscription when current user logs in/out
+  useEffect(() => {
+    syncPushSubscription();
+  }, [currentUser]);
+
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
       triggerToast("Notifications are not supported on this browser.");
@@ -577,6 +644,9 @@ export default function App() {
       if (permission === 'granted') {
         triggerToast("🎉 Push Notifications successfully enabled!");
         
+        // Sync push subscription right away
+        syncPushSubscription();
+
         // Show immediate confirmation message using Service Worker
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;

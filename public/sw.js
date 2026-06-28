@@ -124,15 +124,15 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = payload.title;
+  const title = payload.title || 'MB GAMING STORE Alert';
   const options = {
-    body: payload.body,
-    icon: payload.icon || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+    body: payload.body || 'New update available on MB Gaming Store!',
+    icon: payload.iconUrl || payload.icon || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
     badge: 'https://img.icons8.com/ios-filled/96/ffffff/game-controller.png',
     vibrate: [200, 100, 200],
     sound: 'https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3',
     data: {
-      url: payload.url || '/'
+      url: payload.linkUrl || payload.url || '/'
     }
   };
 
