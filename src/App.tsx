@@ -640,7 +640,7 @@ export default function App() {
   }, [transactions]);
 
   // Favorites state
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(['garena-freefire', 'pubg-mobile-uc']);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   // toggle favorite
   const toggleFavorite = (productId: string, e: MouseEvent) => {
