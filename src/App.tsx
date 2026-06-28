@@ -50,6 +50,7 @@ import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
 import { LoginRegister } from './components/LoginRegister';
+import { db, collection, getDocs } from './firebase';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
   // Mobile Legends
@@ -330,21 +331,18 @@ export default function App() {
 
   // Connection states for other mobile devices
   const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
-    const saved = localStorage.getItem('mb_backend_api_url');
-    if (saved) return saved;
-    const isLocalOrPreview = window.location.hostname.includes('run.app') || 
-                             window.location.hostname.includes('localhost') || 
-                             window.location.hostname.includes('127.0.0.1');
-    if (isLocalOrPreview) {
-      return window.location.origin;
-    }
-    return 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+    return localStorage.getItem('mb_backend_api_url') || '';
   });
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [connectionError, setConnectionError] = useState<string>('');
 
   const testConnection = async (targetUrl?: string) => {
     const urlToTest = targetUrl || customBackendUrl;
+    if (!urlToTest) {
+      setConnectionStatus('disconnected');
+      setConnectionError('No backend URL configured.');
+      return false;
+    }
     setConnectionStatus('checking');
     try {
       const data = await safeFetchJson(`${urlToTest}/api/notifications`, {
@@ -375,13 +373,14 @@ export default function App() {
   };
 
   const getBackendUrl = (path: string): string => {
+    const savedBackend = localStorage.getItem('mb_backend_api_url');
+    if (savedBackend && savedBackend.trim() !== '') {
+      return `${savedBackend.trim()}${path}`;
+    }
     const isLocalOrPreview = window.location.hostname.includes('run.app') || 
                              window.location.hostname.includes('localhost') || 
                              window.location.hostname.includes('127.0.0.1');
-    const savedBackend = localStorage.getItem('mb_backend_api_url');
-    const backendBase = isLocalOrPreview 
-      ? '' 
-      : (savedBackend || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app');
+    const backendBase = isLocalOrPreview ? '' : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
     return `${backendBase}${path}`;
   };
 
@@ -416,51 +415,66 @@ export default function App() {
     }
   };
 
+  const handleNewNotificationAlert = async (notificationsList: any[]) => {
+    if (notificationsList.length > 0) {
+      const latest = notificationsList[0];
+      const lastSeenId = localStorage.getItem('mb_gaming_last_seen_notif_id');
+      
+      if (lastSeenId) {
+        if (lastSeenId !== latest.id) {
+          // Display a beautiful in-app toast notification instantly!
+          triggerToast(`🔔 ${latest.title}: ${latest.body}`);
+          
+          // Also trigger a device native push notification if permission is granted
+          if ('Notification' in window && Notification.permission === 'granted') {
+            if ('serviceWorker' in navigator) {
+              const reg = await navigator.serviceWorker.ready;
+              reg.showNotification(latest.title, {
+                body: latest.body,
+                icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+                badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+                vibrate: [300, 100, 300],
+                tag: latest.id,
+                data: {
+                  url: '/'
+                }
+              } as any);
+            } else {
+              new Notification(latest.title, {
+                body: latest.body,
+                icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+              });
+            }
+          }
+        }
+      }
+      
+      // Record the ID so we only alert on brand new incoming notifications
+      localStorage.setItem('mb_gaming_last_seen_notif_id', latest.id);
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       const data = await safeFetchJson(getBackendUrl('/api/notifications'));
       if (data.success && data.notifications) {
         setServerNotifications(data.notifications);
-        
-        if (data.notifications.length > 0) {
-          const latest = data.notifications[0];
-          const lastSeenId = localStorage.getItem('mb_gaming_last_seen_notif_id');
-          
-          if (lastSeenId) {
-            if (lastSeenId !== latest.id) {
-              // Display a beautiful in-app toast notification instantly!
-              triggerToast(`🔔 ${latest.title}: ${latest.body}`);
-              
-              // Also trigger a device native push notification if permission is granted
-              if ('Notification' in window && Notification.permission === 'granted') {
-                if ('serviceWorker' in navigator) {
-                  const reg = await navigator.serviceWorker.ready;
-                  reg.showNotification(latest.title, {
-                    body: latest.body,
-                    icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-                    badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-                    vibrate: [300, 100, 300],
-                    tag: latest.id,
-                    data: {
-                      url: '/'
-                    }
-                  } as any);
-                } else {
-                  new Notification(latest.title, {
-                    body: latest.body,
-                    icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
-                  });
-                }
-              }
-            }
-          }
-          
-          // Record the ID so we only alert on brand new incoming notifications
-          localStorage.setItem('mb_gaming_last_seen_notif_id', latest.id);
-        }
+        handleNewNotificationAlert(data.notifications);
+        return;
       }
     } catch (err) {
-      console.error("Error fetching notifications:", err);
+      console.warn("Failed to fetch notifications via API, fallback to Firestore direct:", err);
+    }
+
+    // Direct Firestore fallback
+    try {
+      const snap = await getDocs(collection(db, "notifications"));
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => b.timestamp - a.timestamp);
+      setServerNotifications(list);
+      handleNewNotificationAlert(list);
+    } catch (fsErr) {
+      console.error("Firestore notifications fallback failed:", fsErr);
     }
   };
 
@@ -469,9 +483,20 @@ export default function App() {
       const data = await safeFetchJson(getBackendUrl('/api/transactions'));
       if (data.success && data.transactions) {
         setTransactions(data.transactions);
+        return;
       }
     } catch (err) {
-      console.error("Error fetching transactions from server:", err);
+      console.warn("Error fetching transactions from server, fallback to Firestore:", err);
+    }
+
+    // Direct Firestore fallback
+    try {
+      const snap = await getDocs(collection(db, "transactions"));
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
+      setTransactions(list);
+    } catch (fsErr) {
+      console.error("Firestore transactions fallback failed:", fsErr);
     }
   };
 

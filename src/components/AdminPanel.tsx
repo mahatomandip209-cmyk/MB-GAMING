@@ -171,16 +171,19 @@ export default function AdminPanel({
 
   // Backend API URL configuration & connection verification states
   const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
-    return localStorage.getItem('mb_backend_api_url') || 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
+    return localStorage.getItem('mb_backend_api_url') || '';
   });
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [connectionError, setConnectionError] = useState<string>('');
 
   const getBackendUrl = (path: string): string => {
+    if (customBackendUrl && customBackendUrl.trim() !== '') {
+      return `${customBackendUrl.trim()}${path}`;
+    }
     const isLocalOrPreview = window.location.hostname.includes('run.app') || 
                              window.location.hostname.includes('localhost') || 
                              window.location.hostname.includes('127.0.0.1');
-    const backendBase = isLocalOrPreview ? '' : customBackendUrl;
+    const backendBase = isLocalOrPreview ? '' : 'https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app';
     return `${backendBase}${path}`;
   };
 
@@ -247,9 +250,20 @@ export default function AdminPanel({
       const data = await safeFetchJson(getBackendUrl('/api/notifications'));
       if (data.success && data.notifications) {
         setSentPushLogs(data.notifications);
+        return;
       }
     } catch (err) {
-      console.error("Error fetching push logs:", err);
+      console.warn("Failed to fetch push logs via API, loading from Firestore:", err);
+    }
+
+    // Direct Firestore fallback for logs
+    try {
+      const snap = await getDocs(collection(db, "notifications"));
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => b.timestamp - a.timestamp);
+      setSentPushLogs(list);
+    } catch (fsErr) {
+      console.error("Failed to fetch logs from Firestore:", fsErr);
     }
   };
 
@@ -268,33 +282,58 @@ export default function AdminPanel({
     }
 
     setIsSendingPush(true);
+    
+    const notificationPayload = {
+      title: pushTitle.trim(),
+      body: pushBody.trim(),
+      linkUrl: pushLink.trim() || "/",
+      iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg", // MB Gaming Logo
+      timestamp: Date.now()
+    };
+
+    let apiSuccess = false;
+    let apiErrorMsg = '';
+
+    // 1. Try API dispatch
     try {
-      const data = await safeFetchJson(getBackendUrl('/api/notifications'), {
+      const backendUrl = getBackendUrl('/api/notifications');
+      const data = await safeFetchJson(backendUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          title: pushTitle.trim(),
-          body: pushBody.trim(),
-          linkUrl: pushLink.trim(),
-          iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" // MB Gaming Logo
-        })
+        body: JSON.stringify(notificationPayload)
       });
+      if (data && data.success) {
+        apiSuccess = true;
+      } else {
+        apiErrorMsg = data?.error || 'Failed to dispatch via API.';
+      }
+    } catch (err) {
+      console.warn("API delivery failed, attempting direct Firestore save:", err);
+      apiErrorMsg = err instanceof Error ? err.message : String(err);
+    }
 
-      if (data.success) {
-        triggerToast('🚀 Native push notification dispatched!');
+    // 2. Direct Firestore fallback
+    try {
+      if (!apiSuccess) {
+        await addDoc(collection(db, 'notifications'), notificationPayload);
+        triggerToast('🚀 Push notification saved directly to database!');
         setPushTitle('');
         setPushBody('');
         setPushLink('/');
         fetchPushLogs();
       } else {
-        triggerToast(data.error || 'Failed to dispatch push notification.');
+        triggerToast('🚀 Native push notification dispatched successfully!');
+        setPushTitle('');
+        setPushBody('');
+        setPushLink('/');
+        fetchPushLogs();
       }
-    } catch (err) {
-      console.error(err);
-      triggerToast('Network error: ' + (err instanceof Error ? err.message : String(err)));
+    } catch (dbErr) {
+      console.error("Firestore write failed too:", dbErr);
+      triggerToast(`Failed to dispatch: ${apiErrorMsg || (dbErr instanceof Error ? dbErr.message : String(dbErr))}`);
     } finally {
       setIsSendingPush(false);
     }
@@ -510,8 +549,9 @@ export default function AdminPanel({
     );
     triggerToast(`Transaction status updated to ${status}`);
 
+    let apiSuccess = false;
     try {
-      // Sync status change to the server backend
+      // 1. Sync status change to the server backend
       await safeFetchJson(getBackendUrl(`/api/transactions/${txId}`), {
         method: 'PUT',
         headers: {
@@ -520,7 +560,22 @@ export default function AdminPanel({
         },
         body: JSON.stringify({ status })
       });
+      apiSuccess = true;
+    } catch (err) {
+      console.warn("Failed to sync status update with server, falling back to direct Firestore update:", err);
+    }
 
+    // 1b. Direct Firestore fallback for status
+    if (!apiSuccess) {
+      try {
+        await setDoc(doc(db, "transactions", txId), { status }, { merge: true });
+        console.log("Direct Firestore transaction status sync successful!");
+      } catch (fsErr) {
+        console.error("Direct Firestore status update failed too:", fsErr);
+      }
+    }
+
+    try {
       const tx = transactions.find(t => t.id === txId);
       if (tx) {
         const notifTitle = status === 'SUCCESS' ? '✅ Recharge Approved!' : '❌ Recharge Rejected';
@@ -528,19 +583,37 @@ export default function AdminPanel({
           ? `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) has been completed successfully!`
           : `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) was rejected. Please contact support.`;
 
-        await safeFetchJson(getBackendUrl('/api/notifications'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            title: notifTitle,
-            body: notifBody,
-            linkUrl: '/',
-            iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
-          })
-        });
+        const notifPayload = {
+          title: notifTitle,
+          body: notifBody,
+          linkUrl: '/',
+          iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+          timestamp: Date.now()
+        };
+
+        let notifApiSuccess = false;
+        try {
+          await safeFetchJson(getBackendUrl('/api/notifications'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(notifPayload)
+          });
+          notifApiSuccess = true;
+        } catch (err) {
+          console.warn("Failed to send status update notification via API, falling back to direct Firestore:", err);
+        }
+
+        if (!notifApiSuccess) {
+          try {
+            await addDoc(collection(db, 'notifications'), notifPayload);
+            console.log("Direct Firestore status notification write successful!");
+          } catch (fsErr) {
+            console.error("Direct Firestore status notification write failed:", fsErr);
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to sync status update with server or trigger notification:", err);
@@ -2789,6 +2862,91 @@ export default function AdminPanel({
                   >
                     Secure Password
                   </button>
+                </div>
+
+                <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-2xs space-y-4">
+                  <h3 className="text-xs font-black uppercase text-blue-600 tracking-tight flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        connectionStatus === 'connected' ? 'bg-emerald-400' : connectionStatus === 'checking' ? 'bg-amber-400' : 'bg-rose-400'
+                      }`}></span>
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                        connectionStatus === 'connected' ? 'bg-emerald-500' : connectionStatus === 'checking' ? 'bg-amber-500' : 'bg-rose-500'
+                      }`}></span>
+                    </span>
+                    API & Backend Server Connection
+                  </h3>
+                  
+                  <p className="text-xs text-zinc-500 leading-relaxed font-semibold">
+                    Configure the custom API gateway endpoint for synchronizing operations with remote clients (e.g. if hosted on custom servers or Vercel).
+                  </p>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase text-zinc-400 font-mono">Backend Base URL</label>
+                      <input
+                        type="url"
+                        value={customBackendUrl}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setCustomBackendUrl(val);
+                          localStorage.setItem('mb_backend_api_url', val);
+                        }}
+                        placeholder="e.g. https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app"
+                        className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-medium"
+                      />
+                      <p className="text-[10px] text-zinc-400 mt-1">
+                        Leave blank to connect directly to this workspace instance.
+                      </p>
+                    </div>
+
+                    {connectionStatus === 'connected' && (
+                      <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] p-3 rounded-xl flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        <div>
+                          <strong>Connection active!</strong> Server responded successfully to ping requests.
+                        </div>
+                      </div>
+                    )}
+
+                    {connectionStatus === 'disconnected' && (
+                      <div className="bg-rose-50 border border-rose-100 text-rose-700 text-[11px] p-3 rounded-xl flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Connection verification failed.</strong>
+                          <p className="mt-0.5 text-[10px] text-rose-600 leading-normal font-mono">{connectionError || "Unknown connection error"}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {connectionStatus === 'checking' && (
+                      <div className="bg-amber-50 border border-amber-100 text-amber-700 text-[11px] p-3 rounded-xl flex items-center gap-2">
+                        <span className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                        Verifying server connection...
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      onClick={() => testConnection()}
+                      className="flex-1 bg-zinc-950 hover:bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
+                    >
+                      Verify & Test Connection
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCustomBackendUrl('');
+                        localStorage.removeItem('mb_backend_api_url');
+                        setConnectionStatus('checking');
+                        setTimeout(() => testConnection(''), 200);
+                        triggerToast('Reset to default local workspace backend.');
+                      }}
+                      className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-black uppercase tracking-wider px-4 rounded-xl transition-all cursor-pointer text-center"
+                    >
+                      Reset to Default
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
