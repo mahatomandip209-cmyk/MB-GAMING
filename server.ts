@@ -353,7 +353,7 @@ app.post("/api/auth/sync-profile", (req, res) => {
       email: emailLower,
       password: "password123",
       walletBalance: walletBalance ?? 2500,
-      loyaltyPoints: loyaltyPoints ?? 500
+      loyaltyPoints: loyaltyPoints ?? 0
     };
     systemUsers.push(newUser);
     res.json({ success: true, user: newUser });

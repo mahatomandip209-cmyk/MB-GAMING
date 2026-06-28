@@ -113,11 +113,11 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
       if (isLogin) {
         const found = accounts.find((acc: any) => acc.email.toLowerCase() === emailLower);
         if (!found) {
-          setError('Invalid email address or incorrect password. (Local Check)');
+          setError('Invalid email address or incorrect password.');
           return;
         }
         if (found.password !== password) {
-          setError('Incorrect password. Please try again. (Local Check)');
+          setError('Incorrect password. Please try again.');
           return;
         }
 
@@ -129,12 +129,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           loyaltyPoints: found.loyaltyPoints ?? 0
         };
         localStorage.setItem('mb_current_user', JSON.stringify(userSession));
-        triggerToast("Logged in successfully (offline fallback)!");
+        triggerToast("Welcome back! Logged in successfully.");
         onSuccess(userSession);
       } else {
         const exists = accounts.some((acc: any) => acc.email.toLowerCase() === emailLower);
         if (exists) {
-          setError('An account with this email address already exists. (Local Check)');
+          setError('An account with this email address already exists.');
           return;
         }
 
@@ -156,7 +156,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           loyaltyPoints: newUser.loyaltyPoints
         };
         localStorage.setItem('mb_current_user', JSON.stringify(userSession));
-        triggerToast("Registered successfully (offline fallback)!");
+        triggerToast("Registration successful! Welcome to MB Gaming.");
         onSuccess(userSession);
       }
     } catch (e) {
