@@ -422,6 +422,15 @@ export default function App() {
       
       if (lastSeenId) {
         if (lastSeenId !== latest.id) {
+          // Play a premium professional notification chime
+          try {
+            const audio = new Audio("https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3");
+            audio.volume = 0.9;
+            audio.play().catch(e => console.log('[Notification Sound] Autoplay blocked or deferred:', e));
+          } catch (soundErr) {
+            console.warn('[Notification Sound] Could not play chime:', soundErr);
+          }
+
           // Display a beautiful in-app toast notification instantly!
           triggerToast(`🔔 ${latest.title}: ${latest.body}`);
           
@@ -1005,52 +1014,6 @@ export default function App() {
 
             {/* Right Area: Blue Points Pill Button or Log In Button */}
             <div className="flex items-center gap-2">
-              {/* Interactive Push Notification Permission Badge */}
-              <button
-                onClick={async () => {
-                  if (notifPermission === 'granted') {
-                    triggerToast("🔔 Push notifications are fully enabled and active on your device!");
-                    if ('serviceWorker' in navigator) {
-                      const reg = await navigator.serviceWorker.ready;
-                      reg.showNotification("MB GAMING STORE", {
-                        body: "Notification channel verified! You are fully connected. ✅",
-                        icon: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
-                        badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
-                      });
-                    }
-                  } else if (notifPermission === 'denied') {
-                    triggerToast("❌ Push notification permission is BLOCKED in your browser! Please reset permissions in your browser URL bar (site settings) to receive updates.");
-                  } else {
-                    requestNotificationPermission();
-                  }
-                }}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border-none shadow-xs ${
-                  notifPermission === 'granted' 
-                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600' 
-                    : notifPermission === 'denied'
-                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-600'
-                    : 'bg-amber-50 hover:bg-amber-100 text-amber-600 animate-pulse'
-                }`}
-                title={
-                  notifPermission === 'granted' 
-                    ? 'Notifications Enabled (Click for test alert)' 
-                    : notifPermission === 'denied'
-                    ? 'Notifications Blocked (Reset in site settings)'
-                    : 'Click to Enable Push Notifications'
-                }
-              >
-                <div className="relative">
-                  <Bell className="w-4 h-4 stroke-[2.5]" />
-                  <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-white ${
-                    notifPermission === 'granted' 
-                      ? 'bg-emerald-500' 
-                      : notifPermission === 'denied'
-                      ? 'bg-rose-500'
-                      : 'bg-amber-500 animate-ping'
-                  }`} />
-                </div>
-              </button>
-
               {currentUser ? (
                 <button
                   onClick={() => { setShowWalletModal(true); setWalletError(''); }}

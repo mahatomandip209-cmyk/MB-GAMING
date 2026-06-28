@@ -80,6 +80,7 @@ async function checkForNewPushNotifications() {
               icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
               badge: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
               vibrate: [300, 100, 300],
+              sound: "https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3",
               data: {
                 url: latest.linkUrl || '/'
               },
@@ -129,6 +130,7 @@ self.addEventListener('push', (event) => {
     icon: payload.icon || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
     badge: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
     vibrate: [200, 100, 200],
+    sound: 'https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3',
     data: {
       url: payload.url || '/'
     }
