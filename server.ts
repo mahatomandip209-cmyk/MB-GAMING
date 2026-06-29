@@ -85,9 +85,9 @@ async function sendPushToAll(payload: any) {
       try {
         await webpush.sendNotification(subscription, JSON.stringify(payload));
       } catch (err: any) {
-        // 410 Gone or 404 Not Found means the browser unsubscribed or subscription expired
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          console.log(`[Web Push] Deleting expired push subscription: ${d.id}`);
+        // 410 Gone, 404 Not Found, 400 Bad Request, or 401 Unauthorized (invalid/mismatched VAPID keys)
+        if (err.statusCode === 410 || err.statusCode === 404 || err.statusCode === 400 || err.statusCode === 401) {
+          console.log(`[Web Push] Deleting expired or invalid push subscription (status ${err.statusCode}): ${d.id}`);
           try {
             await deleteDoc(d.ref);
           } catch (deleteErr) {

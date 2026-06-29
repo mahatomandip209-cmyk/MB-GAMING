@@ -600,8 +600,34 @@ export default function App() {
       if (data && data.success && data.publicKey) {
         const convertedVapidKey = urlBase64ToUint8Array(data.publicKey);
         
-        // If there's no subscription, subscribe
-        if (!subscription) {
+        let shouldSubscribe = !subscription;
+        
+        if (subscription && subscription.options && subscription.options.applicationServerKey) {
+          try {
+            const existingKey = new Uint8Array(subscription.options.applicationServerKey);
+            const newKey = convertedVapidKey;
+            let match = existingKey.length === newKey.length;
+            if (match) {
+              for (let i = 0; i < existingKey.length; i++) {
+                if (existingKey[i] !== newKey[i]) {
+                  match = false;
+                  break;
+                }
+              }
+            }
+            if (!match) {
+              console.log('[Push] VAPID key mismatch detected. Re-subscribing device with current key...');
+              await subscription.unsubscribe();
+              shouldSubscribe = true;
+            }
+          } catch (e) {
+            console.warn('[Push] Error checking existing subscription key, re-subscribing as fallback:', e);
+            shouldSubscribe = true;
+          }
+        }
+        
+        // If there's no subscription or there was a key mismatch, subscribe
+        if (shouldSubscribe) {
           subscription = await reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: convertedVapidKey
@@ -2615,6 +2641,21 @@ export default function App() {
                   </button>
                 )}
               </div>
+
+              {/* iOS / Safari Setup Guide if on iPhone but not installed */}
+              {/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.matchMedia('(display-mode: standalone)').matches && (
+                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/60 flex flex-col gap-1.5 shrink-0 text-left">
+                  <span className="text-[10px] font-black text-amber-800 tracking-wider">📲 IPHONE / iOS USER ACTION REQUIRED</span>
+                  <p className="text-[11px] text-amber-700 leading-normal font-bold">
+                    Apple blocks background alerts unless the app is saved to your screen. To receive notifications when this app is closed:
+                  </p>
+                  <ol className="text-[10px] text-amber-800/90 space-y-1 pl-4 list-decimal font-semibold">
+                    <li>Tap the <strong className="text-amber-900 font-extrabold">Share button</strong> at the bottom of Safari.</li>
+                    <li>Choose <strong className="text-amber-900 font-extrabold">"Add to Home Screen"</strong>.</li>
+                    <li>Open MB Gaming Store from your Home Screen and click <strong className="text-amber-900 font-extrabold">"Enable Push"</strong>.</li>
+                  </ol>
+                </div>
+              )}
 
 
 
