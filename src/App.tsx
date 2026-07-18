@@ -77,12 +77,7 @@ export function getProductPackages(product: Product): { name: string; price: num
     }));
   }
 
-  return [
-    { name: 'Basic Package', price: product.minAmount },
-    { name: 'Standard Package', price: product.minAmount * 2 },
-    { name: 'Pro Package', price: product.minAmount * 4 },
-    { name: 'Ultimate Package', price: product.minAmount * 8 }
-  ];
+  return [];
 }
 
 function urlBase64ToUint8Array(base64String: string) {
