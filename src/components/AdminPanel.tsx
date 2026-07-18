@@ -100,7 +100,7 @@ export default function AdminPanel({
   };
 
   // Authentication states
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -168,6 +168,16 @@ export default function AdminPanel({
   const [pushLink, setPushLink] = useState('/');
   const [sentPushLogs, setSentPushLogs] = useState<any[]>([]);
   const [isSendingPush, setIsSendingPush] = useState(false);
+
+  // Custom manual ledger entry states
+  const [showAddEntryModal, setShowAddEntryModal] = useState(false);
+  const [sellRate, setSellRate] = useState<number>(220);
+  const [selectedGame, setSelectedGame] = useState<string>('Free Fire');
+  const [packageName, setPackageName] = useState<string>('110 Diamonds');
+  const [quantity, setQuantity] = useState<number>(1);
+  const [enteredBy, setEnteredBy] = useState<string>('Bibek Jha');
+  const [description, setDescription] = useState<string>('Customer requested instant delivery...');
+  const [isSavingEntry, setIsSavingEntry] = useState(false);
 
   // Backend API URL configuration & connection verification states
   const [customBackendUrl, setCustomBackendUrl] = useState<string>(() => {
@@ -346,10 +356,7 @@ export default function AdminPanel({
 
   // Check login state
   useEffect(() => {
-    const isAuth = localStorage.getItem('mb_admin_logged_in') === 'true';
-    if (isAuth) {
-      setIsLoggedIn(true);
-    }
+    setIsLoggedIn(true);
   }, []);
 
   // Sync and fetch all data from Firestore when logged in
@@ -519,6 +526,80 @@ export default function AdminPanel({
     setTimeout(() => setAdminToast(null), 3500);
   };
 
+  // Custom manual ledger entry submission
+  const handleSaveEntry = async (e: FormEvent) => {
+    e.preventDefault();
+    if (sellRate <= 0) {
+      triggerToast('Please enter a valid Sell Rate.');
+      return;
+    }
+    if (!packageName || !packageName.trim()) {
+      triggerToast('Please enter a Package name.');
+      return;
+    }
+    if (quantity <= 0) {
+      triggerToast('Please enter a valid Quantity.');
+      return;
+    }
+    if (!enteredBy || !enteredBy.trim()) {
+      triggerToast('Please specify who entered this.');
+      return;
+    }
+
+    setIsSavingEntry(true);
+    try {
+      const newTxId = `tx-man-${Math.floor(100000 + Math.random() * 900000)}`;
+      const timestampString = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      
+      const newTx: any = {
+        id: newTxId,
+        productId: 'custom-manual',
+        productName: `${selectedGame} - ${packageName}`,
+        provider: selectedGame,
+        category: 'top-up',
+        amount: Number(sellRate) * Number(quantity),
+        targetAccount: `Manual Entry: ${enteredBy}`,
+        timestamp: timestampString,
+        status: 'SUCCESS',
+        sellRate: Number(sellRate),
+        game: selectedGame,
+        package: packageName,
+        quantity: Number(quantity),
+        enteredBy: enteredBy,
+        description: description,
+      };
+
+      const response = await fetch(getBackendUrl('/api/transactions'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(newTx)
+      });
+      
+      const data = await response.json();
+      if (data && data.success) {
+        setTransactions([newTx, ...transactions]);
+        triggerToast('🎉 Custom ledger entry saved successfully!');
+        
+        // Reset inputs, keeping enteredBy
+        setSellRate(220);
+        setPackageName('110 Diamonds');
+        setQuantity(1);
+        setDescription('');
+        setShowAddEntryModal(false);
+      } else {
+        throw new Error(data.error || 'Server rejected manual transaction.');
+      }
+    } catch (err: any) {
+      console.error("[Manual Entry] Error saving custom entry:", err);
+      triggerToast(`Failed to save: ${err.message || String(err)}`);
+    } finally {
+      setIsSavingEntry(false);
+    }
+  };
+
   // Login handler
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();
@@ -537,9 +618,8 @@ export default function AdminPanel({
 
   // Logout handler
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    localStorage.removeItem('mb_admin_logged_in');
-    triggerToast('Signed out of admin panel.');
+    onClose();
+    triggerToast('Returned to Gaming Store.');
   };
 
   // Update Transaction Status
@@ -900,112 +980,8 @@ export default function AdminPanel({
         )}
       </AnimatePresence>
 
-      {/* LOGIN OR AUTH SCREENS (FORGOT PASSWORD OPTION REMOVED ACCORDING TO SPECS) */}
-      {!isLoggedIn ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-screen bg-zinc-950 text-white relative overflow-hidden">
-          {/* Accent graphics */}
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,#1e3a8a_0%,transparent_50%)] opacity-30" />
-          <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_80%_80%,#311042_0%,transparent_50%)] opacity-30" />
-
-          <div className="w-full max-w-md z-10 space-y-6">
-            
-            {/* Logo */}
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-blue-500 shadow-2xl flex items-center justify-center bg-zinc-900">
-                <img 
-                  src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
-                  alt="MB Gaming Logo" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <h1 className="text-xl font-black uppercase tracking-tighter">MB GAMING STORE</h1>
-              <p className="text-xs text-zinc-400 uppercase tracking-widest font-black text-blue-500">Administrator Console</p>
-            </div>
-
-            {/* Back to store button */}
-            <button
-              onClick={onClose}
-              className="mx-auto flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors py-1 px-3 bg-zinc-900 border border-zinc-800 rounded-full cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Return to Gaming Store
-            </button>
-
-            {/* Auth card */}
-            <div className="bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-6 shadow-2xl backdrop-blur-md">
-              
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="text-center space-y-1 pb-2 border-b border-zinc-800">
-                  <h2 className="text-sm font-bold text-zinc-200">Sign In to Dashboard</h2>
-                  <p className="text-[11px] text-zinc-500">Only registered store administrators can gain entry.</p>
-                </div>
-
-                {loginError && (
-                  <div className="p-3 rounded-xl bg-red-950/50 border border-red-900 text-red-400 text-xs font-bold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>{loginError}</span>
-                  </div>
-                )}
-
-                <div className="space-y-3.5">
-                  {/* Email */}
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">Admin Email</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                      <input
-                        type="email"
-                        required
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        placeholder="admin@gmail.com"
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Password */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-400">Password</label>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-11 pr-11 text-xs font-medium text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-3.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 uppercase tracking-wider mt-4"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Secure Login
-                </button>
-              </form>
-
-            </div>
-
-          </div>
-        </div>
-      ) : (
-        /* LOGGED IN VIEW: ADMIN PANEL DASHBOARD WITH 13 VERTICAL TABS AND ENHANCED DASHBOARDS */
-        <div className="flex-1 flex min-h-screen bg-[#f8fafc]">
+      {/* ADMIN PANEL DASHBOARD WITH 13 VERTICAL TABS AND ENHANCED DASHBOARDS */}
+      <div className="flex-1 flex min-h-screen bg-[#f8fafc]">
           
           {/* LEFT SIDEBAR NAVIGATION (Hidden on mobile, visible on desktop) */}
           <aside className="hidden md:flex w-64 bg-white border-r border-zinc-200/80 flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
@@ -1078,14 +1054,14 @@ export default function AdminPanel({
               })}
             </nav>
 
-            {/* Admin Footer SignOut */}
+            {/* Admin Footer Return to Store */}
             <div className="p-3.5 border-t border-zinc-100 bg-zinc-50/50">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-all cursor-pointer"
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-xs font-bold text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-all cursor-pointer"
               >
-                <LogOut className="w-4 h-4 text-red-500" />
-                <span>Sign Out</span>
+                <ArrowLeft className="w-4 h-4 text-zinc-500" />
+                <span>Return to Store</span>
               </button>
             </div>
           </aside>
@@ -1221,13 +1197,21 @@ export default function AdminPanel({
                 <div className="space-y-6">
                   
                   {/* Header title */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Dashboard</h2>
                       <p className="text-xs text-zinc-500 font-semibold mt-0.5">Real-time store telemetry and transaction indicators.</p>
                     </div>
-                    <div className="text-[11px] font-bold text-zinc-500 font-mono bg-white border border-zinc-200/80 px-3 py-1.5 rounded-xl shadow-xs">
-                      SERVER TIME: {new Date().toISOString().split('T')[0]} 12:00 UTC
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowAddEntryModal(true)}
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm border-none cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" /> Add New
+                      </button>
+                      <div className="text-[11px] font-bold text-zinc-500 font-mono bg-white border border-zinc-200/80 px-3 py-1.5 rounded-xl shadow-xs shrink-0">
+                        SERVER TIME: {new Date().toISOString().split('T')[0]} 12:00 UTC
+                      </div>
                     </div>
                   </div>
 
@@ -2953,7 +2937,6 @@ export default function AdminPanel({
 
           </main>
         </div>
-      )}
 
       {/* CREATE/EDIT PRODUCT MODAL OVERLAY */}
       {isProductModalOpen && (
@@ -3253,6 +3236,247 @@ export default function AdminPanel({
                 </button>
               </div>
 
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* 3. Custom CREATE NEW ENTRY Modal */}
+      {showAddEntryModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="w-full max-w-md bg-white rounded-3xl border border-zinc-200/80 shadow-2xl overflow-hidden text-left"
+          >
+            {/* Header */}
+            <div className="bg-zinc-900 px-6 py-4 flex items-center justify-between border-b border-zinc-800">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest font-mono">Ledger Entry Manager</span>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">CREATE NEW ENTRY</h3>
+              </div>
+              <button
+                onClick={() => setShowAddEntryModal(false)}
+                className="p-1.5 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors border-none cursor-pointer bg-transparent"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEntry} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Sell Rate (Rs.) */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wider">
+                    Sell Rate (Rs.)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-zinc-400 font-mono">Rs.</span>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={sellRate}
+                      onChange={(e) => setSellRate(Number(e.target.value))}
+                      className="w-full pl-9 pr-3.5 py-2.5 text-xs font-bold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Game Select */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wider">
+                    Game
+                  </label>
+                  <select
+                    value={selectedGame}
+                    onChange={(e) => {
+                      setSelectedGame(e.target.value);
+                      if (e.target.value === 'Free Fire') {
+                        setPackageName('110 Diamonds');
+                      } else if (e.target.value === 'PUBG Mobile') {
+                        setPackageName('60 UC');
+                      } else if (e.target.value === 'Mobile Legends') {
+                        setPackageName('86 Diamonds');
+                      } else if (e.target.value === 'UniPin Voucher') {
+                        setPackageName('500 BDT Voucher');
+                      } else {
+                        setPackageName('');
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 text-xs font-black border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer bg-white"
+                  >
+                    <option value="Free Fire">Free Fire</option>
+                    <option value="PUBG Mobile">PUBG Mobile</option>
+                    <option value="Mobile Legends">Mobile Legends</option>
+                    <option value="UniPin Voucher">UniPin Voucher</option>
+                    <option value="Garena Shell">Garena Shell</option>
+                    <option value="Other">Other / Custom</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Package Select/Input */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wider">
+                  Package
+                </label>
+                {selectedGame === 'Free Fire' ? (
+                  <select
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer bg-white"
+                  >
+                    <option value="110 Diamonds">110 Diamonds</option>
+                    <option value="115 Diamonds 💎">115 Diamonds 💎</option>
+                    <option value="240 Diamonds 💎">240 Diamonds 💎</option>
+                    <option value="355 Diamonds 💎">355 Diamonds 💎</option>
+                    <option value="505 Diamonds 💎">505 Diamonds 💎</option>
+                    <option value="610 Diamonds 💎">610 Diamonds 💎</option>
+                    <option value="1090 Diamonds 💎">1090 Diamonds 💎</option>
+                    <option value="1240 Diamonds 💎">1240 Diamonds 💎</option>
+                    <option value="2220 Diamonds 💎">2220 Diamonds 💎</option>
+                    <option value="WEEKLY MEMBERSHIP">WEEKLY MEMBERSHIP</option>
+                    <option value="MONTHLY MEMBERSHIP">MONTHLY MEMBERSHIP</option>
+                    <option value="custom">Custom Package...</option>
+                  </select>
+                ) : selectedGame === 'PUBG Mobile' ? (
+                  <select
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer bg-white"
+                  >
+                    <option value="60 UC">60 UC</option>
+                    <option value="325 UC">325 UC</option>
+                    <option value="660 UC">660 UC</option>
+                    <option value="1800 UC">1800 UC</option>
+                    <option value="3850 UC">3850 UC</option>
+                    <option value="8100 UC">8100 UC</option>
+                    <option value="custom">Custom Package...</option>
+                  </select>
+                ) : selectedGame === 'Mobile Legends' ? (
+                  <select
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer bg-white"
+                  >
+                    <option value="86 Diamonds">86 Diamonds</option>
+                    <option value="172 Diamonds">172 Diamonds</option>
+                    <option value="257 Diamonds">257 Diamonds</option>
+                    <option value="343 Diamonds">343 Diamonds</option>
+                    <option value="429 Diamonds">429 Diamonds</option>
+                    <option value="514 Diamonds">514 Diamonds</option>
+                    <option value="600 Diamonds">600 Diamonds</option>
+                    <option value="706 Diamonds">706 Diamonds</option>
+                    <option value="custom">Custom Package...</option>
+                  </select>
+                ) : selectedGame === 'UniPin Voucher' ? (
+                  <select
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer bg-white"
+                  >
+                    <option value="500 BDT Voucher">500 BDT Voucher</option>
+                    <option value="1000 BDT Voucher">1000 BDT Voucher</option>
+                    <option value="2000 BDT Voucher">2000 BDT Voucher</option>
+                    <option value="5000 BDT Voucher">5000 BDT Voucher</option>
+                    <option value="custom">Custom Package...</option>
+                  </select>
+                ) : selectedGame === 'Garena Shell' ? (
+                  <select
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-extrabold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer bg-white"
+                  >
+                    <option value="50 Shells">50 Shells</option>
+                    <option value="100 Shells">100 Shells</option>
+                    <option value="200 Shells">200 Shells</option>
+                    <option value="custom">Custom Package...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 110 Diamonds"
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-semibold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all bg-white"
+                  />
+                )}
+
+                {selectedGame !== 'Other' && packageName === 'custom' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter custom package name..."
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full mt-2 px-3.5 py-2.5 text-xs font-semibold border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all bg-white animate-fadeIn"
+                  />
+                )}
+              </div>
+
+              {/* Quantity */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wider">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 text-xs font-black border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                />
+              </div>
+
+              {/* Entered By */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wider">
+                  Entered By
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Bibek Jha"
+                  value={enteredBy}
+                  onChange={(e) => setEnteredBy(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-black border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all bg-white"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wider">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Customer requested instant delivery..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold border border-zinc-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all bg-white resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingEntry}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white text-[11px] font-black uppercase tracking-wider py-3 rounded-xl shadow-md transition-all cursor-pointer text-center border-none flex items-center justify-center gap-2"
+                >
+                  {isSavingEntry ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving Entry...</span>
+                    </>
+                  ) : (
+                    <span>SAVE ENTRY</span>
+                  )}
+                </button>
+              </div>
             </form>
           </motion.div>
         </div>

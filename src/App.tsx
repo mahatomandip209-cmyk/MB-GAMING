@@ -315,6 +315,11 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
+  // Web Push Subscription Diagnostics State
+  const [pushSubscriptionState, setPushSubscriptionState] = useState<'checking' | 'active' | 'inactive' | 'error' | 'unsupported'>('checking');
+  const [pushSubscriptionError, setPushSubscriptionError] = useState<string | null>(null);
+  const [isIframe, setIsIframe] = useState<boolean>(false);
+  
   // Navigation states
   const [activeBottomNav, setActiveBottomNav] = useState<'home' | 'orders' | 'wallet' | 'favorites' | 'profile'>('home');
   
@@ -526,6 +531,7 @@ export default function App() {
 
   // Register PWA Service Worker & fetch initial lists
   useEffect(() => {
+    setIsIframe(window.self !== window.top);
     testConnection();
     fetchNotifications();
     fetchTransactions();
@@ -568,15 +574,6 @@ export default function App() {
     if ('Notification' in window) {
       const currentPerm = Notification.permission;
       setNotifPermission(currentPerm);
-      if (currentPerm === 'default') {
-        const timer = setTimeout(() => {
-          setShowAutoNotifPrompt(true);
-        }, 2000);
-        return () => {
-          clearInterval(pollInterval);
-          clearTimeout(timer);
-        };
-      }
     }
 
     return () => clearInterval(pollInterval);
@@ -584,11 +581,25 @@ export default function App() {
 
   // Synchronize Push Subscription with Backend
   const syncPushSubscription = async () => {
-    if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+      setPushSubscriptionState('unsupported');
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      setPushSubscriptionState('inactive');
+      return;
+    }
     
+    setPushSubscriptionState('checking');
     try {
       const reg = await navigator.serviceWorker.ready;
+      
+      // Check if pushManager is supported (some platforms/browsers disable it)
+      if (!reg.pushManager) {
+        console.warn('[Push] reg.pushManager is not available on this device/browser context.');
+        setPushSubscriptionState('unsupported');
+        return;
+      }
       
       // Get current subscription
       let subscription = await reg.pushManager.getSubscription();
@@ -637,7 +648,7 @@ export default function App() {
         console.log('[Push] Subscription synchronized successfully:', subscription);
         
         // Save/Sync on backend
-        await fetch(getBackendUrl('/api/push/subscribe'), {
+        const syncResponse = await fetch(getBackendUrl('/api/push/subscribe'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -647,9 +658,23 @@ export default function App() {
             email: currentUser ? currentUser.email : null
           })
         });
+        
+        const syncResult = await syncResponse.json();
+        if (syncResult && syncResult.success) {
+          setPushSubscriptionState('active');
+          setPushSubscriptionError(null);
+        } else {
+          setPushSubscriptionState('error');
+          setPushSubscriptionError(syncResult.error || 'Server rejected push subscription.');
+        }
+      } else {
+        setPushSubscriptionState('error');
+        setPushSubscriptionError(data?.error || 'Failed to fetch public key from backend.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[Push] Error synchronizing push subscription:', err);
+      setPushSubscriptionState('error');
+      setPushSubscriptionError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -2621,26 +2646,102 @@ export default function App() {
               </div>
 
               {/* Push Permission Prompt Status card */}
-              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80 flex items-center justify-between shrink-0">
-                <div className="space-y-0.5">
-                  <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Mobile Push Status</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${notifPermission === 'granted' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`} />
-                    <span className="text-xs font-black text-zinc-800">
-                      {notifPermission === 'granted' ? 'PUSH ALERTS ACTIVE 🔔' : 'NOT ENABLED YET ⚠️'}
-                    </span>
+              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80 flex flex-col gap-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Background Alerts Status</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        pushSubscriptionState === 'active' ? 'bg-emerald-500 animate-pulse' :
+                        pushSubscriptionState === 'checking' ? 'bg-blue-500 animate-spin' :
+                        'bg-amber-500 animate-pulse'
+                      }`} />
+                      <span className="text-xs font-black text-zinc-800">
+                        {pushSubscriptionState === 'active' && 'CONNECTED & READY ✅'}
+                        {pushSubscriptionState === 'checking' && 'VERIFYING CONNECTION... 🔄'}
+                        {pushSubscriptionState === 'inactive' && 'NOT GRANTED YET ⚠️'}
+                        {pushSubscriptionState === 'error' && 'CONNECTION ERROR ❌'}
+                        {pushSubscriptionState === 'unsupported' && 'UNSUPPORTED BY BROWSER 🛑'}
+                      </span>
+                    </div>
                   </div>
+                  
+                  {notifPermission !== 'granted' && (
+                    <button
+                      onClick={requestNotificationPermission}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-xs border-none cursor-pointer"
+                    >
+                      Enable Push
+                    </button>
+                  )}
+
+                  {notifPermission === 'granted' && (pushSubscriptionState === 'active' || pushSubscriptionState === 'error') && (
+                    <button
+                      onClick={async () => {
+                        setPushSubscriptionState('checking');
+                        try {
+                          if ('serviceWorker' in navigator) {
+                            const reg = await navigator.serviceWorker.ready;
+                            const sub = await reg.pushManager.getSubscription();
+                            if (sub) {
+                              await sub.unsubscribe();
+                            }
+                          }
+                          await syncPushSubscription();
+                          triggerToast("🔄 Background subscription repaired successfully!");
+                        } catch (e: any) {
+                          console.error(e);
+                          triggerToast("Failed to re-register: " + String(e.message || e));
+                        }
+                      }}
+                      className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border-none cursor-pointer flex items-center gap-1"
+                    >
+                      <span>Repair</span>
+                    </button>
+                  )}
                 </div>
+
+                {pushSubscriptionError && (
+                  <p className="text-[10px] text-red-500 font-bold bg-red-50/50 p-2 rounded-xl border border-red-150/40">
+                    ⚠️ Error: {pushSubscriptionError}
+                  </p>
+                )}
+
+                {pushSubscriptionState === 'unsupported' && (
+                  <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed">
+                    Standard Background Alerts are not supported in this browser layout. Please use Chrome/Edge or open this app in standard Safari and "Add to Home Screen".
+                  </p>
+                )}
                 
-                {notifPermission !== 'granted' && (
-                  <button
-                    onClick={requestNotificationPermission}
-                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-xs border-none cursor-pointer"
-                  >
-                    Enable Push
-                  </button>
+                {pushSubscriptionState === 'active' && (
+                  <p className="text-[10px] text-emerald-700 font-bold bg-emerald-50/40 px-2 py-1.5 rounded-xl border border-emerald-200/30">
+                    🔔 Background alerts are active! You will receive notification sound and banners even when this browser tab is closed.
+                  </p>
                 )}
               </div>
+
+              {/* Iframe detection warning & Open Link card */}
+              {isIframe && (
+                <div className="p-3.5 bg-blue-50 rounded-2xl border border-blue-200/60 flex flex-col gap-1.5 shrink-0 text-left">
+                  <span className="text-[10px] font-black text-blue-800 tracking-wider">🔗 STANDALONE TAB LINK (ACTION REQUIRED)</span>
+                  <p className="text-[11px] text-blue-700 leading-normal font-bold">
+                    Browsers block background push notification setup inside iframe previews. To make push notifications work when the app is closed:
+                  </p>
+                  <ol className="text-[10px] text-blue-800/90 space-y-1 pl-4 list-decimal font-semibold">
+                    <li>Click the button below to open the app in a new, standalone browser tab.</li>
+                    <li>Inside the new tab, click <strong className="text-blue-900 font-extrabold">"Enable Push"</strong>.</li>
+                    <li>If you are on iPhone/iOS, make sure to read the yellow guide below too!</li>
+                  </ol>
+                  <a 
+                    href={window.location.href} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="mt-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-sm border-none cursor-pointer text-center block no-underline"
+                  >
+                    Open App in Standalone Tab 🚀
+                  </a>
+                </div>
+              )}
 
               {/* iOS / Safari Setup Guide if on iPhone but not installed */}
               {/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.matchMedia('(display-mode: standalone)').matches && (

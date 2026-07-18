@@ -105,6 +105,45 @@ async function sendPushToAll(payload: any) {
   }
 }
 
+// Send Web Push notification to a specific user by email
+async function sendPushToUser(email: string, payload: any) {
+  if (!email) return;
+  try {
+    const snap = await getDocs(collection(db, "push_subscriptions"));
+    const emailLower = email.toLowerCase().trim();
+    
+    const targetDocs = snap.docs.filter(d => {
+      const data = d.data();
+      return data.email && data.email.toLowerCase().trim() === emailLower;
+    });
+    
+    console.log(`[Web Push] Sending targeted push to ${targetDocs.length} devices for ${emailLower}...`);
+    
+    const pushPromises = targetDocs.map(async (d) => {
+      const data = d.data();
+      const subscription = data.subscription;
+      try {
+        await webpush.sendNotification(subscription, JSON.stringify(payload));
+      } catch (err: any) {
+        if (err.statusCode === 410 || err.statusCode === 404 || err.statusCode === 400 || err.statusCode === 401) {
+          console.log(`[Web Push] Deleting expired or invalid push subscription (status ${err.statusCode}): ${d.id}`);
+          try {
+            await deleteDoc(d.ref);
+          } catch (deleteErr) {
+            console.error(`[Web Push] Failed to delete expired subscription ${d.id}:`, deleteErr);
+          }
+        } else {
+          console.error(`[Web Push] Error sending push to ${d.id}:`, err);
+        }
+      }
+    });
+    
+    await Promise.all(pushPromises);
+  } catch (err) {
+    console.error("[Web Push] Error sending targeted push:", err);
+  }
+}
+
 
 // In-memory store for the verification code (single administrator scope)
 let currentCode: string | null = null;
@@ -343,8 +382,42 @@ app.put("/api/transactions/:id", async (req, res) => {
       return;
     }
     const txData = txDoc.data();
+    const oldStatus = txData.status;
     txData.status = status;
     await setDoc(doc(db, "transactions", id), txData);
+
+    // If status changed, generate dynamic targeted notification
+    if (oldStatus !== status) {
+      const isSuccess = status === "SUCCESS" || status === "COMPLETED" || status === "APPROVED";
+      const title = isSuccess ? "✅ Order Approved!" : "❌ Order Update";
+      const body = isSuccess
+        ? `Your order for ${txData.productName || 'top-up'} (${txData.targetAccount || 'N/A'}) has been processed successfully!`
+        : `Your order for ${txData.productName || 'top-up'} has been rejected or needs attention.`;
+      
+      const newNotif = {
+        title,
+        body,
+        iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+        linkUrl: "/orders",
+        timestamp: Date.now(),
+        userEmail: txData.userEmail || txData.email || null
+      };
+
+      const docRef = await addDoc(collection(db, "notifications"), newNotif);
+      
+      const targetEmail = txData.userEmail || txData.email;
+      if (targetEmail) {
+        sendPushToUser(targetEmail, {
+          id: docRef.id,
+          title: newNotif.title,
+          body: newNotif.body,
+          iconUrl: newNotif.iconUrl,
+          linkUrl: newNotif.linkUrl,
+          timestamp: newNotif.timestamp
+        }).catch(err => console.error("[Web Push] Async targeted status push error:", err));
+      }
+    }
+
     res.json({ success: true, transaction: { id, ...txData } });
   } catch (err) {
     res.status(500).json({ success: false, error: String(err) });

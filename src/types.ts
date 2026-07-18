@@ -29,4 +29,10 @@ export interface Transaction {
   timestamp: string;
   status: 'SUCCESS' | 'PENDING' | 'FAILED';
   pinCode?: string; // Generated for vouchers
+  sellRate?: number;
+  game?: string;
+  package?: string;
+  quantity?: number;
+  enteredBy?: string;
+  description?: string;
 }
