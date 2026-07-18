@@ -42,6 +42,7 @@ import {
   CreditCard,
   Image as ImageIcon,
   Ticket,
+  Tags,
   Star,
   Bell,
   MessageSquare,
@@ -71,6 +72,8 @@ interface AdminPanelProps {
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   walletBalance: number;
   setWalletBalance: (balance: number) => void;
+  categories: { id: string; name: string }[];
+  setCategories: React.Dispatch<React.SetStateAction<{ id: string; name: string }[]>>;
 }
 
 export default function AdminPanel({
@@ -80,7 +83,9 @@ export default function AdminPanel({
   transactions,
   setTransactions,
   walletBalance,
-  setWalletBalance
+  setWalletBalance,
+  categories,
+  setCategories
 }: AdminPanelProps) {
   // Helper helper to draw corresponding icon
   const renderProductIcon = (iconName: string, className = "w-5 h-5") => {
@@ -117,6 +122,7 @@ export default function AdminPanel({
     | 'dashboard'
     | 'orders'
     | 'users'
+    | 'categories'
     | 'games'
     | 'payments'
     | 'banners'
@@ -127,6 +133,11 @@ export default function AdminPanel({
     | 'ai_chatbot'
     | 'settings'
   >('dashboard');
+
+  // Category states
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
+  const [categoryFormName, setCategoryFormName] = useState('');
 
   // Requirements state
   const [selectedGameForReqs, setSelectedGameForReqs] = useState<Product | null>(null);
@@ -804,7 +815,7 @@ export default function AdminPanel({
   // Form input fields for product create/edit
   const [formId, setFormId] = useState('');
   const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState<'top-up' | 'voucher' | 'subscription' | 'design'>('top-up');
+  const [formCategory, setFormCategory] = useState<string>('top-up');
   const [formProvider, setFormProvider] = useState('');
   const [formMinAmount, setFormMinAmount] = useState<number>(100);
   const [formMaxAmount, setFormMaxAmount] = useState<number>(5000);
@@ -1454,6 +1465,7 @@ export default function AdminPanel({
                 { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                 { id: 'orders', label: 'Orders', icon: ShoppingCart },
                 { id: 'users', label: 'Users', icon: Users },
+                { id: 'categories', label: 'Categories', icon: Tags },
                 { id: 'games', label: 'Games', icon: Gamepad2 },
                 { id: 'requirements', label: 'Requirements', icon: FileText },
                 { id: 'products', label: 'Products', icon: ShoppingBag },
@@ -1532,6 +1544,7 @@ export default function AdminPanel({
                   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'orders', label: 'Orders', icon: ShoppingCart },
                   { id: 'users', label: 'Users', icon: Users },
+                  { id: 'categories', label: 'Categories', icon: Tags },
                   { id: 'games', label: 'Games', icon: Gamepad2 },
                   { id: 'requirements', label: 'Requirements', icon: FileText },
                   { id: 'products', label: 'Products', icon: ShoppingBag },
@@ -2309,6 +2322,165 @@ export default function AdminPanel({
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* CATEGORIES TAB */}
+            {activeTab === 'categories' && (
+              <div className="space-y-4">
+                {/* Header title */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Product Categories</h2>
+                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Manage game and product catalog categories.</p>
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setCategoryFormName('');
+                        setIsCategoryModalOpen(true);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" /> Add New Category
+                    </button>
+                  </div>
+                </div>
+
+                {/* Categories Table/List */}
+                <div className="bg-white rounded-3xl border border-zinc-200/80 shadow-xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-50 border-b border-zinc-150">
+                          <th className="py-3 px-5 text-[10px] font-black text-zinc-400 uppercase tracking-wider">Category Name</th>
+                          <th className="py-3 px-5 text-[10px] font-black text-zinc-400 uppercase tracking-wider">ID / Slug</th>
+                          <th className="py-3 px-5 text-right text-[10px] font-black text-zinc-400 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {categories.map((cat) => (
+                          <tr key={cat.id} className="hover:bg-zinc-50/50 transition-colors">
+                            <td className="py-4 px-5">
+                              <span className="text-xs font-black text-zinc-900">{cat.name}</span>
+                            </td>
+                            <td className="py-4 px-5">
+                              <code className="text-[10px] font-mono font-bold bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded-md">{cat.id}</code>
+                            </td>
+                            <td className="py-4 px-5 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingCategory(cat);
+                                    setCategoryFormName(cat.name);
+                                    setIsCategoryModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-zinc-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                                  title="Edit Category Name"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (confirm(`Are you sure you want to delete the category "${cat.name}"?`)) {
+                                      try {
+                                        await deleteDoc(doc(db, "categories", cat.id));
+                                        triggerToast(`Category "${cat.name}" deleted successfully!`);
+                                      } catch (err) {
+                                        console.error("Failed to delete category:", err);
+                                        triggerToast("Failed to delete category.");
+                                      }
+                                    }
+                                  }}
+                                  className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                  title="Delete Category"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {categories.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="py-8 text-center text-xs font-semibold text-zinc-400">
+                              No categories found. Click "Add New Category" to create one.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Category Modal Popup */}
+                {isCategoryModalOpen && (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-white w-full max-w-md rounded-3xl border border-zinc-200 shadow-2xl p-6 relative"
+                    >
+                      <button
+                        onClick={() => setIsCategoryModalOpen(false)}
+                        className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-xl transition-all cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+
+                      <h3 className="text-base font-black text-zinc-950 mb-4">
+                        {editingCategory ? 'Edit Category' : 'Add New Category'}
+                      </h3>
+
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Category Name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Gift Cards"
+                            value={categoryFormName}
+                            onChange={(e) => setCategoryFormName(e.target.value)}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2">
+                          <button
+                            onClick={() => setIsCategoryModalOpen(false)}
+                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl cursor-pointer transition-all"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!categoryFormName.trim()) {
+                                triggerToast('Please enter a category name');
+                                return;
+                              }
+                              try {
+                                const cid = editingCategory 
+                                  ? editingCategory.id 
+                                  : categoryFormName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+                                await setDoc(doc(db, "categories", cid), {
+                                  name: categoryFormName.trim()
+                                });
+                                triggerToast(editingCategory ? 'Category updated successfully!' : 'Category added successfully!');
+                                setIsCategoryModalOpen(false);
+                              } catch (err) {
+                                console.error("Failed to save category:", err);
+                                triggerToast('Failed to save category');
+                              }
+                            }}
+                            className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md cursor-pointer transition-all"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -3476,13 +3648,14 @@ export default function AdminPanel({
                 <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Store Category</label>
                 <select
                   value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value as any)}
+                  onChange={(e) => setFormCategory(e.target.value)}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
                 >
-                  <option value="top-up">Top Up</option>
-                  <option value="voucher">Voucher</option>
-                  <option value="subscription">Subscription</option>
-                  <option value="design">Design</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

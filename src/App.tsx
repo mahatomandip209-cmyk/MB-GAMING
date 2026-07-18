@@ -53,30 +53,10 @@ import { LoginRegister } from './components/LoginRegister';
 import { db, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
-  // 1. Check if the product has custom packages stored on the database object
+  // Check if the product has custom packages stored on the database object
   if (product.packages && product.packages.length > 0) {
     return product.packages;
   }
-
-  // 2. Check if there are custom packages in localStorage (fallback / legacy sync)
-  try {
-    const saved = localStorage.getItem(`mb_packages_${product.id}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {}
-
-  // 3. Fallback to fixedAmounts or default packages
-  if (product.fixedAmounts && product.fixedAmounts.length > 0) {
-    return product.fixedAmounts.map(amt => ({
-      name: `Package Rs. ${amt}`,
-      price: amt
-    }));
-  }
-
   return [];
 }
 
@@ -112,6 +92,24 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mb_gaming_products', JSON.stringify(products));
   }, [products]);
+
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => {
+    const saved = localStorage.getItem('mb_gaming_categories');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { id: 'top-up', name: 'Top Up' },
+      { id: 'subscription', name: 'Subscription' },
+      { id: 'design', name: 'Design' }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mb_gaming_categories', JSON.stringify(categories));
+  }, [categories]);
 
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; walletBalance: number; loyaltyPoints: number } | null>(() => {
     const saved = localStorage.getItem('mb_current_user');
@@ -443,6 +441,30 @@ export default function App() {
       console.error("Real-time products listener failed:", error);
     });
 
+    // 3b. Real-time categories listener
+    const unsubscribeCategories = onSnapshot(collection(db, "categories"), (snapshot) => {
+      if (!snapshot.empty) {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        setCategories(list);
+      } else {
+        const defaultCategories = [
+          { id: 'top-up', name: 'Top Up' },
+          { id: 'subscription', name: 'Subscription' },
+          { id: 'design', name: 'Design' }
+        ];
+        defaultCategories.forEach(async (cat) => {
+          try {
+            await setDoc(doc(db, "categories", cat.id), { name: cat.name });
+          } catch (err) {
+            console.error("Failed to populate initial category:", cat.id, err);
+          }
+        });
+        setCategories(defaultCategories);
+      }
+    }, (error) => {
+      console.error("Real-time categories listener failed:", error);
+    });
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => {
@@ -483,6 +505,7 @@ export default function App() {
       unsubscribeNotif();
       unsubscribeTx();
       unsubscribeProducts();
+      unsubscribeCategories();
     };
   }, []);
 
@@ -949,6 +972,8 @@ export default function App() {
         setTransactions={setTransactions}
         walletBalance={walletBalance}
         setWalletBalance={setWalletBalance}
+        categories={categories}
+        setCategories={setCategories}
         onClose={() => {
           window.history.pushState({}, '', '/');
           const navEvent = new PopStateEvent('popstate');
@@ -1449,7 +1474,7 @@ export default function App() {
               </div>
             </section>
 
-            {/* ALL CAPSULE CATEGORIES COVERED IN BOX (As on alicdigitalshop.com) */}
+            {/* ALL CAPSULE CATEGORIES COVERED IN BOX */}
             <section className="bg-white p-1 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none px-1">
                 
@@ -1465,65 +1490,20 @@ export default function App() {
                   ALL
                 </button>
 
-                {/* TOP-UP Button Tab */}
-                <button
-                  onClick={() => handleCategoryChange('top-up')}
-                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
-                    selectedCategory === 'top-up'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
-                  }`}
-                >
-                  TOP-UP
-                </button>
-
-                {/* VOUCHER Button Tab */}
-                <button
-                  onClick={() => handleCategoryChange('voucher')}
-                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
-                    selectedCategory === 'voucher'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
-                  }`}
-                >
-                  VOUCHER
-                </button>
-
-                {/* SUBSCRIPTION Button Tab */}
-                <button
-                  onClick={() => handleCategoryChange('subscription')}
-                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
-                    selectedCategory === 'subscription'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
-                  }`}
-                >
-                  SUBSCRIPTION
-                </button>
-
-                {/* DESIGN Button Tab */}
-                <button
-                  onClick={() => handleCategoryChange('design')}
-                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
-                    selectedCategory === 'design'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
-                  }`}
-                >
-                  DESIGN
-                </button>
-
-                {/* VOUCHERS alternative Button Tab */}
-                <button
-                  onClick={() => handleCategoryChange('vouchers')}
-                  className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
-                    selectedCategory === 'vouchers'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
-                      : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
-                  }`}
-                >
-                  VOUCHERS
-                </button>
+                {/* Dynamic Category Buttons */}
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`px-5 py-2.5 text-xs font-black rounded-full text-center whitespace-nowrap transition-all uppercase cursor-pointer border ${
+                      selectedCategory === cat.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20'
+                        : 'bg-white text-zinc-500 hover:text-zinc-950 border-zinc-200'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
 
               </div>
             </section>

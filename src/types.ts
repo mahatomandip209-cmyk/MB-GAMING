@@ -1,10 +1,10 @@
-export type Category = 'all' | 'top-up' | 'voucher' | 'subscription' | 'design' | 'vouchers';
+export type Category = string;
 
 export interface Product {
   id: string;
   name: string;
   provider: string;
-  category: 'top-up' | 'voucher' | 'subscription' | 'design' | 'vouchers';
+  category: string;
   imagePlaceholderColor: string; // Tailwind background color string for aesthetic visual logo
   description: string;
   minAmount: number;
