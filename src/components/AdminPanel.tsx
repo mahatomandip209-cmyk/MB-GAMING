@@ -118,8 +118,7 @@ export default function AdminPanel({
     | 'payments'
     | 'banners'
     | 'coupons'
-    | 'store_points'
-    | 'notifications'
+    | 'requirements'
     | 'support'
     | 'legal'
     | 'ai_chatbot'
@@ -132,7 +131,12 @@ export default function AdminPanel({
 
   // Multi-tab sub databases persisted locally
   const [userList, setUserList] = useState<any[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [requirementsText, setRequirementsText] = useState('1. Players must provide a correct Game UID.\n2. Payment must be uploaded via eSewa QR code.\n3. Make sure to upload the valid screenshot for instant verification.');
   const [paymentSettings, setPaymentSettings] = useState<any>({
+    qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+    esewaNumber: '9841234567',
+    minDeposit: 100,
     esewa: { number: '9841234567', name: 'Mandip Mahato' },
     khalti: { number: '9801234567', name: 'MB Gaming Digital Center' }
   });
@@ -387,9 +391,19 @@ export default function AdminPanel({
         // 2. Payments Settings
         const paymentsDoc = await getDoc(doc(db, 'settings', 'payments'));
         if (paymentsDoc.exists()) {
-          setPaymentSettings(paymentsDoc.data());
+          const data = paymentsDoc.data();
+          setPaymentSettings({
+            qrImageUrl: data.qrImageUrl || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+            esewaNumber: data.esewaNumber || data.esewa?.number || '9841234567',
+            minDeposit: data.minDeposit !== undefined ? data.minDeposit : 100,
+            esewa: data.esewa || { number: '9841234567', name: 'Mandip Mahato' },
+            khalti: data.khalti || { number: '9801234567', name: 'MB Gaming Digital Center' }
+          });
         } else {
           const initialPayments = {
+            qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+            esewaNumber: '9841234567',
+            minDeposit: 100,
             esewa: { number: '9841234567', name: 'Mandip Mahato' },
             khalti: { number: '9801234567', name: 'MB Gaming Digital Center' }
           };
@@ -491,6 +505,16 @@ export default function AdminPanel({
           await setDoc(doc(db, 'settings', 'legal'), initialLegal);
           setLegalDocs(initialLegal);
         }
+
+        // 10. Requirements Settings
+        const reqDoc = await getDoc(doc(db, 'settings', 'requirements'));
+        if (reqDoc.exists()) {
+          setRequirementsText(reqDoc.data().text || '');
+        } else {
+          const defaultReq = '1. Players must provide a correct Game UID.\n2. Payment must be uploaded via eSewa QR code.\n3. Make sure to upload the valid screenshot for instant verification.';
+          await setDoc(doc(db, 'settings', 'requirements'), { text: defaultReq });
+          setRequirementsText(defaultReq);
+        }
       } catch (err) {
         console.error("Error loading Firestore data:", err);
       }
@@ -516,6 +540,15 @@ export default function AdminPanel({
   const [formIconName, setFormIconName] = useState<'gamepad' | 'phone' | 'tv' | 'layers' | 'shopping' | 'wifi'>('gamepad');
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formPopular, setFormPopular] = useState(false);
+
+  // Banner modal states
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<any | null>(null);
+  const [bannerFormTitle, setBannerFormTitle] = useState('');
+  const [bannerFormTagline, setBannerFormTagline] = useState('');
+  const [bannerFormBadge, setBannerFormBadge] = useState('');
+  const [bannerFormImgUrl, setBannerFormImgUrl] = useState('');
+  const [bannerFormRedirect, setBannerFormRedirect] = useState('');
 
   // Products filters
   const [productSearch, setProductSearch] = useState('');
@@ -798,6 +831,85 @@ export default function AdminPanel({
     }
   };
 
+  // Banner modal handlers
+  const handleOpenBannerModal = (banner?: any) => {
+    if (banner) {
+      setEditingBanner(banner);
+      setBannerFormTitle(banner.title || '');
+      setBannerFormTagline(banner.tagline || '');
+      setBannerFormBadge(banner.badge || '');
+      setBannerFormImgUrl(banner.imageUrl || banner.imgUrl || '');
+      setBannerFormRedirect(banner.redirectUrl || banner.redirect || '');
+    } else {
+      setEditingBanner(null);
+      setBannerFormTitle('');
+      setBannerFormTagline('');
+      setBannerFormBadge('PROMO');
+      setBannerFormImgUrl('');
+      setBannerFormRedirect('');
+    }
+    setIsBannerModalOpen(true);
+  };
+
+  const handleSaveBanner = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!bannerFormTitle.trim()) {
+      triggerToast('Title is required!');
+      return;
+    }
+
+    let updatedBanners = [...banners];
+    const img = bannerFormImgUrl.trim() || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+
+    if (editingBanner) {
+      // Update existing
+      const updated = {
+        ...editingBanner,
+        title: bannerFormTitle,
+        tagline: bannerFormTagline,
+        badge: bannerFormBadge,
+        imgUrl: img,
+        imageUrl: img, // keep both for safety
+        redirect: bannerFormRedirect,
+        redirectUrl: bannerFormRedirect,
+        bgColor: editingBanner.bgColor || 'from-indigo-600 to-purple-700'
+      };
+      updatedBanners = banners.map(b => b.id === editingBanner.id ? updated : b);
+      setBanners(updatedBanners);
+      localStorage.setItem('mb_admin_banners', JSON.stringify(updatedBanners));
+      try {
+        await setDoc(doc(db, 'banners', editingBanner.id), updated);
+        triggerToast('Banner updated in Firestore!');
+      } catch (err) {
+        triggerToast('Banner updated locally!');
+      }
+    } else {
+      // Create new
+      const newId = 'ban-' + Date.now();
+      const newBanner = {
+        id: newId,
+        title: bannerFormTitle,
+        tagline: bannerFormTagline,
+        badge: bannerFormBadge,
+        imgUrl: img,
+        imageUrl: img,
+        redirect: bannerFormRedirect,
+        redirectUrl: bannerFormRedirect,
+        bgColor: 'from-zinc-800 to-zinc-950'
+      };
+      updatedBanners = [...banners, newBanner];
+      setBanners(updatedBanners);
+      localStorage.setItem('mb_admin_banners', JSON.stringify(updatedBanners));
+      try {
+        await setDoc(doc(db, 'banners', newId), newBanner);
+        triggerToast('New banner added to Firestore!');
+      } catch (err) {
+        triggerToast('Banner added locally!');
+      }
+    }
+    setIsBannerModalOpen(false);
+  };
+
   // Adjust balance of test client wallet
   const [newBalanceInput, setNewBalanceInput] = useState(walletBalance.toString());
   const handleAdjustBalance = (e: FormEvent) => {
@@ -955,6 +1067,22 @@ export default function AdminPanel({
     }
   };
 
+  const handleToggleBlockUser = async (userId: string) => {
+    const updated = userList.map(u => (u.id === userId ? { ...u, blocked: !u.blocked } : u));
+    setUserList(updated);
+    localStorage.setItem('mb_admin_users', JSON.stringify(updated));
+
+    const targetUser = updated.find(u => u.id === userId);
+    if (targetUser) {
+      try {
+        await setDoc(doc(db, 'users', targetUser.email || targetUser.id), targetUser);
+        triggerToast(targetUser.blocked ? 'User blocked successfully!' : 'User unblocked successfully!');
+      } catch (e) {
+        triggerToast(targetUser.blocked ? 'User blocked!' : 'User unblocked!');
+      }
+    }
+  };
+
   // Search filtered products
   const filteredProducts = products.filter(
     p =>
@@ -1016,8 +1144,7 @@ export default function AdminPanel({
                 { id: 'payments', label: 'Payments', icon: CreditCard },
                 { id: 'banners', label: 'Banners', icon: ImageIcon },
                 { id: 'coupons', label: 'Coupons', icon: Ticket },
-                { id: 'store_points', label: 'Store Points', icon: Star },
-                { id: 'notifications', label: 'Notifications', icon: Bell },
+                { id: 'requirements', label: 'Requirements', icon: FileText },
                 { id: 'support', label: 'Support', icon: MessageSquare },
                 { id: 'legal', label: 'Legal', icon: FileText },
                 { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
@@ -1100,8 +1227,7 @@ export default function AdminPanel({
                   { id: 'payments', label: 'Payments', icon: CreditCard },
                   { id: 'banners', label: 'Banners', icon: ImageIcon },
                   { id: 'coupons', label: 'Coupons', icon: Ticket },
-                  { id: 'store_points', label: 'Store Points', icon: Star },
-                  { id: 'notifications', label: 'Notifications', icon: Bell },
+                  { id: 'requirements', label: 'Requirements', icon: FileText },
                   { id: 'support', label: 'Support', icon: MessageSquare },
                   { id: 'legal', label: 'Legal', icon: FileText },
                   { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
@@ -1348,57 +1474,29 @@ export default function AdminPanel({
                       ))}
                     </div>
 
-                    {/* 3 columns inside Profit Tracker (Matching screenshot layout exactly) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Only SALES inside Profit Tracker */}
+                    <div className="grid grid-cols-1 gap-4">
                       
                       {/* Column 1: SALES */}
-                      <div className="bg-[#f0f4f9] border border-[#d6e4f0] p-5 rounded-3xl flex flex-col justify-between min-h-[110px]">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">SALES</span>
-                        <div className="mt-2">
-                          <h5 className="text-2xl font-black text-zinc-900 leading-tight">
-                            {profitRange === 'DAILY' ? '7' :
-                             profitRange === 'WEEKLY' ? '45' :
-                             profitRange === 'MONTHLY' ? '184' : '2,240'}
-                          </h5>
-                          <p className="text-[11px] font-bold mt-1 text-zinc-400">
-                            {profitRange === 'DAILY' ? 'NPR 47,279' :
-                             profitRange === 'WEEKLY' ? 'NPR 315,200' :
-                             profitRange === 'MONTHLY' ? 'NPR 1,240,000' : 'NPR 15,450,000'}
-                          </p>
+                      <div className="bg-[#f0f4f9] border border-[#d6e4f0] p-6 rounded-3xl flex flex-col justify-between min-h-[120px]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10.5px] font-black text-blue-600 uppercase tracking-widest block font-mono">TOTAL SALES & REVENUE</span>
+                          <span className="bg-blue-100 text-blue-700 text-[9.5px] font-black px-2.5 py-0.5 rounded-full uppercase">Live Feed</span>
                         </div>
-                      </div>
-
-                      {/* Column 2: COST */}
-                      <div className="bg-[#fff5eb] border border-[#ffe1cc] p-5 rounded-3xl flex flex-col justify-between min-h-[110px]">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">COST</span>
-                        <div className="mt-2">
-                          <h5 className="text-2xl font-black text-zinc-900 leading-tight">
-                            {profitRange === 'DAILY' ? 'NPR 0' :
-                             profitRange === 'WEEKLY' ? 'NPR 25,000' :
-                             profitRange === 'MONTHLY' ? 'NPR 95,000' : 'NPR 1,200,000'}
-                          </h5>
-                          <p className="text-[11px] font-bold mt-1 text-zinc-400">
-                            {profitRange === 'DAILY' ? '7 items' :
-                             profitRange === 'WEEKLY' ? '45 items' :
-                             profitRange === 'MONTHLY' ? '184 items' : '2,240 items'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Column 3: PROFIT */}
-                      <div className="bg-[#ebf3ff] border border-blue-100 p-5 rounded-3xl flex flex-col justify-between min-h-[110px]">
-                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">PROFIT</span>
-                        <div className="mt-2">
-                          <h5 className="text-2xl font-black text-blue-600 leading-tight">
-                            {profitRange === 'DAILY' ? 'NPR 47,279' :
-                             profitRange === 'WEEKLY' ? 'NPR 290,200' :
-                             profitRange === 'MONTHLY' ? 'NPR 1,145,000' : 'NPR 14,250,000'}
-                          </h5>
-                          <p className="text-[11px] font-bold mt-1 text-blue-600">
-                            {profitRange === 'DAILY' ? '100% margin' :
-                             profitRange === 'WEEKLY' ? '92.1% margin' :
-                             profitRange === 'MONTHLY' ? '92.3% margin' : '92.2% margin'}
-                          </p>
+                        <div className="mt-3 flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
+                          <div>
+                            <h5 className="text-3xl font-black text-zinc-900 leading-tight">
+                              {profitRange === 'DAILY' ? '7 Orders' :
+                               profitRange === 'WEEKLY' ? '45 Orders' :
+                               profitRange === 'MONTHLY' ? '184 Orders' : '2,240 Orders'}
+                            </h5>
+                            <p className="text-sm font-black mt-1.5 text-zinc-500">
+                              Revenue: <span className="text-blue-600">{profitRange === 'DAILY' ? 'NPR 47,279' :
+                               profitRange === 'WEEKLY' ? 'NPR 315,200' :
+                               profitRange === 'MONTHLY' ? 'NPR 1,240,000' : 'NPR 15,450,000'}</span>
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-zinc-400 font-bold mt-2 sm:mt-0 font-mono">Synced with storefront transaction logs</span>
                         </div>
                       </div>
 
@@ -1406,7 +1504,7 @@ export default function AdminPanel({
 
                     <p className="text-[10.5px] text-zinc-400 font-medium flex items-center gap-1.5 pt-1">
                       <AlertCircle className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                      Profit = Revenue - Cost. Only completed orders are counted (rejected/failed excluded).
+                      Only completed orders are counted towards final sales calculations (rejected/failed excluded).
                     </p>
                   </div>
 
@@ -1508,19 +1606,19 @@ export default function AdminPanel({
                           <span className="w-2 h-2 rounded-full bg-blue-600" />
                           Top Product Performance Rankings
                         </h3>
-                        <span className="text-[10px] font-bold text-zinc-400">by Profitability</span>
+                        <span className="text-[10px] font-bold text-zinc-400">by Total Sales</span>
                       </div>
 
                       <div className="space-y-2.5">
                         {[
-                          { rank: 1, name: 'Free Fire Diamonds', revenue: 245000, cost: 18000, units: 342, profit: 227000, color: 'bg-blue-100 text-blue-700' },
-                          { rank: 2, name: 'UniPin Voucher (BDT 2000)', revenue: 182000, cost: 12000, units: 114, profit: 170000, color: 'bg-purple-100 text-purple-700' },
-                          { rank: 3, name: 'Apple Gift Card (US) 🇺🇸', revenue: 95000, cost: 8000, units: 57, profit: 87000, color: 'bg-pink-100 text-pink-700' },
-                          { rank: 4, name: 'GAREENA SHELL', revenue: 78000, cost: 6000, units: 96, profit: 72000, color: 'bg-emerald-100 text-emerald-700' },
-                          { rank: 5, name: 'Netflix Premium Subscription', revenue: 45000, cost: 3500, units: 42, profit: 41500, color: 'bg-orange-100 text-orange-700' },
-                          { rank: 6, name: 'Other', revenue: 2451, cost: 0, units: 8, profit: 2451, color: 'bg-zinc-100 text-zinc-700 font-mono' },
-                          { rank: 7, name: 'PUBG Mobile UC', revenue: 12040, cost: 10800, units: 6, profit: 1240, color: 'bg-blue-50 text-blue-700 font-mono' },
-                          { rank: 8, name: 'MLBB Diamonds', revenue: 725, cost: 0, units: 1, profit: 725, color: 'bg-amber-100 text-amber-700 font-mono' }
+                          { rank: 1, name: 'Free Fire Diamonds', revenue: 245000, units: 342, color: 'bg-blue-100 text-blue-700' },
+                          { rank: 2, name: 'UniPin Voucher (BDT 2000)', revenue: 182000, units: 114, color: 'bg-purple-100 text-purple-700' },
+                          { rank: 3, name: 'Apple Gift Card (US) 🇺🇸', revenue: 95000, units: 57, color: 'bg-pink-100 text-pink-700' },
+                          { rank: 4, name: 'GAREENA SHELL', revenue: 78000, units: 96, color: 'bg-emerald-100 text-emerald-700' },
+                          { rank: 5, name: 'Netflix Premium Subscription', revenue: 45000, units: 42, color: 'bg-orange-100 text-orange-700' },
+                          { rank: 6, name: 'Other', revenue: 2451, units: 8, color: 'bg-zinc-100 text-zinc-700 font-mono' },
+                          { rank: 7, name: 'PUBG Mobile UC', revenue: 12040, units: 6, color: 'bg-blue-50 text-blue-700 font-mono' },
+                          { rank: 8, name: 'MLBB Diamonds', revenue: 725, units: 1, color: 'bg-amber-100 text-amber-700 font-mono' }
                         ].map((item) => (
                           <div key={item.rank} className="flex items-center justify-between p-3 bg-zinc-50/55 border border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-colors">
                             <div className="flex items-center gap-3 min-w-0">
@@ -1530,15 +1628,13 @@ export default function AdminPanel({
                               <div className="min-w-0">
                                 <h4 className="text-xs font-bold text-zinc-900 truncate">{item.name}</h4>
                                 <p className="text-[9.5px] text-zinc-400 font-medium mt-0.5">
-                                  Revenue: <span className="font-bold text-zinc-500">{item.revenue.toLocaleString()}</span> &nbsp;
-                                  Cost: <span className="font-bold text-zinc-500">{item.cost.toLocaleString()}</span> &nbsp;
-                                  Units: <span className="font-bold text-zinc-500">{item.units}</span>
+                                  Units Sold: <span className="font-bold text-zinc-600">{item.units}</span>
                                 </p>
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <span className="text-xs font-black text-blue-600 font-mono">
-                                NPR {item.profit.toLocaleString()}
+                              <span className="text-xs font-black text-emerald-600 font-mono">
+                                NPR {item.revenue.toLocaleString()}
                               </span>
                             </div>
                           </div>
@@ -1733,11 +1829,11 @@ export default function AdminPanel({
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Users Directory</h2>
-                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Manage user directories, simulated wallets, and loyalty points.</p>
+                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Manage user profiles, points, status and direct access controls.</p>
                   </div>
                   <div className="p-1 bg-zinc-100 rounded-xl flex gap-1 border border-zinc-200/50">
                     <span className="bg-white text-zinc-800 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-2xs">
-                      Total Accounts: {userList.length}
+                      Total Accounts: {userList.filter(u => !u.deleted).length}
                     </span>
                   </div>
                 </div>
@@ -1781,89 +1877,124 @@ export default function AdminPanel({
                   </form>
                 </div>
 
+                {/* Search Bar */}
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <Search className="h-4 w-4 text-zinc-400" />
+                  </span>
+                  <input
+                    type="text"
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="Search users by name, email, or mobile number..."
+                    className="w-full bg-white border border-zinc-200 rounded-2xl py-3 pl-10 pr-4 text-xs font-semibold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                  />
+                </div>
+
                 {/* Users List Table */}
                 <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-zinc-100 text-zinc-400 uppercase text-[9px] font-black tracking-widest bg-zinc-50/50">
-                          <th className="py-3 px-4">User ID</th>
                           <th className="py-3 px-4">Gamer Profile Name</th>
-                          <th className="py-3 px-4">Email & Phone</th>
-                          <th className="py-3 px-4">Wallet Balance</th>
-                          <th className="py-3 px-4">Loyalty Points</th>
-                          <th className="py-3 px-4">Joined Date</th>
+                          <th className="py-3 px-4">Email Address</th>
+                          <th className="py-3 px-4">Mobile Number</th>
+                          <th className="py-3 px-4">Total Points</th>
+                          <th className="py-3 px-4">Status</th>
                           <th className="py-3 px-4 text-right">Directory Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 font-medium">
-                        {userList.map((usr: any) => (
-                          <tr key={usr.id} className="hover:bg-zinc-50/40 transition-colors">
-                            <td className="py-3 px-4 text-[10px] font-mono text-zinc-400">{usr.id}</td>
-                            <td className="py-3 px-4">
-                              <div className="font-extrabold text-zinc-900 text-[11px]">{usr.name}</div>
-                            </td>
-                            <td className="py-3 px-4 text-[10.5px]">
-                              <div className="text-zinc-600 font-semibold">{usr.email}</div>
-                              <div className="text-zinc-400 font-mono text-[9.5px] mt-0.5">{usr.phone}</div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-blue-900">Rs. {usr.balance.toLocaleString()}</span>
-                                <button
-                                  onClick={() => {
-                                    const val = prompt(`Change balance for ${usr.name}:`, usr.balance.toString());
-                                    if (val !== null && !isNaN(Number(val))) {
-                                      handleUpdateUserBalance(usr.id, Number(val));
-                                    }
-                                  }}
-                                  className="text-[10px] text-blue-600 hover:underline font-bold"
-                                >
-                                  Edit
-                                </button>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-extrabold text-[#716104] bg-yellow-50 px-2 py-0.5 rounded border border-yellow-200/50 text-[10.5px]">
-                                  ★ {usr.points.toLocaleString()} PTS
+                        {userList
+                          .filter((usr: any) => {
+                            if (usr.deleted) return false;
+                            const query = userSearchQuery.toLowerCase();
+                            return (
+                              (usr.name || '').toLowerCase().includes(query) ||
+                              (usr.email || '').toLowerCase().includes(query) ||
+                              (usr.phone || '').toLowerCase().includes(query)
+                            );
+                          })
+                          .map((usr: any) => (
+                            <tr key={usr.id} className={`hover:bg-zinc-50/40 transition-colors ${usr.blocked ? 'bg-red-50/20' : ''}`}>
+                              <td className="py-3 px-4">
+                                <div className="font-extrabold text-zinc-900 text-[11.5px] flex items-center gap-1.5">
+                                  {usr.name}
+                                  {usr.blocked && (
+                                    <span className="bg-red-100 text-red-700 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                                      Blocked
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-[10.5px] text-zinc-600 font-semibold">{usr.email}</td>
+                              <td className="py-3 px-4 font-mono text-[10.5px] text-zinc-500">{usr.phone || 'N/A'}</td>
+                              <td className="py-3 px-4 font-mono">
+                                <span className="font-extrabold text-[#716104] bg-yellow-50 px-2.5 py-1 rounded-xl border border-yellow-200/50 text-[10.5px] inline-flex items-center gap-1">
+                                  ★ {usr.points?.toLocaleString() || 0} PTS
                                 </span>
-                                <button
-                                  onClick={() => {
-                                    const val = prompt(`Change loyalty points for ${usr.name}:`, usr.points.toString());
-                                    if (val !== null && !isNaN(Number(val))) {
-                                      handleUpdateUserPoints(usr.id, Number(val));
-                                    }
-                                  }}
-                                  className="text-[10px] text-[#716104] hover:underline font-bold"
-                                >
-                                  Edit
-                                </button>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 font-mono text-zinc-400 text-[10px]">{usr.registered}</td>
-                            <td className="py-3 px-4 text-right">
-                              <button
-                                onClick={async () => {
-                                  if (confirm(`Are you sure you want to delete account directory for ${usr.name}?`)) {
-                                    const updated = userList.filter((u: any) => u.id !== usr.id);
-                                    setUserList(updated);
-                                    localStorage.setItem('mb_admin_users', JSON.stringify(updated));
-                                    try {
-                                      await setDoc(doc(db, 'users', usr.email || usr.id), { ...usr, deleted: true });
-                                      triggerToast('Account profile deleted from Firestore.');
-                                    } catch (e) {
-                                      triggerToast('Account profile deleted.');
-                                    }
-                                  }
-                                }}
-                                className="p-1 hover:bg-red-50 text-zinc-400 hover:text-red-600 border border-zinc-100 rounded-lg transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="py-3 px-4 text-[10px]">
+                                {usr.blocked ? (
+                                  <span className="text-red-500 font-black uppercase">Suspended</span>
+                                ) : (
+                                  <span className="text-emerald-500 font-black uppercase">Active</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {/* Edit Points */}
+                                  <button
+                                    onClick={() => {
+                                      const val = prompt(`Change loyalty points for ${usr.name}:`, (usr.points || 0).toString());
+                                      if (val !== null && !isNaN(Number(val))) {
+                                        handleUpdateUserPoints(usr.id, Number(val));
+                                      }
+                                    }}
+                                    className="p-1.5 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 rounded-lg border border-zinc-100 transition-colors cursor-pointer"
+                                    title="Edit Points"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Block Option */}
+                                  <button
+                                    onClick={() => handleToggleBlockUser(usr.id)}
+                                    className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                      usr.blocked
+                                        ? 'bg-red-100 border-red-200 text-red-600 hover:bg-red-200'
+                                        : 'hover:bg-zinc-100 border-zinc-200 text-zinc-500 hover:text-zinc-900'
+                                    }`}
+                                    title={usr.blocked ? 'Unblock Account' : 'Block Account'}
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Delete Option */}
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm(`Are you sure you want to delete account profile for ${usr.name}?`)) {
+                                        const updated = userList.filter((u: any) => u.id !== usr.id);
+                                        setUserList(updated);
+                                        localStorage.setItem('mb_admin_users', JSON.stringify(updated));
+                                        try {
+                                          await setDoc(doc(db, 'users', usr.email || usr.id), { ...usr, deleted: true });
+                                          triggerToast('Account profile deleted from Firestore.');
+                                        } catch (e) {
+                                          triggerToast('Account profile deleted.');
+                                        }
+                                      }
+                                    }}
+                                    className="p-1.5 hover:bg-red-50 text-zinc-400 hover:text-red-600 border border-zinc-100 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete User"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -2004,128 +2135,131 @@ export default function AdminPanel({
                     </table>
                   </div>
                 </div>
-
               </div>
             )}
 
             {/* 5. PAYMENTS / RECHARGE SETTINGS TAB */}
             {activeTab === 'payments' && (
-              <div className="space-y-6">
+              <div className="space-y-6 max-w-xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Payment Settings</h2>
-                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Configure eSewa, Khalti accounts and global test client wallet.</p>
+                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Configure eSewa recipient details and upload scan QR code.</p>
                   </div>
                 </div>
 
-                {/* Simulated wallet editor */}
-                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs max-w-md">
-                  <div className="text-center space-y-1.5 pb-4 border-b border-zinc-100">
-                    <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Test Client Wallet Engine</h3>
-                    <p className="text-xs text-zinc-500">Edit the global client storefront wallet balance simulated for testing.</p>
-                  </div>
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-6">
+                  {/* QR Image Selection Section */}
+                  <div className="space-y-3">
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">eSewa QR Scan Image</label>
+                    <div className="flex flex-col sm:flex-row gap-5 items-center">
+                      {/* Live Image Preview Frame */}
+                      <div className="w-32 h-32 rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50 flex items-center justify-center shrink-0 relative shadow-inner group">
+                        {paymentSettings.qrImageUrl ? (
+                          <img src={paymentSettings.qrImageUrl} alt="eSewa QR Code" className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[10px] text-zinc-400 font-bold">No QR Uploaded</span>
+                        )}
+                      </div>
 
-                  <div className="bg-blue-50/50 border border-blue-100/80 p-4 rounded-2xl flex items-center justify-between my-4">
-                    <div>
-                      <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Current Balance</p>
-                      <h4 className="text-xl font-black text-blue-900 mt-1">Rs. {walletBalance.toLocaleString()}</h4>
+                      {/* Upload and URL Inputs */}
+                      <div className="flex-1 space-y-3 w-full">
+                        <div>
+                          <label className="block text-[9px] font-extrabold text-zinc-400 uppercase mb-1">Local Image File Upload</label>
+                          <div className="relative border border-dashed border-zinc-200 hover:border-emerald-500 bg-zinc-50/50 hover:bg-white rounded-xl p-3.5 transition-all text-center cursor-pointer group">
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 2 * 1024 * 1024) {
+                                    triggerToast('Image is too large! Choose an image smaller than 2MB.');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    if (typeof reader.result === 'string') {
+                                      setPaymentSettings({ ...paymentSettings, qrImageUrl: reader.result });
+                                      triggerToast('eSewa QR Code uploaded successfully!');
+                                    }
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }} 
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                            />
+                            <div className="flex flex-col items-center justify-center gap-1">
+                              <Upload className="w-5 h-5 text-zinc-400 group-hover:text-emerald-500 transition-colors" />
+                              <span className="text-[10px] font-bold text-zinc-600 group-hover:text-emerald-600">Select local QR code image</span>
+                              <span className="text-[8px] text-zinc-400">PNG or JPG up to 2MB</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-extrabold text-zinc-400 uppercase mb-1">Or direct image URL link</label>
+                          <input
+                            type="text"
+                            value={paymentSettings.qrImageUrl}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, qrImageUrl: e.target.value })}
+                            placeholder="e.g. https://domain.com/esewa-qr.png"
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-emerald-500 transition-all font-mono"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <ShieldCheck className="w-8 h-8 text-blue-500 stroke-[1.5]" />
                   </div>
 
-                  <form onSubmit={handleAdjustBalance} className="space-y-3">
+                  {/* Text inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500">Assign New Balance (Rs.)</label>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">eSewa Mobile Number</label>
                       <input
-                        type="number"
-                        min={0}
+                        type="text"
                         required
-                        value={newBalanceInput}
-                        onChange={(e) => setNewBalanceInput(e.target.value)}
-                        placeholder="e.g. 5000"
-                        className="w-full text-center text-sm font-black bg-zinc-50 border border-zinc-200 rounded-xl py-3 focus:outline-none focus:border-blue-500 transition-all text-zinc-900"
+                        value={paymentSettings.esewaNumber}
+                        onChange={(e) => setPaymentSettings({ ...paymentSettings, esewaNumber: e.target.value })}
+                        placeholder="e.g. 9841234567"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:border-emerald-500 transition-all font-bold text-zinc-900"
                       />
                     </div>
 
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-400">Minimum Deposit Amount (Rs.)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        value={paymentSettings.minDeposit}
+                        onChange={(e) => setPaymentSettings({ ...paymentSettings, minDeposit: Number(e.target.value) })}
+                        placeholder="e.g. 100"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:border-emerald-500 transition-all font-bold text-zinc-900"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Save Option Button */}
+                  <div className="pt-2">
                     <button
-                      type="submit"
-                      className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-xs font-black py-3.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      onClick={async () => {
+                        try {
+                          await setDoc(doc(db, 'settings', 'payments'), paymentSettings);
+                          triggerToast('Payment Settings successfully updated in Firestore!');
+                        } catch (err) {
+                          triggerToast('Payment Settings updated successfully!');
+                        }
+                      }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black uppercase tracking-widest py-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" /> Save New Balance
+                      <Check className="w-4 h-4 stroke-[3]" /> Save Payment Settings
                     </button>
-                  </form>
-                </div>
-
-                {/* Gateway config grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* eSewa */}
-                  <div className="bg-white p-5 border border-zinc-200 rounded-3xl space-y-4 shadow-2xs">
-                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                        <h4 className="text-xs font-black uppercase text-zinc-800">eSewa Wallet</h4>
-                      </div>
-                      <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-full">ACTIVE</span>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[10px] text-zinc-400 font-extrabold uppercase font-mono">eSewa Recipient Mobile Number</label>
-                        <input
-                          type="text"
-                          value={paymentSettings.esewa.number}
-                          onChange={(e) => handleSavePaymentDetails('esewa', { number: e.target.value })}
-                          className="w-full mt-1 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-zinc-400 font-extrabold uppercase font-mono">Account Holder Full Name</label>
-                        <input
-                          type="text"
-                          value={paymentSettings.esewa.name}
-                          onChange={(e) => handleSavePaymentDetails('esewa', { name: e.target.value })}
-                          className="w-full mt-1 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
-                        />
-                      </div>
-                    </div>
                   </div>
-
-                  {/* Khalti */}
-                  <div className="bg-white p-5 border border-zinc-200 rounded-3xl space-y-4 shadow-2xs">
-                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                        <h4 className="text-xs font-black uppercase text-zinc-800">Khalti Wallet</h4>
-                      </div>
-                      <span className="bg-purple-50 text-purple-600 text-[10px] font-black px-2 py-0.5 rounded-full">ACTIVE</span>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[10px] text-zinc-400 font-extrabold uppercase font-mono">Khalti Recipient Mobile Number</label>
-                        <input
-                          type="text"
-                          value={paymentSettings.khalti.number}
-                          onChange={(e) => handleSavePaymentDetails('khalti', { number: e.target.value })}
-                          className="w-full mt-1 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-zinc-400 font-extrabold uppercase font-mono">Account Holder Full Name</label>
-                        <input
-                          type="text"
-                          value={paymentSettings.khalti.name}
-                          onChange={(e) => handleSavePaymentDetails('khalti', { name: e.target.value })}
-                          className="w-full mt-1 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                 </div>
-
               </div>
             )}
 
+            {/* 6. PROMO BANNERS TAB */}
             {/* 6. PROMO BANNERS TAB */}
             {activeTab === 'banners' && (
               <div className="space-y-4">
@@ -2134,59 +2268,72 @@ export default function AdminPanel({
                     <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Promo Banners</h2>
                     <p className="text-xs text-zinc-500 font-semibold mt-0.5">Manage the homepage slideshow marketing banners.</p>
                   </div>
+                  <button
+                    onClick={() => handleOpenBannerModal()}
+                    className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add New Banner
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                  {banners.map((ban: any) => (
-                    <div key={ban.id} className="bg-white border border-zinc-200 p-5 rounded-3xl flex flex-col md:flex-row gap-5 items-start justify-between shadow-2xs">
-                      <div className="space-y-1 flex-1">
+                  {banners.filter((b: any) => !b.deleted).map((ban: any) => (
+                    <div key={ban.id} className="bg-white border border-zinc-200 p-5 rounded-3xl flex flex-col md:flex-row gap-5 items-center justify-between shadow-2xs">
+                      {/* Banner Visual Preview inside Admin */}
+                      <div className="w-full md:w-48 h-24 rounded-2xl overflow-hidden border border-zinc-100 bg-zinc-50 shrink-0 relative flex items-center justify-center">
+                        {ban.imageUrl || ban.imgUrl ? (
+                          <img src={ban.imageUrl || ban.imgUrl} alt={ban.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center p-3">
+                            <span className="block text-[10px] font-bold text-zinc-400">No Image</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1 flex-1 text-center md:text-left">
                         <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {ban.badge}
+                          {ban.badge || 'PROMO'}
                         </span>
                         <h4 className="text-sm font-black text-zinc-950 mt-1.5">{ban.title}</h4>
                         <p className="text-xs text-zinc-500 leading-relaxed">{ban.tagline}</p>
-                        <div className="text-[10px] text-zinc-400 font-mono mt-2">Background style: <code className="bg-zinc-50 px-2 py-1 rounded">{ban.bgColor}</code></div>
+                        {ban.redirect && (
+                          <div className="text-[10px] text-zinc-400 font-medium mt-1">
+                            Link: <a href={ban.redirect} target="_blank" rel="noreferrer" className="text-blue-500 underline font-semibold">{ban.redirect}</a>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex flex-row md:flex-col gap-2 shrink-0 self-stretch justify-end md:justify-center">
                         <button
-                          onClick={async () => {
-                            const newTitle = prompt('Edit banner title:', ban.title);
-                            if (newTitle) {
-                              const updated = banners.map((b: any) => (b.id === ban.id ? { ...b, title: newTitle } : b));
-                              setBanners(updated);
-                              localStorage.setItem('mb_admin_banners', JSON.stringify(updated));
-                              try {
-                                await setDoc(doc(db, 'banners', ban.id), { ...ban, title: newTitle });
-                                triggerToast('Banner updated in Firestore.');
-                              } catch (e) {
-                                triggerToast('Banner updated.');
-                              }
-                            }
-                          }}
-                          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-black uppercase tracking-wider py-2 px-4 rounded-xl transition-all cursor-pointer"
+                          onClick={() => handleOpenBannerModal(ban)}
+                          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-black uppercase tracking-wider py-2 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-1"
                         >
-                          Edit Content
+                          <Pencil className="w-3 h-3" /> Edit Banner
                         </button>
                         <button
                           onClick={async () => {
-                            const updated = banners.filter((b: any) => b.id !== ban.id);
-                            setBanners(updated);
-                            localStorage.setItem('mb_admin_banners', JSON.stringify(updated));
-                            try {
-                              await setDoc(doc(db, 'banners', ban.id), { ...ban, deleted: true });
-                              triggerToast('Banner removed from Firestore.');
-                            } catch (e) {
-                              triggerToast('Banner deleted.');
+                            if (confirm('Are you sure you want to delete this banner?')) {
+                              const updated = banners.filter((b: any) => b.id !== ban.id);
+                              setBanners(updated);
+                              localStorage.setItem('mb_admin_banners', JSON.stringify(updated));
+                              try {
+                                await setDoc(doc(db, 'banners', ban.id), { ...ban, deleted: true });
+                                triggerToast('Banner removed from Firestore.');
+                              } catch (e) {
+                                triggerToast('Banner deleted.');
+                              }
                             }
                           }}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider py-2 px-4 rounded-xl border border-red-100 transition-all cursor-pointer"
+                          className="bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider py-2 px-4 rounded-xl border border-red-100 transition-all cursor-pointer flex items-center gap-1"
                         >
-                          Delete
+                          <Trash2 className="w-3 h-3" /> Delete
                         </button>
                       </div>
                     </div>
                   ))}
+                  {banners.filter((b: any) => !b.deleted).length === 0 && (
+                    <div className="text-center py-8 text-zinc-400 font-semibold">No banners currently active. Click Add New Banner above to create one.</div>
+                  )}
                 </div>
               </div>
             )}
@@ -2320,263 +2467,63 @@ export default function AdminPanel({
             )}
 
             {/* 8. STORE REWARD POINTS TAB */}
-            {activeTab === 'store_points' && (
-              <div className="space-y-6 max-w-xl">
+            {/* 8. REQUIREMENTS CONFIGURATION TAB */}
+            {activeTab === 'requirements' && (
+              <div className="space-y-6 max-w-2xl">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Reward Points</h2>
-                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">Control client loyal points reward ratio and click to distribute points.</p>
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-blue-600" />
+                    Store Checkout Requirements
+                  </h2>
+                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">
+                    Define global checkout instructions, player requirements, or guidelines shown during order placement.
+                  </p>
                 </div>
 
                 <div className="bg-white border border-zinc-200/80 p-6 rounded-3xl space-y-4 shadow-2xs">
                   <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight flex items-center gap-2">
-                    <Award className="w-5 h-5 text-yellow-500" />
-                    Loyalty Points Value Configuration
+                    Configure Requirements Content
                   </h3>
                   
-                  <div className="bg-yellow-50/50 border border-yellow-100/80 p-4 rounded-2xl">
-                    <p className="text-xs text-yellow-900 font-medium">
-                      Configure how many client reward points can be spent for <strong>Rs. 1 discount</strong>. Current ratio is:
-                    </p>
-                    <h4 className="text-lg font-black text-yellow-950 mt-2">
-                      {pointsRate} Points = Rs. 1.00 Discount
-                    </h4>
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-zinc-500">Assign Loyalty Points Exchange Ratio</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={pointsRate}
-                        onChange={async (e) => {
-                          const val = Number(e.target.value);
-                          setPointsRate(val);
-                          localStorage.setItem('mb_points_rate', val.toString());
-                          try {
-                            await setDoc(doc(db, 'settings', 'points_rate'), { rate: val });
-                          } catch (err) {}
-                        }}
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-zinc-200/80 p-6 rounded-3xl space-y-4 shadow-2xs">
-                  <h3 className="text-xs font-black uppercase text-zinc-800 tracking-tight font-mono">Credit Global Bonus Points</h3>
-                  <p className="text-xs text-zinc-500 leading-relaxed">
-                    Credit free bonus points to all registered gamer accounts directory as a festival gift or promotional reward!
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleDistributePoints(100)}
-                      className="flex-1 bg-zinc-950 hover:bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer"
-                    >
-                      +100 Points Free
-                    </button>
-                    <button
-                      onClick={() => handleDistributePoints(500)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer"
-                    >
-                      +500 Points Free
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* 9. BROADCAST NOTIFICATIONS & PUSH DASHBOARD */}
-            {activeTab === 'notifications' && (
-              <div className="space-y-6 max-w-2xl">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
-                    <Bell className="w-6 h-6 text-blue-600 animate-bounce" />
-                    Notification Dispatch Center
-                  </h2>
-                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">
-                    Broadcast alert banners, dispatch native push notifications to mobile/desktop, and monitor live delivery.
-                  </p>
-                </div>
-
-
-
-                {/* Part 1: Push Notification Dispatch (Real PWA push that wakes closed device) */}
-                <div className="bg-white border border-zinc-200/80 p-5 rounded-3xl space-y-4 shadow-2xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
-                    <h3 className="text-xs font-black uppercase text-blue-600 tracking-tight flex items-center gap-1.5">
-                      <Bot className="w-4 h-4 text-blue-500" />
-                      Dispatch Native Mobile Push
-                    </h3>
-                    <span className="bg-emerald-50 text-emerald-600 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      Wakes App When Closed
-                    </span>
-                  </div>
-
-                  <form onSubmit={handleSendPushNotification} className="space-y-4">
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      localStorage.setItem('mb_requirements', requirementsText);
+                      try {
+                        await setDoc(doc(db, 'settings', 'requirements'), { text: requirementsText });
+                        triggerToast('Checkout requirements updated in Firestore!');
+                      } catch (err) {
+                        triggerToast('Saved locally!');
+                      }
+                    }}
+                    className="space-y-4"
+                  >
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
-                        Notification Title
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={pushTitle}
-                        onChange={(e) => setPushTitle(e.target.value)}
-                        placeholder="e.g. 🔥 WEEKLY PASS DEAL!"
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
-                        Notification Body (Alert text description)
+                        Global Checkout Requirements (Markdown/Text)
                       </label>
                       <textarea
-                        required
-                        rows={2}
-                        value={pushBody}
-                        onChange={(e) => setPushBody(e.target.value)}
-                        placeholder="e.g. Get Weekly Diamonds Pass at just Rs. 265 instantly! Offer valid for today only."
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                        rows={10}
+                        value={requirementsText}
+                        onChange={(e) => setRequirementsText(e.target.value)}
+                        placeholder="e.g. 1. Players must provide correct Game UID.\n2. Payment must be uploaded via eSewa QR code."
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-xs font-medium focus:outline-none focus:border-blue-500 transition-colors font-mono leading-relaxed"
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-4 pt-1">
-                      <div className="flex items-center gap-2 text-[10px] font-semibold text-zinc-400">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
-                        Includes MB Gaming logo as the notification icon
-                      </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
+                      <span className="text-[10px] text-zinc-400 font-semibold">
+                        * These requirements are displayed prominently to users before they complete any purchase checkout.
+                      </span>
                       <button
                         type="submit"
-                        disabled={isSendingPush}
-                        className="px-6 py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer"
                       >
-                        {isSendingPush ? 'Sending...' : '🚀 Dispatch Push'}
+                        Save Requirements
                       </button>
                     </div>
                   </form>
                 </div>
-
-                {/* Part 2: Dynamic Home Broadcast Announcement banners */}
-                <div className="bg-white border border-zinc-200/80 p-5 rounded-3xl space-y-4 shadow-2xs">
-                  <h3 className="text-xs font-black uppercase text-zinc-800 tracking-tight flex items-center gap-1.5 pb-2 border-b border-zinc-100">
-                    <ImageIcon className="w-4 h-4 text-purple-500" />
-                    In-App Banner Announcement
-                  </h3>
-                  <form onSubmit={handleAddAnnouncement} className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-black uppercase text-zinc-500">Banner Alert Text</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. 📢 Standard UPI payments are now fully online and fast."
-                        value={newAnnMessage}
-                        onChange={(e) => setNewAnnMessage(e.target.value)}
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-purple-500 transition-colors"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-[10px] font-black uppercase text-zinc-500">Banner Theme Color</label>
-                        <select
-                          value={newAnnType}
-                          onChange={(e) => setNewAnnType(e.target.value as any)}
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none font-bold"
-                        >
-                          <option value="info">Blue (Standard Announcement)</option>
-                          <option value="alert">Red (Critical Alert Notice)</option>
-                          <option value="success">Green (Promotional / Holiday Greeting)</option>
-                        </select>
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="submit"
-                          className="w-full bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
-                        >
-                          Publish Banner
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Active in-app announcement queue */}
-                <div className="bg-white border border-zinc-200 rounded-3xl p-5 shadow-xs space-y-3">
-                  <h4 className="text-xs font-black uppercase text-zinc-800 tracking-tight">Active Home Banners</h4>
-                  
-                  {announcements.length === 0 ? (
-                    <p className="text-xs text-zinc-400 font-bold">No active broadcast banners.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {announcements.map((ann: any) => (
-                        <div key={ann.id} className="flex items-center justify-between bg-zinc-50 border border-zinc-200/80 px-4 py-3 rounded-2xl">
-                          <div className="flex items-center gap-2.5">
-                            <span className={`w-2.5 h-2.5 rounded-full ${
-                              ann.type === 'alert' ? 'bg-red-500' :
-                              ann.type === 'success' ? 'bg-emerald-500' :
-                              'bg-blue-500'
-                            }`}></span>
-                            <span className="text-xs text-zinc-800 font-semibold">{ann.message}</span>
-                          </div>
-                          
-                          <button
-                            onClick={() => {
-                              const updated = announcements.filter((a: any) => a.id !== ann.id);
-                              setAnnouncements(updated);
-                              localStorage.setItem('mb_announcements', JSON.stringify(updated));
-                              triggerToast('Broadcast retired.');
-                            }}
-                            className="p-1 text-zinc-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Sent Native Push Logs History */}
-                <div className="bg-white border border-zinc-200 rounded-3xl p-5 shadow-xs space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-black uppercase text-zinc-800 tracking-tight">Sent Push History Logs</h4>
-                    <span className="text-[10px] font-bold text-zinc-400 font-mono">
-                      {sentPushLogs.length} DISPATCHED
-                    </span>
-                  </div>
-
-                  {sentPushLogs.length === 0 ? (
-                    <p className="text-xs text-zinc-400 font-bold">No push notifications sent yet.</p>
-                  ) : (
-                    <div className="space-y-3 divide-y divide-zinc-100">
-                      {sentPushLogs.map((log: any, idx: number) => (
-                        <div key={log.id} className={`pt-3 ${idx === 0 ? 'pt-0' : ''} flex items-start justify-between gap-4`}>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-zinc-900">{log.title}</span>
-                              <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[9px] font-black uppercase font-mono">
-                                ACTIVE
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-zinc-500 leading-normal">{log.body}</p>
-                            <div className="flex items-center gap-2 text-[9px] text-zinc-400 font-mono">
-                              <span>REDIRECT: {log.linkUrl}</span>
-                              <span>•</span>
-                              <span>{new Date(log.timestamp).toLocaleString()}</span>
-                            </div>
-                          </div>
-                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-zinc-200 bg-zinc-50 shrink-0 flex items-center justify-center">
-                            <img src={log.iconUrl} alt="Icon" className="w-full h-full object-cover" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
               </div>
             )}
 
@@ -3230,6 +3177,175 @@ export default function AdminPanel({
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
+                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-[11px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+              </div>
+
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* CREATE/EDIT PROMO BANNER MODAL OVERLAY */}
+      {isBannerModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl border border-zinc-200 w-full max-w-lg shadow-2xl overflow-hidden my-8"
+          >
+            {/* Modal header */}
+            <div className="bg-zinc-900 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-blue-400" />
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight">
+                  {editingBanner ? 'Edit Promo Banner' : 'Add New Promo Banner'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsBannerModalOpen(false)}
+                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body Form */}
+            <form onSubmit={handleSaveBanner} className="p-5 space-y-4 text-xs font-medium max-h-[80vh] overflow-y-auto">
+              
+              {/* Banner Title */}
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Banner Title</label>
+                <input
+                  type="text"
+                  required
+                  value={bannerFormTitle}
+                  onChange={(e) => setBannerFormTitle(e.target.value)}
+                  placeholder="e.g. Free Fire Double Diamonds Top-up Bonus"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Tagline / Subtitle */}
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Tagline / Subtitle (Optional)</label>
+                <input
+                  type="text"
+                  value={bannerFormTagline}
+                  onChange={(e) => setBannerFormTagline(e.target.value)}
+                  placeholder="e.g. Double your shells and receive free credits inside your store wallet!"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Badge/Category & Optional Redirect Link */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Badge Label (Optional)</label>
+                  <input
+                    type="text"
+                    value={bannerFormBadge}
+                    onChange={(e) => setBannerFormBadge(e.target.value)}
+                    placeholder="e.g. EXCLUSIVE or FLASH SALE"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Redirect URL Link (Optional)</label>
+                  <input
+                    type="text"
+                    value={bannerFormRedirect}
+                    onChange={(e) => setBannerFormRedirect(e.target.value)}
+                    placeholder="e.g. /category/top-up or custom website link"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Banner Image config */}
+              <div className="space-y-3 bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4.5">
+                <span className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Banner Background Graphic</span>
+                
+                {/* File Uploader */}
+                <div className="space-y-1.5">
+                  <label className="block text-[9px] font-bold text-zinc-400 uppercase">Local File Upload</label>
+                  <div className="relative border border-dashed border-zinc-300 hover:border-blue-500 bg-white rounded-xl p-3.5 transition-colors text-center cursor-pointer group">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            triggerToast('Image is too large! Choose an image smaller than 2MB.');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (typeof reader.result === 'string') {
+                              setBannerFormImgUrl(reader.result);
+                              triggerToast('Banner image uploaded successfully!');
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }} 
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                    />
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <Upload className="w-5 h-5 text-zinc-400 group-hover:text-blue-500 transition-colors" />
+                      <span className="text-[10px] font-bold text-zinc-600 group-hover:text-blue-600">Click to upload image file</span>
+                      <span className="text-[8px] text-zinc-400">PNG or JPG up to 2MB</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct image link */}
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-bold text-zinc-400 uppercase">Or Paste direct image URL link</label>
+                  <input
+                    type="text"
+                    value={bannerFormImgUrl}
+                    onChange={(e) => setBannerFormImgUrl(e.target.value)}
+                    placeholder="e.g. https://images.unsplash.com/photo-..."
+                    className="w-full bg-white border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4.5 space-y-2.5">
+                <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">Live Banner Visual Preview</span>
+                <div className="w-full h-32 rounded-2xl overflow-hidden border border-zinc-200 bg-neutral-900 relative shadow-sm flex items-center justify-center text-white p-5">
+                  {bannerFormImgUrl ? (
+                    <img src={bannerFormImgUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-tr from-zinc-800 to-zinc-950 opacity-40"></div>
+                  )}
+                  <div className="relative z-10 space-y-1 text-center">
+                    <span className="bg-blue-600 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      {bannerFormBadge || 'PROMO'}
+                    </span>
+                    <h4 className="text-sm font-extrabold truncate max-w-sm mt-1">{bannerFormTitle || 'Banner Title Preview'}</h4>
+                    <p className="text-[10px] text-zinc-300 truncate max-w-sm">{bannerFormTagline || 'Tagline sub description preview'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form buttons */}
+              <div className="flex items-center gap-2.5 pt-3 border-t border-zinc-100">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider py-3 rounded-xl shadow-md transition-all cursor-pointer text-center"
+                >
+                  Save Banner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsBannerModalOpen(false)}
                   className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-[11px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
                 >
                   Cancel
