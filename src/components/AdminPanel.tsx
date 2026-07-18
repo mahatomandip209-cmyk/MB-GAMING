@@ -3503,32 +3503,7 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* Input details */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Client ID Input Label</label>
-                  <input
-                    type="text"
-                    required
-                    value={formInputLabel}
-                    onChange={(e) => setFormInputLabel(e.target.value)}
-                    placeholder="e.g. Player ID / UID"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
-                  />
-                </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Client ID Input Placeholder</label>
-                  <input
-                    type="text"
-                    required
-                    value={formInputPlaceholder}
-                    onChange={(e) => setFormInputPlaceholder(e.target.value)}
-                    placeholder="e.g. e.g. 5129384732"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
-                  />
-                </div>
-              </div>
 
               {/* Price Ranges */}
               <div className="grid grid-cols-2 gap-3">
