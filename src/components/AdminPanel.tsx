@@ -3446,90 +3446,17 @@ export default function AdminPanel({
             {/* Modal body Form */}
             <form onSubmit={handleSaveProduct} className="p-5 space-y-4 text-xs font-medium max-h-[80vh] overflow-y-auto">
               
-              {/* Product ID & Category */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Unique ID (Alphanumeric)</label>
-                  <input
-                    type="text"
-                    required
-                    disabled={!!editingProduct}
-                    value={formId}
-                    onChange={(e) => setFormId(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    placeholder="e.g. pubg-new-uc"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Store Category</label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value as any)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
-                  >
-                    <option value="top-up">Top Up</option>
-                    <option value="voucher">Voucher</option>
-                    <option value="subscription">Subscription</option>
-                    <option value="design">Design</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Title & Provider */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Product Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g. Fortnite V-Bucks"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Game Provider / Brand</label>
-                  <input
-                    type="text"
-                    required
-                    value={formProvider}
-                    onChange={(e) => setFormProvider(e.target.value)}
-                    placeholder="e.g. Epic Games"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-
-
-              {/* Price Ranges */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Min Amount (NPR)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    value={formMinAmount}
-                    onChange={(e) => setFormMinAmount(Number(e.target.value))}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none font-bold text-zinc-800"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Max Amount (NPR)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    value={formMaxAmount}
-                    onChange={(e) => setFormMaxAmount(Number(e.target.value))}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none font-bold text-zinc-800"
-                  />
-                </div>
+              {/* Product Title (Game Name) */}
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Game Name / Product Title</label>
+                <input
+                  type="text"
+                  required
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="e.g. Fortnite V-Bucks"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                />
               </div>
 
               {/* Product Cover/Logo Graphic Manager */}
@@ -3631,32 +3558,6 @@ export default function AdminPanel({
                         Clear
                       </button>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Product Live Preview Card */}
-              <div className="bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4.5 space-y-2.5">
-                <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">Live Card Layout Preview</span>
-                <div className="flex gap-4 items-center bg-white p-3.5 border border-zinc-100 rounded-2xl shadow-sm">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-zinc-100 relative shadow-sm flex items-center justify-center bg-neutral-50">
-                    {formImageUrl ? (
-                      <img src={formImageUrl} alt="Preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-tr from-blue-600 to-indigo-700 text-white flex items-center justify-center">
-                        {renderProductIcon(formIconName, "w-8 h-8")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black uppercase text-blue-600 tracking-wide">{formProvider || 'Epic Games'}</span>
-                      {formPopular && (
-                        <span className="bg-amber-100 text-[#716104] font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase">★ Popular</span>
-                      )}
-                    </div>
-                    <h4 className="text-sm font-extrabold text-zinc-900 truncate mt-0.5">{formName || 'New Product Title'}</h4>
-                    <p className="text-[10px] text-zinc-400 font-bold mt-1 font-mono">Price Range: Rs. {formMinAmount || '100'} - Rs. {formMaxAmount || '5000'}</p>
                   </div>
                 </div>
               </div>
