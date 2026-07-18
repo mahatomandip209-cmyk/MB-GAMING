@@ -575,6 +575,25 @@ export default function App() {
       fetchTransactions();
     });
 
+    // 3. Real-time products listener
+    const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
+      if (!snapshot.empty) {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        setProducts(list);
+      } else {
+        ALL_PRODUCTS.forEach(async (p) => {
+          try {
+            await setDoc(doc(db, "products", p.id), p);
+          } catch (err) {
+            console.error("Failed to populate initial product:", p.id, err);
+          }
+        });
+        setProducts(ALL_PRODUCTS);
+      }
+    }, (error) => {
+      console.error("Real-time products listener failed:", error);
+    });
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => {
@@ -614,6 +633,7 @@ export default function App() {
     return () => {
       unsubscribeNotif();
       unsubscribeTx();
+      unsubscribeProducts();
     };
   }, []);
 
@@ -947,42 +967,7 @@ export default function App() {
       return;
     }
 
-    // Validation
-    const isMlbb = selectedProduct.id === 'mlbb-diamonds';
-    if (isMlbb) {
-      if (!mlbbUserId.trim() || !mlbbZoneId.trim()) {
-        setModalError('Please enter both your Server ID and Game User ID.');
-        return;
-      }
-    } else {
-      const customReqs = (() => {
-        try {
-          const saved = localStorage.getItem('mb_game_requirements');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-              return parsed.filter(r => r.gameId === selectedProduct.id);
-            }
-          }
-        } catch (e) {}
-        return [];
-      })();
-
-      if (customReqs.length > 0) {
-        const currentVals = (window as any)._customReqValues || {};
-        const missing = customReqs.filter(r => !currentVals[r.name]?.trim());
-        if (missing.length > 0) {
-          setModalError(`Please fill in: ${missing.map(m => m.name).join(', ')}`);
-          return;
-        }
-      } else {
-        if (!checkoutTarget.trim()) {
-          setModalError(`Please fill in the required ${selectedProduct.inputLabel.toLowerCase()} fields.`);
-          return;
-        }
-      }
-    }
-
+    // No target account input validation required since player info requirements are removed
     if (checkoutAmount <= 0) {
       setModalError('Enter or choose a valid positive topup amount.');
       return;
@@ -1020,7 +1005,7 @@ export default function App() {
       ? `PIN-${Math.floor(10000000 + Math.random() * 90000000)}` 
       : undefined;
 
-    const finalTarget = isMlbb ? `${mlbbUserId.trim()} (${mlbbZoneId.trim()})` : checkoutTarget.trim();
+    const finalTarget = currentUser?.email || 'N/A';
     const selectedPkgName = getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`;
     const finalProdName = quantity > 1 ? `${selectedPkgName} (Qty: ${quantity})` : selectedPkgName;
 
@@ -1246,102 +1231,7 @@ export default function App() {
           /* GORGEOUS INLINE PRODUCT DETAIL PAGE FOR CLICKED GAME AND REQUIREMENTS */
           <div className="max-w-xl mx-auto space-y-6">
             
-            {/* PLAYER INFORMATION CARD */}
-            <div className="bg-white rounded-[24px] p-6 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4">
-              <span className="block text-[10px] font-black text-blue-600 tracking-wider uppercase">
-                Player Information
-              </span>
-
-              {selectedProduct.id === 'mlbb-diamonds' ? (
-                /* MLBB Special side-by-side Inputs */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
-                      ENTER YOUR SERVER ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={mlbbZoneId}
-                      onChange={(e) => setMlbbZoneId(e.target.value)}
-                      placeholder="SERVER ID"
-                      className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
-                      GAME USER ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={mlbbUserId}
-                      onChange={(e) => setMlbbUserId(e.target.value)}
-                      placeholder="PLEASE ENTER YOUR GAME USER ID"
-                      className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
-                    />
-                  </div>
-                </div>
-              ) : (() => {
-                const reqs = (() => {
-                  try {
-                    const saved = localStorage.getItem('mb_game_requirements');
-                    if (saved) {
-                      const parsed = JSON.parse(saved);
-                      if (Array.isArray(parsed)) {
-                        return parsed.filter(r => r.gameId === selectedProduct.id);
-                      }
-                    }
-                  } catch (e) {}
-                  return [];
-                })();
-
-                if (reqs.length > 0) {
-                  return (
-                    <div className="space-y-3">
-                      {reqs.map((req) => (
-                        <div key={req.id}>
-                          <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
-                            {req.name} <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type={req.type === 'number' ? 'number' : 'text'}
-                            required
-                            placeholder={`ENTER YOUR ${req.name.toUpperCase()}`}
-                            onChange={(e) => {
-                              const nextValues = { ...(window as any)._customReqValues, [req.name]: e.target.value };
-                              (window as any)._customReqValues = nextValues;
-                              const combined = reqs.map(r => `${r.name}: ${nextValues[r.name] || ''}`).join(' | ');
-                              setCheckoutTarget(combined);
-                            }}
-                            className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
-                      {selectedProduct.inputLabel} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={checkoutTarget}
-                      onChange={(e) => setCheckoutTarget(e.target.value)}
-                      placeholder={selectedProduct.inputPlaceholder}
-                      className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
-                    />
-                  </div>
-                );
-              })()}
-              <p className="text-[10px] text-zinc-400 font-semibold leading-relaxed">
-                Please ensure correctness. Recharges execute instantly and cannot be reversed.
-              </p>
-            </div>
+            {/* PLAYER INFORMATION CARD REMOVED AS REQUESTED BY USER */}
 
             {/* ERROR SUMMARY */}
             {modalError && (

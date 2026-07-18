@@ -10,7 +10,8 @@ import {
   updateDoc, 
   addDoc, 
   query,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from '../firebase';
 import {
   ShieldCheck,
@@ -1106,6 +1107,18 @@ export default function AdminPanel({
       popular: formPopular || false
     };
 
+    // Sync product to Firestore
+    (async () => {
+      try {
+        await setDoc(doc(db, "products", updatedProduct.id), updatedProduct);
+        if (editingProduct && editingProduct.id !== updatedProduct.id) {
+          await deleteDoc(doc(db, "products", editingProduct.id));
+        }
+      } catch (err) {
+        console.error("Failed to sync product to Firestore:", err);
+      }
+    })();
+
     if (editingProduct) {
       setProducts(prev => prev.map(p => (p.id === editingProduct.id ? updatedProduct : p)));
       triggerToast('Game updated successfully!');
@@ -1119,6 +1132,13 @@ export default function AdminPanel({
   // Delete product
   const handleDeleteProduct = (prodId: string) => {
     if (confirm('Are you sure you want to remove this product?')) {
+      (async () => {
+        try {
+          await deleteDoc(doc(db, "products", prodId));
+        } catch (err) {
+          console.error("Failed to delete product from Firestore:", err);
+        }
+      })();
       setProducts(prev => prev.filter(p => p.id !== prodId));
       triggerToast('Product deleted.');
     }
