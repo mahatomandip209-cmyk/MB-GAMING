@@ -333,15 +333,17 @@ export default function AdminPanel({
     if (!selectedGameForReqs) return;
 
     let updatedReqs = [...gameRequirements];
+    let newReq: any;
     if (editingReq) {
-      updatedReqs = gameRequirements.map(r => r.id === editingReq.id ? {
-        ...r,
+      newReq = {
+        ...editingReq,
         name: reqFormName.trim(),
         type: reqFormType
-      } : r);
+      };
+      updatedReqs = gameRequirements.map(r => r.id === editingReq.id ? newReq : r);
       triggerToast('Requirement updated!');
     } else {
-      const newReq = {
+      newReq = {
         id: 'req-' + Date.now(),
         gameId: selectedGameForReqs.id,
         name: reqFormName.trim(),
@@ -354,6 +356,30 @@ export default function AdminPanel({
     setGameRequirements(updatedReqs);
     localStorage.setItem('mb_game_requirements', JSON.stringify(updatedReqs));
     setIsReqModalOpen(false);
+
+    // Sync back to Firestore on the selected game/product
+    const gameId = selectedGameForReqs.id;
+    const gameReqs = updatedReqs.filter(r => r.gameId === gameId).map(r => ({
+      id: r.id,
+      name: r.name,
+      type: r.type
+    }));
+    
+    const productToUpdate = products.find(p => p.id === gameId);
+    if (productToUpdate) {
+      const updatedProduct = {
+        ...productToUpdate,
+        requirements: gameReqs
+      };
+      setProducts(prev => prev.map(p => p.id === gameId ? updatedProduct : p));
+      (async () => {
+        try {
+          await setDoc(doc(db, "products", gameId), updatedProduct);
+        } catch (err) {
+          console.error("Failed to sync requirement to Firestore:", err);
+        }
+      })();
+    }
   };
 
   const handleDeleteRequirement = (reqId: string) => {
@@ -362,6 +388,30 @@ export default function AdminPanel({
       setGameRequirements(updated);
       localStorage.setItem('mb_game_requirements', JSON.stringify(updated));
       triggerToast('Requirement deleted.');
+
+      if (selectedGameForReqs) {
+        const gameId = selectedGameForReqs.id;
+        const gameReqs = updated.filter(r => r.gameId === gameId).map(r => ({
+          id: r.id,
+          name: r.name,
+          type: r.type
+        }));
+        const productToUpdate = products.find(p => p.id === gameId);
+        if (productToUpdate) {
+          const updatedProduct = {
+            ...productToUpdate,
+            requirements: gameReqs
+          };
+          setProducts(prev => prev.map(p => p.id === gameId ? updatedProduct : p));
+          (async () => {
+            try {
+              await setDoc(doc(db, "products", gameId), updatedProduct);
+            } catch (err) {
+              console.error("Failed to sync requirement deletion to Firestore:", err);
+            }
+          })();
+        }
+      }
     }
   };
 
@@ -394,6 +444,23 @@ export default function AdminPanel({
     setCustomPackagesList(nextCustom);
     localStorage.setItem(`mb_packages_${gameId}`, JSON.stringify(currentPkgs));
     setIsPkgModalOpen(false);
+
+    // Sync back to Firestore on the selected game/product
+    const productToUpdate = products.find(p => p.id === gameId);
+    if (productToUpdate) {
+      const updatedProduct = {
+        ...productToUpdate,
+        packages: currentPkgs
+      };
+      setProducts(prev => prev.map(p => p.id === gameId ? updatedProduct : p));
+      (async () => {
+        try {
+          await setDoc(doc(db, "products", gameId), updatedProduct);
+        } catch (err) {
+          console.error("Failed to sync package to Firestore:", err);
+        }
+      })();
+    }
   };
 
   const handleDeletePackage = (index: number) => {
@@ -407,6 +474,23 @@ export default function AdminPanel({
       setCustomPackagesList(nextCustom);
       localStorage.setItem(`mb_packages_${gameId}`, JSON.stringify(currentPkgs));
       triggerToast('Product package deleted.');
+
+      // Sync back to Firestore on the selected game/product
+      const productToUpdate = products.find(p => p.id === gameId);
+      if (productToUpdate) {
+        const updatedProduct = {
+          ...productToUpdate,
+          packages: currentPkgs
+        };
+        setProducts(prev => prev.map(p => p.id === gameId ? updatedProduct : p));
+        (async () => {
+          try {
+            await setDoc(doc(db, "products", gameId), updatedProduct);
+          } catch (err) {
+            console.error("Failed to sync package deletion to Firestore:", err);
+          }
+        })();
+      }
     }
   };
 
@@ -815,6 +899,42 @@ export default function AdminPanel({
     };
   }, [isLoggedIn]);
 
+  // Sync products packages and requirements when products change from Firestore
+  useEffect(() => {
+    if (products && products.length > 0) {
+      const loadedReqs: any[] = [];
+      const loadedPkgs: Record<string, { name: string; price: number }[]> = {};
+      
+      products.forEach(p => {
+        if (p.requirements && Array.isArray(p.requirements)) {
+          p.requirements.forEach(r => {
+            loadedReqs.push({
+              id: r.id || `req-${Date.now()}-${Math.random()}`,
+              gameId: p.id,
+              name: r.name,
+              type: r.type || 'text'
+            });
+          });
+        }
+        
+        if (p.packages && Array.isArray(p.packages)) {
+          loadedPkgs[p.id] = p.packages;
+        }
+      });
+      
+      setGameRequirements(loadedReqs);
+      setCustomPackagesList(prev => {
+        const next = { ...prev };
+        products.forEach(p => {
+          if (p.packages && Array.isArray(p.packages)) {
+            next[p.id] = p.packages;
+          }
+        });
+        return next;
+      });
+    }
+  }, [products]);
+
 
   // Product modal states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -1104,7 +1224,9 @@ export default function AdminPanel({
       inputPlaceholder: formInputPlaceholder || 'e.g. 123456789',
       iconName: formIconName || 'gamepad',
       imageUrl: formImageUrl.trim() || undefined,
-      popular: formPopular || false
+      popular: formPopular || false,
+      packages: editingProduct?.packages || [],
+      requirements: editingProduct?.requirements || []
     };
 
     // Sync product to Firestore
@@ -1454,11 +1576,11 @@ export default function AdminPanel({
                 { id: 'orders', label: 'Orders', icon: ShoppingCart },
                 { id: 'users', label: 'Users', icon: Users },
                 { id: 'games', label: 'Games', icon: Gamepad2 },
+                { id: 'requirements', label: 'Requirements', icon: FileText },
+                { id: 'products', label: 'Products', icon: ShoppingBag },
                 { id: 'payments', label: 'Payments', icon: CreditCard },
                 { id: 'banners', label: 'Banners', icon: ImageIcon },
                 { id: 'coupons', label: 'Coupons', icon: Ticket },
-                { id: 'requirements', label: 'Requirements', icon: FileText },
-                { id: 'products', label: 'Products', icon: ShoppingBag },
                 { id: 'legal', label: 'Legal', icon: FileText },
                 { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
                 { id: 'settings', label: 'Settings', icon: Settings },
@@ -1525,18 +1647,18 @@ export default function AdminPanel({
                 </span>
               </div>
 
-              {/* 13 Tab Buttons matching Screenshot 1 */}
+              {/* 11 Tab Buttons matching Screenshot 1 (minus Requirements and Products) */}
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'orders', label: 'Orders', icon: ShoppingCart },
                   { id: 'users', label: 'Users', icon: Users },
                   { id: 'games', label: 'Games', icon: Gamepad2 },
+                  { id: 'requirements', label: 'Requirements', icon: FileText },
+                  { id: 'products', label: 'Products', icon: ShoppingBag },
                   { id: 'payments', label: 'Payments', icon: CreditCard },
                   { id: 'banners', label: 'Banners', icon: ImageIcon },
                   { id: 'coupons', label: 'Coupons', icon: Ticket },
-                  { id: 'requirements', label: 'Requirements', icon: FileText },
-                  { id: 'products', label: 'Products', icon: ShoppingBag },
                   { id: 'legal', label: 'Legal', icon: FileText },
                   { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
                   { id: 'settings', label: 'Settings', icon: Settings },
@@ -3471,6 +3593,71 @@ export default function AdminPanel({
                   <option value="voucher">Voucher</option>
                   <option value="subscription">Subscription</option>
                   <option value="design">Design</option>
+                </select>
+              </div>
+
+              {/* Min and Max Amount */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Min Price (NPR)</label>
+                  <input
+                    type="number"
+                    value={formMinAmount}
+                    onChange={(e) => setFormMinAmount(Number(e.target.value))}
+                    placeholder="e.g. 100"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Max Price (NPR)</label>
+                  <input
+                    type="number"
+                    value={formMaxAmount}
+                    onChange={(e) => setFormMaxAmount(Number(e.target.value))}
+                    placeholder="e.g. 5000"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                  />
+                </div>
+              </div>
+
+              {/* Default Input Label & Placeholder */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Player ID Field Label</label>
+                  <input
+                    type="text"
+                    value={formInputLabel}
+                    onChange={(e) => setFormInputLabel(e.target.value)}
+                    placeholder="e.g. Player ID / UID"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">ID Placeholder</label>
+                  <input
+                    type="text"
+                    value={formInputPlaceholder}
+                    onChange={(e) => setFormInputPlaceholder(e.target.value)}
+                    placeholder="e.g. e.g. 123456789"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                  />
+                </div>
+              </div>
+
+              {/* Icon Name Selection */}
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Launcher Icon Type</label>
+                <select
+                  value={formIconName}
+                  onChange={(e) => setFormIconName(e.target.value as any)}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                >
+                  <option value="gamepad">Gamepad / Controller</option>
+                  <option value="phone">Smartphone / Mobile</option>
+                  <option value="tv">Television / Streaming</option>
+                  <option value="layers">Layers / Design</option>
+                  <option value="shopping">Shopping Bag / Voucher</option>
+                  <option value="wifi">Wifi / Network</option>
                 </select>
               </div>
 

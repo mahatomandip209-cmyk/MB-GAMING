@@ -16,6 +16,8 @@ export interface Product {
   iconName: 'phone' | 'gamepad' | 'tv' | 'music' | 'shopping' | 'wifi' | 'layers';
   imageUrl?: string;
   popular?: boolean;
+  packages?: { name: string; price: number }[];
+  requirements?: { id: string; name: string; type: string }[];
 }
 
 export interface Transaction {

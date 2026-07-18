@@ -53,6 +53,12 @@ import { LoginRegister } from './components/LoginRegister';
 import { db, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
+  // 1. Check if the product has custom packages stored on the database object
+  if (product.packages && product.packages.length > 0) {
+    return product.packages;
+  }
+
+  // 2. Check if there are custom packages in localStorage (fallback / legacy sync)
   try {
     const saved = localStorage.getItem(`mb_packages_${product.id}`);
     if (saved) {
@@ -63,159 +69,7 @@ export function getProductPackages(product: Product): { name: string; price: num
     }
   } catch (e) {}
 
-  // Mobile Legends
-  if (product.id === 'mlbb-diamonds') {
-    return [
-      { name: '78+8 Diamonds 💎', price: 210 },
-      { name: 'WEEKLY PASS', price: 265 },
-      { name: '156+16 Diamonds 💎', price: 460 },
-      { name: '234+23 Diamonds 💎', price: 699 },
-      { name: '253 + 25 Diamonds 💎', price: 725 },
-      { name: 'TWILIGHT PASS', price: 1399 },
-      { name: '505 + 66 Diamonds 💎', price: 1450 },
-      { name: '625 + 81 Diamonds 💎', price: 1799 },
-      { name: '1010 + 182 Diamonds 💎', price: 2900 },
-      { name: '1515 + 273 Diamonds 💎', price: 4350 },
-      { name: '4008 + 802 Diamonds 💎', price: 11600 },
-      { name: '5010 + 1002 Diamonds 💎', price: 14500 }
-    ];
-  }
-  
-  // Garena Free Fire
-  if (product.id === 'garena-freefire') {
-    return [
-      { name: '115 Diamonds 💎', price: 130 },
-      { name: '240 Diamonds 💎', price: 260 },
-      { name: '355 Diamonds 💎', price: 380 },
-      { name: '505 Diamonds 💎', price: 530 },
-      { name: '610 Diamonds 💎', price: 630 },
-      { name: '1090 Diamonds 💎', price: 1100 },
-      { name: '1240 Diamonds 💎', price: 1250 },
-      { name: '2220 Diamonds 💎', price: 2200 },
-      { name: 'WEEKLY MEMBERSHIP', price: 210 },
-      { name: 'MONTHLY MEMBERSHIP', price: 999 }
-    ];
-  }
-
-  // PUBG Mobile UC
-  if (product.id === 'pubg-mobile-uc' || product.id === 'pubg-uc-vouchers') {
-    const suffix = product.id === 'pubg-uc-vouchers' ? ' (Voucher)' : ' UC';
-    return [
-      { name: '60' + suffix, price: 145 },
-      { name: '325' + suffix, price: 725 },
-      { name: '660' + suffix, price: 1450 },
-      { name: '1800' + suffix, price: 3800 },
-      { name: '3850' + suffix, price: 7500 },
-      { name: '8100' + suffix, price: 14500 }
-    ];
-  }
-
-  // UniPin Voucher
-  if (product.id === 'unipin-voucher-bdt') {
-    return [
-      { name: '500 BDT Voucher', price: 500 },
-      { name: '1000 BDT Voucher', price: 1000 },
-      { name: '2000 BDT Voucher', price: 2000 },
-      { name: '5000 BDT Voucher', price: 5000 }
-    ];
-  }
-
-  // Apple Gift Card
-  if (product.id === 'apple-gift-card') {
-    return [
-      { name: '$5 Apple Code', price: 500 },
-      { name: '$10 Apple Code', price: 1000 },
-      { name: '$20 Apple Code', price: 2000 },
-      { name: '$50 Apple Code', price: 5000 }
-    ];
-  }
-
-  // Free Fire Member Subscription
-  if (product.id === 'freefire-sub') {
-    return [
-      { name: 'Weekly Membership Lite', price: 199 },
-      { name: 'Weekly Membership Max', price: 499 },
-      { name: 'Monthly Membership Pass', price: 1200 }
-    ];
-  }
-
-  // Garena Shell
-  if (product.id === 'garena-shell') {
-    return [
-      { name: '50 Shells', price: 320 },
-      { name: '100 Shells', price: 640 },
-      { name: '200 Shells', price: 1200 }
-    ];
-  }
-
-  // Netflix Subscription
-  if (product.id === 'netflix-sub-card') {
-    return [
-      { name: 'Mobile Screen (1 Month)', price: 199 },
-      { name: 'Basic HD Screen (1 Month)', price: 499 },
-      { name: 'Standard Full HD (1 Month)', price: 649 },
-      { name: 'Premium 4K Ultra HD (1 Month)', price: 1200 }
-    ];
-  }
-
-  // PUBG Prime / Prime Plus
-  if (product.id === 'pubg-prime-plus') {
-    return [
-      { name: 'PUBG Prime (1 Month)', price: 250 },
-      { name: 'PUBG Prime Plus (1 Month)', price: 800 },
-      { name: 'PUBG Prime Plus Elite (1 Month)', price: 1200 }
-    ];
-  }
-
-  // Roblox
-  if (product.id === 'roblox') {
-    return [
-      { name: '80 Robux', price: 150 },
-      { name: '400 Robux', price: 550 },
-      { name: '800 Robux', price: 1100 },
-      { name: '1700 Robux', price: 2200 },
-      { name: '4500 Robux', price: 5500 }
-    ];
-  }
-
-  // TikTok Coins
-  if (product.id === 'tiktok-coins') {
-    return [
-      { name: '70 Coins', price: 180 },
-      { name: '350 Coins', price: 850 },
-      { name: '700 Coins', price: 1650 },
-      { name: '1400 Coins', price: 3200 },
-      { name: '3500 Coins', price: 7800 }
-    ];
-  }
-
-  // Telegram Premium
-  if (product.id === 'telegram-premium') {
-    return [
-      { name: 'Telegram Premium (1 Month)', price: 399 },
-      { name: 'Telegram Premium (3 Months)', price: 1199 },
-      { name: 'Telegram Premium (12 Months)', price: 3999 }
-    ];
-  }
-
-  // APEUni VIP
-  if (product.id === 'apeuni-vip') {
-    return [
-      { name: 'APEUni VIP (1 Month)', price: 450 },
-      { name: 'APEUni VIP (3 Months)', price: 900 },
-      { name: 'APEUni VIP (6 Months)', price: 1500 }
-    ];
-  }
-
-  // Custom Gaming YouTube Banner
-  if (product.id === 'yt-banner-design') {
-    return [
-      { name: 'Bronze Logo + Banner Package', price: 1500 },
-      { name: 'Gold Logo + Banner + Intro Package', price: 3000 }
-    ];
-  }
-
-  // Default Fallback
+  // 3. Fallback to fixedAmounts or default packages
   if (product.fixedAmounts && product.fixedAmounts.length > 0) {
     return product.fixedAmounts.map(amt => ({
       name: `Package Rs. ${amt}`,
