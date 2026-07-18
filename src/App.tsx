@@ -53,6 +53,16 @@ import { LoginRegister } from './components/LoginRegister';
 import { db, collection, getDocs } from './firebase';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
+  try {
+    const saved = localStorage.getItem(`mb_packages_${product.id}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
   // Mobile Legends
   if (product.id === 'mlbb-diamonds') {
     return [
@@ -895,9 +905,31 @@ export default function App() {
         return;
       }
     } else {
-      if (!checkoutTarget.trim()) {
-        setModalError(`Please fill in the required ${selectedProduct.inputLabel.toLowerCase()} fields.`);
-        return;
+      const customReqs = (() => {
+        try {
+          const saved = localStorage.getItem('mb_game_requirements');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              return parsed.filter(r => r.gameId === selectedProduct.id);
+            }
+          }
+        } catch (e) {}
+        return [];
+      })();
+
+      if (customReqs.length > 0) {
+        const currentVals = (window as any)._customReqValues || {};
+        const missing = customReqs.filter(r => !currentVals[r.name]?.trim());
+        if (missing.length > 0) {
+          setModalError(`Please fill in: ${missing.map(m => m.name).join(', ')}`);
+          return;
+        }
+      } else {
+        if (!checkoutTarget.trim()) {
+          setModalError(`Please fill in the required ${selectedProduct.inputLabel.toLowerCase()} fields.`);
+          return;
+        }
       }
     }
 
@@ -1200,22 +1232,62 @@ export default function App() {
                     />
                   </div>
                 </div>
-              ) : (
-                /* Standard Single Input box */
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
-                    {selectedProduct.inputLabel} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={checkoutTarget}
-                    onChange={(e) => setCheckoutTarget(e.target.value)}
-                    placeholder={selectedProduct.inputPlaceholder}
-                    className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
-                  />
-                </div>
-              )}
+              ) : (() => {
+                const reqs = (() => {
+                  try {
+                    const saved = localStorage.getItem('mb_game_requirements');
+                    if (saved) {
+                      const parsed = JSON.parse(saved);
+                      if (Array.isArray(parsed)) {
+                        return parsed.filter(r => r.gameId === selectedProduct.id);
+                      }
+                    }
+                  } catch (e) {}
+                  return [];
+                })();
+
+                if (reqs.length > 0) {
+                  return (
+                    <div className="space-y-3">
+                      {reqs.map((req) => (
+                        <div key={req.id}>
+                          <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
+                            {req.name} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type={req.type === 'number' ? 'number' : 'text'}
+                            required
+                            placeholder={`ENTER YOUR ${req.name.toUpperCase()}`}
+                            onChange={(e) => {
+                              const nextValues = { ...(window as any)._customReqValues, [req.name]: e.target.value };
+                              (window as any)._customReqValues = nextValues;
+                              const combined = reqs.map(r => `${r.name}: ${nextValues[r.name] || ''}`).join(' | ');
+                              setCheckoutTarget(combined);
+                            }}
+                            className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div>
+                    <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
+                      {selectedProduct.inputLabel} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={checkoutTarget}
+                      onChange={(e) => setCheckoutTarget(e.target.value)}
+                      placeholder={selectedProduct.inputPlaceholder}
+                      className="w-full text-xs font-semibold px-4 py-3 bg-zinc-50 focus:bg-white rounded-2xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all font-mono"
+                    />
+                  </div>
+                );
+              })()}
               <p className="text-[10px] text-zinc-400 font-semibold leading-relaxed">
                 Please ensure correctness. Recharges execute instantly and cannot be reversed.
               </p>
@@ -2965,18 +3037,63 @@ export default function App() {
                 
                 {/* Account identifier */}
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase" htmlFor="checkout-target-acc">
-                    {selectedProduct.inputLabel} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="checkout-target-acc"
-                    type="text"
-                    required
-                    value={checkoutTarget}
-                    onChange={(e) => setCheckoutTarget(e.target.value)}
-                    placeholder={selectedProduct.inputPlaceholder}
-                    className="w-full text-xs font-medium px-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all"
-                  />
+                  {(() => {
+                    const reqs = (() => {
+                      try {
+                        const saved = localStorage.getItem('mb_game_requirements');
+                        if (saved) {
+                          const parsed = JSON.parse(saved);
+                          if (Array.isArray(parsed)) {
+                            return parsed.filter(r => r.gameId === selectedProduct.id);
+                          }
+                        }
+                      } catch (e) {}
+                      return [];
+                    })();
+
+                    if (reqs.length > 0) {
+                      return (
+                        <div className="space-y-3">
+                          {reqs.map((req) => (
+                            <div key={req.id}>
+                              <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase">
+                                {req.name} <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type={req.type === 'number' ? 'number' : 'text'}
+                                required
+                                placeholder={`ENTER YOUR ${req.name.toUpperCase()}`}
+                                onChange={(e) => {
+                                  const nextValues = { ...(window as any)._customReqValues, [req.name]: e.target.value };
+                                  (window as any)._customReqValues = nextValues;
+                                  const combined = reqs.map(r => `${r.name}: ${nextValues[r.name] || ''}`).join(' | ');
+                                  setCheckoutTarget(combined);
+                                }}
+                                className="w-full text-xs font-medium px-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div>
+                        <label className="block text-[10px] font-bold text-zinc-400 mb-1.5 uppercase" htmlFor="checkout-target-acc">
+                          {selectedProduct.inputLabel} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="checkout-target-acc"
+                          type="text"
+                          required
+                          value={checkoutTarget}
+                          onChange={(e) => setCheckoutTarget(e.target.value)}
+                          placeholder={selectedProduct.inputPlaceholder}
+                          className="w-full text-xs font-medium px-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-zinc-400 transition-all"
+                        />
+                      </div>
+                    );
+                  })()}
                   <p className="text-[9px] text-zinc-400 mt-1">Please ensure correctness. Recharges execute instantly and cannot be reversed.</p>
                 </div>
 

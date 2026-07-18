@@ -56,7 +56,8 @@ import {
   Wifi,
   Music,
   Gamepad,
-  Upload
+  Upload,
+  ShoppingBag
 } from 'lucide-react';
 import { Product, Transaction } from '../types';
 
@@ -119,11 +120,293 @@ export default function AdminPanel({
     | 'banners'
     | 'coupons'
     | 'requirements'
-    | 'support'
+    | 'products'
     | 'legal'
     | 'ai_chatbot'
     | 'settings'
   >('dashboard');
+
+  // Requirements state
+  const [selectedGameForReqs, setSelectedGameForReqs] = useState<Product | null>(null);
+  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
+  const [editingReq, setEditingReq] = useState<any | null>(null);
+  const [reqFormName, setReqFormName] = useState('');
+  const [reqFormType, setReqFormType] = useState<'text' | 'number'>('text');
+  const [gameRequirements, setGameRequirements] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('mb_game_requirements');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Products/Packages tab states
+  const [selectedGameForPkgs, setSelectedGameForPkgs] = useState<Product | null>(null);
+  const [isPkgModalOpen, setIsPkgModalOpen] = useState(false);
+  const [editingPkg, setEditingPkg] = useState<{ name: string; price: number } | null>(null);
+  const [pkgFormIndex, setPkgFormIndex] = useState<number | null>(null);
+  const [pkgFormName, setPkgFormName] = useState('');
+  const [pkgFormPrice, setPkgFormPrice] = useState<number>(0);
+  const [customPackagesList, setCustomPackagesList] = useState<Record<string, { name: string; price: number }[]>>(() => {
+    const result: Record<string, { name: string; price: number }[]> = {};
+    try {
+      const savedKeys = Object.keys(localStorage).filter(k => k.startsWith('mb_packages_'));
+      if (savedKeys.length > 0) {
+        savedKeys.forEach(k => {
+          const gameId = k.replace('mb_packages_', '');
+          const val = localStorage.getItem(k);
+          if (val) {
+            result[gameId] = JSON.parse(val);
+          }
+        });
+      }
+    } catch (e) {}
+    return result;
+  });
+
+  const getDefaultPackagesForGame = (gameId: string) => {
+    if (gameId === 'mlbb-diamonds') {
+      return [
+        { name: '78+8 Diamonds 💎', price: 210 },
+        { name: 'WEEKLY PASS', price: 265 },
+        { name: '156+16 Diamonds 💎', price: 460 },
+        { name: '234+23 Diamonds 💎', price: 699 },
+        { name: '253 + 25 Diamonds 💎', price: 725 },
+        { name: 'TWILIGHT PASS', price: 1399 },
+        { name: '505 + 66 Diamonds 💎', price: 1450 },
+        { name: '625 + 81 Diamonds 💎', price: 1799 },
+        { name: '1010 + 182 Diamonds 💎', price: 2900 },
+        { name: '1515 + 273 Diamonds 💎', price: 4350 },
+        { name: '4008 + 802 Diamonds 💎', price: 11600 },
+        { name: '5010 + 1002 Diamonds 💎', price: 14500 }
+      ];
+    }
+    if (gameId === 'garena-freefire') {
+      return [
+        { name: '115 Diamonds 💎', price: 130 },
+        { name: '240 Diamonds 💎', price: 260 },
+        { name: '355 Diamonds 💎', price: 380 },
+        { name: '505 Diamonds 💎', price: 530 },
+        { name: '610 Diamonds 💎', price: 630 },
+        { name: '1090 Diamonds 💎', price: 1100 },
+        { name: '1240 Diamonds 💎', price: 1250 },
+        { name: '2220 Diamonds 💎', price: 2200 },
+        { name: 'WEEKLY MEMBERSHIP', price: 210 },
+        { name: 'MONTHLY MEMBERSHIP', price: 999 }
+      ];
+    }
+    if (gameId === 'pubg-mobile-uc' || gameId === 'pubg-uc-vouchers') {
+      const suffix = gameId === 'pubg-uc-vouchers' ? ' (Voucher)' : ' UC';
+      return [
+        { name: '60' + suffix, price: 145 },
+        { name: '325' + suffix, price: 725 },
+        { name: '660' + suffix, price: 1450 },
+        { name: '1800' + suffix, price: 3800 },
+        { name: '3850' + suffix, price: 7500 },
+        { name: '8100' + suffix, price: 14500 }
+      ];
+    }
+    if (gameId === 'unipin-voucher-bdt') {
+      return [
+        { name: '500 BDT Voucher', price: 500 },
+        { name: '1000 BDT Voucher', price: 1000 },
+        { name: '2000 BDT Voucher', price: 2000 },
+        { name: '5000 BDT Voucher', price: 5000 }
+      ];
+    }
+    if (gameId === 'apple-gift-card') {
+      return [
+        { name: '$5 Apple Code', price: 500 },
+        { name: '$10 Apple Code', price: 1000 },
+        { name: '$20 Apple Code', price: 2000 },
+        { name: '$50 Apple Code', price: 5000 }
+      ];
+    }
+    if (gameId === 'freefire-sub') {
+      return [
+        { name: 'Weekly Membership Lite', price: 199 },
+        { name: 'Weekly Membership Max', price: 499 },
+        { name: 'Monthly Membership Pass', price: 1200 }
+      ];
+    }
+    if (gameId === 'garena-shell') {
+      return [
+        { name: '50 Shells', price: 320 },
+        { name: '100 Shells', price: 640 },
+        { name: '200 Shells', price: 1200 }
+      ];
+    }
+    if (gameId === 'netflix-sub-card') {
+      return [
+        { name: 'Mobile Screen (1 Month)', price: 199 },
+        { name: 'Basic HD Screen (1 Month)', price: 499 },
+        { name: 'Standard Full HD (1 Month)', price: 649 },
+        { name: 'Premium 4K Ultra HD (1 Month)', price: 1200 }
+      ];
+    }
+    if (gameId === 'pubg-prime-plus') {
+      return [
+        { name: 'PUBG Prime (1 Month)', price: 250 },
+        { name: 'PUBG Prime Plus (1 Month)', price: 800 },
+        { name: 'PUBG Prime Plus Elite (1 Month)', price: 1200 }
+      ];
+    }
+    if (gameId === 'roblox') {
+      return [
+        { name: '80 Robux', price: 150 },
+        { name: '400 Robux', price: 550 },
+        { name: '800 Robux', price: 1100 },
+        { name: '1700 Robux', price: 2200 },
+        { name: '4500 Robux', price: 5500 }
+      ];
+    }
+    if (gameId === 'tiktok-coins') {
+      return [
+        { name: '70 Coins', price: 180 },
+        { name: '350 Coins', price: 850 },
+        { name: '700 Coins', price: 1650 },
+        { name: '1400 Coins', price: 3200 },
+        { name: '3500 Coins', price: 7800 }
+      ];
+    }
+    if (gameId === 'telegram-premium') {
+      return [
+        { name: 'Telegram Premium (1 Month)', price: 399 },
+        { name: 'Telegram Premium (3 Months)', price: 1199 },
+        { name: 'Telegram Premium (12 Months)', price: 3999 }
+      ];
+    }
+    if (gameId === 'apeuni-vip') {
+      return [
+        { name: 'APEUni VIP (1 Month)', price: 450 },
+        { name: 'APEUni VIP (3 Months)', price: 900 },
+        { name: 'APEUni VIP (6 Months)', price: 1500 }
+      ];
+    }
+    if (gameId === 'yt-banner-design') {
+      return [
+        { name: 'Bronze Logo + Banner Package', price: 1500 },
+        { name: 'Gold Logo + Banner + Intro Package', price: 3000 }
+      ];
+    }
+    
+    const gameObj = products.find(p => p.id === gameId);
+    if (gameObj) {
+      if (gameObj.fixedAmounts && gameObj.fixedAmounts.length > 0) {
+        return gameObj.fixedAmounts.map(amt => ({
+          name: `Package Rs. ${amt}`,
+          price: amt
+        }));
+      }
+      return [
+        { name: 'Basic Package', price: gameObj.minAmount || 100 },
+        { name: 'Standard Package', price: (gameObj.minAmount || 100) * 2 },
+        { name: 'Pro Package', price: (gameObj.minAmount || 100) * 4 }
+      ];
+    }
+    return [];
+  };
+
+  const getGamePackages = (gameId: string) => {
+    if (customPackagesList[gameId]) {
+      return customPackagesList[gameId];
+    }
+    const saved = localStorage.getItem(`mb_packages_${gameId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return getDefaultPackagesForGame(gameId);
+  };
+
+  const handleSaveRequirement = (e: FormEvent) => {
+    e.preventDefault();
+    if (!reqFormName.trim()) {
+      triggerToast('Requirement name is required!');
+      return;
+    }
+    if (!selectedGameForReqs) return;
+
+    let updatedReqs = [...gameRequirements];
+    if (editingReq) {
+      updatedReqs = gameRequirements.map(r => r.id === editingReq.id ? {
+        ...r,
+        name: reqFormName.trim(),
+        type: reqFormType
+      } : r);
+      triggerToast('Requirement updated!');
+    } else {
+      const newReq = {
+        id: 'req-' + Date.now(),
+        gameId: selectedGameForReqs.id,
+        name: reqFormName.trim(),
+        type: reqFormType
+      };
+      updatedReqs = [...gameRequirements, newReq];
+      triggerToast('Requirement added!');
+    }
+
+    setGameRequirements(updatedReqs);
+    localStorage.setItem('mb_game_requirements', JSON.stringify(updatedReqs));
+    setIsReqModalOpen(false);
+  };
+
+  const handleDeleteRequirement = (reqId: string) => {
+    if (confirm('Are you sure you want to delete this requirement?')) {
+      const updated = gameRequirements.filter(r => r.id !== reqId);
+      setGameRequirements(updated);
+      localStorage.setItem('mb_game_requirements', JSON.stringify(updated));
+      triggerToast('Requirement deleted.');
+    }
+  };
+
+  const handleSavePackage = (e: FormEvent) => {
+    e.preventDefault();
+    if (!pkgFormName.trim()) {
+      triggerToast('Product name is required!');
+      return;
+    }
+    if (!selectedGameForPkgs) return;
+
+    const gameId = selectedGameForPkgs.id;
+    const currentPkgs = [...getGamePackages(gameId)];
+
+    if (pkgFormIndex !== null) {
+      currentPkgs[pkgFormIndex] = {
+        name: pkgFormName.trim(),
+        price: Number(pkgFormPrice) || 0
+      };
+      triggerToast('Product package updated!');
+    } else {
+      currentPkgs.push({
+        name: pkgFormName.trim(),
+        price: Number(pkgFormPrice) || 0
+      });
+      triggerToast('Product package added!');
+    }
+
+    const nextCustom = { ...customPackagesList, [gameId]: currentPkgs };
+    setCustomPackagesList(nextCustom);
+    localStorage.setItem(`mb_packages_${gameId}`, JSON.stringify(currentPkgs));
+    setIsPkgModalOpen(false);
+  };
+
+  const handleDeletePackage = (index: number) => {
+    if (!selectedGameForPkgs) return;
+    if (confirm('Are you sure you want to delete this product?')) {
+      const gameId = selectedGameForPkgs.id;
+      const currentPkgs = [...getGamePackages(gameId)];
+      currentPkgs.splice(index, 1);
+
+      const nextCustom = { ...customPackagesList, [gameId]: currentPkgs };
+      setCustomPackagesList(nextCustom);
+      localStorage.setItem(`mb_packages_${gameId}`, JSON.stringify(currentPkgs));
+      triggerToast('Product package deleted.');
+    }
+  };
 
   // Profit range state
   const [profitRange, setProfitRange] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('DAILY');
@@ -792,33 +1075,35 @@ export default function AdminPanel({
   // Save/Create Product
   const handleSaveProduct = (e: FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formProvider.trim()) {
-      triggerToast('Please fill in required fields (Name and Provider)');
+    if (!formName.trim()) {
+      triggerToast('Please fill in the Game Name');
       return;
     }
 
+    const fid = formId ? formId.trim() : `game-${formName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
+
     const updatedProduct: Product = {
-      id: formId || `prod-${Date.now()}`,
+      id: fid,
       name: formName,
-      provider: formProvider,
+      provider: formProvider || formName || 'MB Gaming',
       category: formCategory,
       imagePlaceholderColor: 'from-blue-600 to-indigo-700',
       description: `Premium ${formName} top-up and vouchers from MB GAMING STORE. Instantly processed.`,
-      minAmount: Number(formMinAmount),
-      maxAmount: Number(formMaxAmount),
-      inputLabel: formInputLabel,
-      inputPlaceholder: formInputPlaceholder,
-      iconName: formIconName,
+      minAmount: Number(formMinAmount) || 100,
+      maxAmount: Number(formMaxAmount) || 5000,
+      inputLabel: formInputLabel || 'Player ID / UID',
+      inputPlaceholder: formInputPlaceholder || 'e.g. 123456789',
+      iconName: formIconName || 'gamepad',
       imageUrl: formImageUrl.trim() || undefined,
-      popular: formPopular
+      popular: formPopular || false
     };
 
     if (editingProduct) {
-      setProducts(prev => prev.map(p => (p.id === formId ? updatedProduct : p)));
-      triggerToast('Product updated successfully!');
+      setProducts(prev => prev.map(p => (p.id === editingProduct.id ? updatedProduct : p)));
+      triggerToast('Game updated successfully!');
     } else {
       setProducts(prev => [...prev, updatedProduct]);
-      triggerToast('New product created successfully!');
+      triggerToast('New game created successfully!');
     }
     setIsProductModalOpen(false);
   };
@@ -1145,7 +1430,7 @@ export default function AdminPanel({
                 { id: 'banners', label: 'Banners', icon: ImageIcon },
                 { id: 'coupons', label: 'Coupons', icon: Ticket },
                 { id: 'requirements', label: 'Requirements', icon: FileText },
-                { id: 'support', label: 'Support', icon: MessageSquare },
+                { id: 'products', label: 'Products', icon: ShoppingBag },
                 { id: 'legal', label: 'Legal', icon: FileText },
                 { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
                 { id: 'settings', label: 'Settings', icon: Settings },
@@ -1169,11 +1454,6 @@ export default function AdminPanel({
                     {item.id === 'orders' && transactions.filter(t => t.status === 'PENDING').length > 0 && (
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white text-blue-600' : 'bg-red-100 text-red-600'}`}>
                         {transactions.filter(t => t.status === 'PENDING').length}
-                      </span>
-                    )}
-                    {item.id === 'support' && supportTickets.filter(t => t.status === 'PENDING').length > 0 && (
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {supportTickets.filter(t => t.status === 'PENDING').length}
                       </span>
                     )}
                   </button>
@@ -1228,7 +1508,7 @@ export default function AdminPanel({
                   { id: 'banners', label: 'Banners', icon: ImageIcon },
                   { id: 'coupons', label: 'Coupons', icon: Ticket },
                   { id: 'requirements', label: 'Requirements', icon: FileText },
-                  { id: 'support', label: 'Support', icon: MessageSquare },
+                  { id: 'products', label: 'Products', icon: ShoppingBag },
                   { id: 'legal', label: 'Legal', icon: FileText },
                   { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
                   { id: 'settings', label: 'Settings', icon: Settings },
@@ -2466,64 +2746,290 @@ export default function AdminPanel({
               </div>
             )}
 
-            {/* 8. STORE REWARD POINTS TAB */}
             {/* 8. REQUIREMENTS CONFIGURATION TAB */}
             {activeTab === 'requirements' && (
-              <div className="space-y-6 max-w-2xl">
+              <div className="space-y-6">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
                     <FileText className="w-6 h-6 text-blue-600" />
-                    Store Checkout Requirements
+                    Checkout Requirements
                   </h2>
                   <p className="text-xs text-zinc-500 font-semibold mt-0.5">
-                    Define global checkout instructions, player requirements, or guidelines shown during order placement.
+                    {selectedGameForReqs 
+                      ? `Define custom inputs, player fields, and user details required for ${selectedGameForReqs.name}.`
+                      : 'Select a game catalog item to configure its specific user requirement fields.'
+                    }
                   </p>
                 </div>
 
-                <div className="bg-white border border-zinc-200/80 p-6 rounded-3xl space-y-4 shadow-2xs">
-                  <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight flex items-center gap-2">
-                    Configure Requirements Content
-                  </h3>
-                  
-                  <form 
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      localStorage.setItem('mb_requirements', requirementsText);
-                      try {
-                        await setDoc(doc(db, 'settings', 'requirements'), { text: requirementsText });
-                        triggerToast('Checkout requirements updated in Firestore!');
-                      } catch (err) {
-                        triggerToast('Saved locally!');
-                      }
-                    }}
-                    className="space-y-4"
-                  >
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black uppercase text-zinc-500 tracking-wide">
-                        Global Checkout Requirements (Markdown/Text)
-                      </label>
-                      <textarea
-                        rows={10}
-                        value={requirementsText}
-                        onChange={(e) => setRequirementsText(e.target.value)}
-                        placeholder="e.g. 1. Players must provide correct Game UID.\n2. Payment must be uploaded via eSewa QR code."
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-xs font-medium focus:outline-none focus:border-blue-500 transition-colors font-mono leading-relaxed"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                      <span className="text-[10px] text-zinc-400 font-semibold">
-                        * These requirements are displayed prominently to users before they complete any purchase checkout.
-                      </span>
-                      <button
-                        type="submit"
-                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer"
+                {!selectedGameForReqs ? (
+                  /* Game List View: Game Name and Logo ONLY */
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {products.map((game) => (
+                      <div
+                        key={game.id}
+                        onClick={() => setSelectedGameForReqs(game)}
+                        className="bg-white border border-zinc-200 hover:border-blue-500 hover:shadow-md rounded-2xl p-4.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-250 group"
                       >
-                        Save Requirements
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-zinc-100 bg-neutral-50 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.06)] group-hover:scale-105 transition-transform">
+                          {game.imageUrl ? (
+                            <img 
+                              src={game.imageUrl} 
+                              alt={game.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${game.imagePlaceholderColor || 'from-blue-600 to-indigo-700'} text-white flex items-center justify-center`}>
+                              {renderProductIcon(game.iconName, "w-6 h-6")}
+                            </div>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-black text-zinc-800 tracking-tight mt-3 group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {game.name}
+                        </h4>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Requirements Management View for Selected Game */
+                  <div className="space-y-4">
+                    {/* Header Controls */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4.5 border border-zinc-200 rounded-3xl shadow-2xs">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setSelectedGameForReqs(null)}
+                          className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-600 hover:text-zinc-950 transition-colors cursor-pointer"
+                          title="Back to Games"
+                        >
+                          <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                        </button>
+                        <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-100">
+                          {selectedGameForReqs.imageUrl ? (
+                            <img 
+                              src={selectedGameForReqs.imageUrl} 
+                              alt={selectedGameForReqs.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${selectedGameForReqs.imagePlaceholderColor || 'from-blue-600 to-indigo-700'} text-white flex items-center justify-center`}>
+                              {renderProductIcon(selectedGameForReqs.iconName, "w-4 h-4")}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400">Checkout Fields For</h3>
+                          <h2 className="text-sm font-extrabold text-zinc-900 mt-0.5">{selectedGameForReqs.name}</h2>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setEditingReq(null);
+                          setReqFormName('');
+                          setReqFormType('text');
+                          setIsReqModalOpen(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" /> Add Requirement
                       </button>
                     </div>
-                  </form>
+
+                    {/* Requirements List */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-2xs">
+                      <div className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                        <h4 className="text-xs font-black text-zinc-800 uppercase tracking-wider">Active Requirements</h4>
+                      </div>
+                      
+                      {gameRequirements.filter(r => r.gameId === selectedGameForReqs.id).length === 0 ? (
+                        <div className="p-10 text-center text-zinc-400 text-xs font-semibold">
+                          <p>No custom requirements added yet for this game.</p>
+                          <p className="text-[10px] text-zinc-400 font-medium mt-1">
+                            (Will default to a single field: "{selectedGameForReqs.inputLabel || 'Player Account UID'}")
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-zinc-100">
+                          {gameRequirements
+                            .filter(r => r.gameId === selectedGameForReqs.id)
+                            .map((req) => (
+                              <div key={req.id} className="p-4 flex items-center justify-between hover:bg-zinc-50/30 transition-colors">
+                                <div>
+                                  <h4 className="text-xs font-extrabold text-zinc-900">{req.name}</h4>
+                                  <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded-md mt-1 inline-block">
+                                    Type: {req.type}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingReq(req);
+                                      setReqFormName(req.name);
+                                      setReqFormType(req.type);
+                                      setIsReqModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Requirement"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteRequirement(req.id)}
+                                    className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Requirement"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 8b. PRODUCTS/PACKAGES CONFIGURATION TAB */}
+            {activeTab === 'products' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                    <ShoppingBag className="w-6 h-6 text-blue-600" />
+                    Product Packages & Pricing
+                  </h2>
+                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">
+                    {selectedGameForPkgs 
+                      ? `Configure available purchase bundles, diamond packages, and pricing tiers for ${selectedGameForPkgs.name}.`
+                      : 'Select a game catalog item to configure its purchase packages and pricing.'
+                    }
+                  </p>
                 </div>
+
+                {!selectedGameForPkgs ? (
+                  /* Game List View: Game Name and Logo ONLY */
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {products.map((game) => (
+                      <div
+                        key={game.id}
+                        onClick={() => setSelectedGameForPkgs(game)}
+                        className="bg-white border border-zinc-200 hover:border-blue-500 hover:shadow-md rounded-2xl p-4.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-250 group"
+                      >
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-zinc-100 bg-neutral-50 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.06)] group-hover:scale-105 transition-transform">
+                          {game.imageUrl ? (
+                            <img 
+                              src={game.imageUrl} 
+                              alt={game.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${game.imagePlaceholderColor || 'from-blue-600 to-indigo-700'} text-white flex items-center justify-center`}>
+                              {renderProductIcon(game.iconName, "w-6 h-6")}
+                            </div>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-black text-zinc-800 tracking-tight mt-3 group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {game.name}
+                        </h4>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Packages Management View for Selected Game */
+                  <div className="space-y-4">
+                    {/* Header Controls */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4.5 border border-zinc-200 rounded-3xl shadow-2xs">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setSelectedGameForPkgs(null)}
+                          className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-600 hover:text-zinc-950 transition-colors cursor-pointer"
+                          title="Back to Games"
+                        >
+                          <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                        </button>
+                        <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-100">
+                          {selectedGameForPkgs.imageUrl ? (
+                            <img 
+                              src={selectedGameForPkgs.imageUrl} 
+                              alt={selectedGameForPkgs.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-tr ${selectedGameForPkgs.imagePlaceholderColor || 'from-blue-600 to-indigo-700'} text-white flex items-center justify-center`}>
+                              {renderProductIcon(selectedGameForPkgs.iconName, "w-4 h-4")}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400">Packages For</h3>
+                          <h2 className="text-sm font-extrabold text-zinc-900 mt-0.5">{selectedGameForPkgs.name}</h2>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setEditingPkg(null);
+                          setPkgFormIndex(null);
+                          setPkgFormName('');
+                          setPkgFormPrice(100);
+                          setIsPkgModalOpen(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" /> Add Product Option
+                      </button>
+                    </div>
+
+                    {/* Packages List */}
+                    <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-2xs">
+                      <div className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                        <h4 className="text-xs font-black text-zinc-800 uppercase tracking-wider">Available Products / Packages</h4>
+                      </div>
+                      
+                      {getGamePackages(selectedGameForPkgs.id).length === 0 ? (
+                        <div className="p-10 text-center text-zinc-400 text-xs font-semibold">
+                          No products found. Click "Add Product Option" above to create one.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-zinc-100">
+                          {getGamePackages(selectedGameForPkgs.id).map((pkg, idx) => (
+                            <div key={idx} className="p-4 flex items-center justify-between hover:bg-zinc-50/30 transition-colors">
+                              <div>
+                                <h4 className="text-xs font-extrabold text-zinc-900">{pkg.name}</h4>
+                                <span className="text-[10px] font-black text-blue-600 mt-1 inline-block">
+                                  Rs. {pkg.price}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingPkg(pkg);
+                                    setPkgFormIndex(idx);
+                                    setPkgFormName(pkg.name);
+                                    setPkgFormPrice(pkg.price);
+                                    setIsPkgModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Edit Product"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePackage(idx)}
+                                  className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Product"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -3183,6 +3689,149 @@ export default function AdminPanel({
                 </button>
               </div>
 
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ADD/EDIT REQUIREMENT MODAL OVERLAY */}
+      {isReqModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl border border-zinc-200 w-full max-w-md shadow-2xl overflow-hidden my-8"
+          >
+            {/* Modal header */}
+            <div className="bg-zinc-900 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-blue-400" />
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight">
+                  {editingReq ? 'Edit Requirement' : 'Add New Requirement'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsReqModalOpen(false)}
+                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body Form */}
+            <form onSubmit={handleSaveRequirement} className="p-5 space-y-4 text-xs font-medium">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Requirement Name</label>
+                <input
+                  type="text"
+                  required
+                  value={reqFormName}
+                  onChange={(e) => setReqFormName(e.target.value)}
+                  placeholder="e.g. Player ID, Server ID, Username"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Select Input Type</label>
+                <select
+                  value={reqFormType}
+                  onChange={(e) => setReqFormType(e.target.value as 'text' | 'number')}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
+                >
+                  <option value="text">Text / Alphanumeric</option>
+                  <option value="number">Number Only</option>
+                </select>
+              </div>
+
+              {/* Form buttons */}
+              <div className="flex items-center gap-2.5 pt-3 border-t border-zinc-100">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider py-3 rounded-xl shadow-md transition-all cursor-pointer text-center"
+                >
+                  {editingReq ? 'Save Changes' : 'Add Requirement'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsReqModalOpen(false)}
+                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-[11px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ADD/EDIT PACKAGE MODAL OVERLAY */}
+      {isPkgModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl border border-zinc-200 w-full max-w-md shadow-2xl overflow-hidden my-8"
+          >
+            {/* Modal header */}
+            <div className="bg-zinc-900 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-blue-400" />
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight">
+                  {editingPkg ? 'Edit Product Option' : 'Add Product Option'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsPkgModalOpen(false)}
+                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body Form */}
+            <form onSubmit={handleSavePackage} className="p-5 space-y-4 text-xs font-medium">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Product Name / Package Name</label>
+                <input
+                  type="text"
+                  required
+                  value={pkgFormName}
+                  onChange={(e) => setPkgFormName(e.target.value)}
+                  placeholder="e.g. 115 Diamonds 💎, Weekly Membership"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Price (NPR)</label>
+                <input
+                  type="number"
+                  min={0}
+                  required
+                  value={pkgFormPrice}
+                  onChange={(e) => setPkgFormPrice(Number(e.target.value))}
+                  placeholder="e.g. 210"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-bold"
+                />
+              </div>
+
+              {/* Form buttons */}
+              <div className="flex items-center gap-2.5 pt-3 border-t border-zinc-100">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider py-3 rounded-xl shadow-md transition-all cursor-pointer text-center"
+                >
+                  {editingPkg ? 'Save Option' : 'Add Option'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPkgModalOpen(false)}
+                  className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-[11px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           </motion.div>
         </div>
