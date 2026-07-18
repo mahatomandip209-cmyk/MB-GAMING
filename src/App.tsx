@@ -427,15 +427,22 @@ export default function App() {
       if (!snapshot.empty) {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         setProducts(list);
+        localStorage.setItem('db_products_seeded', 'true');
       } else {
-        ALL_PRODUCTS.forEach(async (p) => {
-          try {
-            await setDoc(doc(db, "products", p.id), p);
-          } catch (err) {
-            console.error("Failed to populate initial product:", p.id, err);
-          }
-        });
-        setProducts(ALL_PRODUCTS);
+        const alreadySeeded = localStorage.getItem('db_products_seeded');
+        if (alreadySeeded === 'true') {
+          setProducts([]);
+        } else {
+          ALL_PRODUCTS.forEach(async (p) => {
+            try {
+              await setDoc(doc(db, "products", p.id), p);
+            } catch (err) {
+              console.error("Failed to populate initial product:", p.id, err);
+            }
+          });
+          setProducts(ALL_PRODUCTS);
+          localStorage.setItem('db_products_seeded', 'true');
+        }
       }
     }, (error) => {
       console.error("Real-time products listener failed:", error);
@@ -446,20 +453,27 @@ export default function App() {
       if (!snapshot.empty) {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         setCategories(list);
+        localStorage.setItem('db_categories_seeded', 'true');
       } else {
-        const defaultCategories = [
-          { id: 'top-up', name: 'Top Up' },
-          { id: 'subscription', name: 'Subscription' },
-          { id: 'design', name: 'Design' }
-        ];
-        defaultCategories.forEach(async (cat) => {
-          try {
-            await setDoc(doc(db, "categories", cat.id), { name: cat.name });
-          } catch (err) {
-            console.error("Failed to populate initial category:", cat.id, err);
-          }
-        });
-        setCategories(defaultCategories);
+        const alreadySeeded = localStorage.getItem('db_categories_seeded');
+        if (alreadySeeded === 'true') {
+          setCategories([]);
+        } else {
+          const defaultCategories = [
+            { id: 'top-up', name: 'Top Up' },
+            { id: 'subscription', name: 'Subscription' },
+            { id: 'design', name: 'Design' }
+          ];
+          defaultCategories.forEach(async (cat) => {
+            try {
+              await setDoc(doc(db, "categories", cat.id), { name: cat.name });
+            } catch (err) {
+              console.error("Failed to populate initial category:", cat.id, err);
+            }
+          });
+          setCategories(defaultCategories);
+          localStorage.setItem('db_categories_seeded', 'true');
+        }
       }
     }, (error) => {
       console.error("Real-time categories listener failed:", error);

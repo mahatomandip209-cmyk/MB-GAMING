@@ -366,6 +366,36 @@ export default function AdminPanel({
     }
   };
 
+  const handleDeleteAllPackages = () => {
+    if (!selectedGameForPkgs) return;
+    if (confirm(`Are you absolutely sure you want to delete ALL packages/products for "${selectedGameForPkgs.name}"? This cannot be undone.`)) {
+      const gameId = selectedGameForPkgs.id;
+      const currentPkgs: any[] = [];
+
+      const nextCustom = { ...customPackagesList, [gameId]: currentPkgs };
+      setCustomPackagesList(nextCustom);
+      localStorage.setItem(`mb_packages_${gameId}`, JSON.stringify(currentPkgs));
+      triggerToast('All product packages deleted.');
+
+      // Sync back to Firestore on the selected game/product
+      const productToUpdate = products.find(p => p.id === gameId);
+      if (productToUpdate) {
+        const updatedProduct = {
+          ...productToUpdate,
+          packages: currentPkgs
+        };
+        setProducts(prev => prev.map(p => p.id === gameId ? updatedProduct : p));
+        (async () => {
+          try {
+            await setDoc(doc(db, "products", gameId), updatedProduct);
+          } catch (err) {
+            console.error("Failed to sync package deletion to Firestore:", err);
+          }
+        })();
+      }
+    }
+  };
+
   // Profit range state
   const [profitRange, setProfitRange] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('DAILY');
   const [trendRange, setTrendRange] = useState<'Trend' | 'Compare'>('Trend');
@@ -3179,18 +3209,29 @@ export default function AdminPanel({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          setEditingPkg(null);
-                          setPkgFormIndex(null);
-                          setPkgFormName('');
-                          setPkgFormPrice(100);
-                          setIsPkgModalOpen(true);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
-                      >
-                        <Plus className="w-4 h-4 stroke-[3]" /> Add Product Option
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {getGamePackages(selectedGameForPkgs.id).length > 0 && (
+                          <button
+                            onClick={handleDeleteAllPackages}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                            title="Delete all packages for this game"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete All Packages
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setEditingPkg(null);
+                            setPkgFormIndex(null);
+                            setPkgFormName('');
+                            setPkgFormPrice(100);
+                            setIsPkgModalOpen(true);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                        >
+                          <Plus className="w-4 h-4 stroke-[3]" /> Add Product Option
+                        </button>
+                      </div>
                     </div>
 
                     {/* Packages List */}
