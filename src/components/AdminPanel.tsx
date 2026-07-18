@@ -9,7 +9,8 @@ import {
   setDoc, 
   updateDoc, 
   addDoc, 
-  query 
+  query,
+  onSnapshot
 } from '../firebase';
 import {
   ShieldCheck,
@@ -650,26 +651,30 @@ export default function AdminPanel({
   useEffect(() => {
     if (!isLoggedIn) return;
 
+    // 1. Set up real-time listener for Users collection
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      if (!snapshot.empty) {
+        const fetchedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setUserList(fetchedUsers);
+      } else {
+        const initialUsers = [
+          { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, points: 1500, registered: '2026-06-01' },
+          { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, points: 230, registered: '2026-06-10' },
+          { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, points: 450, registered: '2026-06-14' },
+          { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, points: 80, registered: '2026-06-18' },
+          { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, points: 900, registered: '2026-06-22' }
+        ];
+        initialUsers.forEach(async (u) => {
+          await setDoc(doc(db, 'users', u.email), u);
+        });
+        setUserList(initialUsers);
+      }
+    }, (error) => {
+      console.error("Users real-time snapshot failed:", error);
+    });
+
     const loadAllFirestoreData = async () => {
       try {
-        // 1. Users
-        const usersSnap = await getDocs(collection(db, 'users'));
-        if (!usersSnap.empty) {
-          const fetchedUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setUserList(fetchedUsers);
-        } else {
-          const initialUsers = [
-            { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, points: 1500, registered: '2026-06-01' },
-            { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, points: 230, registered: '2026-06-10' },
-            { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, points: 450, registered: '2026-06-14' },
-            { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, points: 80, registered: '2026-06-18' },
-            { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, points: 900, registered: '2026-06-22' }
-          ];
-          for (const u of initialUsers) {
-            await setDoc(doc(db, 'users', u.email), u);
-          }
-          setUserList(initialUsers);
-        }
 
         // 2. Payments Settings
         const paymentsDoc = await getDoc(doc(db, 'settings', 'payments'));
@@ -804,6 +809,9 @@ export default function AdminPanel({
     };
 
     loadAllFirestoreData();
+    return () => {
+      unsubscribeUsers();
+    };
   }, [isLoggedIn]);
 
 

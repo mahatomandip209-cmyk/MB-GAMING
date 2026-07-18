@@ -436,7 +436,7 @@ let systemUsers = [
 ];
 
 // POST api/auth/register - Register a new account
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
   
   if (!name || !email || !password) {
@@ -461,6 +461,20 @@ app.post("/api/auth/register", (req, res) => {
   };
   
   systemUsers.push(newUser);
+  
+  // Sync with Firestore users collection
+  try {
+    const userDocRef = doc(db, "users", emailLower);
+    await setDoc(userDocRef, {
+      name: newUser.name,
+      email: newUser.email,
+      walletBalance: newUser.walletBalance,
+      loyaltyPoints: newUser.loyaltyPoints,
+      registered: new Date().toISOString().split('T')[0]
+    });
+  } catch (fsErr) {
+    console.error("Failed to sync registered user to Firestore:", fsErr);
+  }
   
   // Add a server-side registration notification
   const newNotif = {
@@ -511,7 +525,7 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 // POST api/auth/sync-profile - Sync wallet and points with the server
-app.post("/api/auth/sync-profile", (req, res) => {
+app.post("/api/auth/sync-profile", async (req, res) => {
   const { email, walletBalance, loyaltyPoints } = req.body;
   
   if (!email) {
@@ -521,6 +535,17 @@ app.post("/api/auth/sync-profile", (req, res) => {
   
   const emailLower = email.toLowerCase().trim();
   const user = systemUsers.find(u => u.email.toLowerCase() === emailLower);
+  
+  // Sync to Firestore
+  try {
+    const userDocRef = doc(db, "users", emailLower);
+    const updateData: any = {};
+    if (walletBalance !== undefined) updateData.walletBalance = walletBalance;
+    if (loyaltyPoints !== undefined) updateData.loyaltyPoints = loyaltyPoints;
+    await setDoc(userDocRef, updateData, { merge: true });
+  } catch (err) {
+    console.error("Failed to update user in Firestore via sync-profile:", err);
+  }
   
   if (user) {
     if (walletBalance !== undefined) user.walletBalance = walletBalance;

@@ -50,7 +50,7 @@ import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
 import { LoginRegister } from './components/LoginRegister';
-import { db, collection, getDocs } from './firebase';
+import { db, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
   try {
@@ -304,6 +304,16 @@ export default function App() {
       };
       localStorage.setItem('mb_current_user', JSON.stringify(updated));
       
+      // Update Firestore directly
+      try {
+        const userDocRef = doc(db, 'users', currentUser.email);
+        setDoc(userDocRef, { walletBalance, loyaltyPoints }, { merge: true }).catch(err => {
+          console.warn("Direct Firestore profile sync warning:", err);
+        });
+      } catch (e) {
+        console.error("Firestore direct sync error:", e);
+      }
+      
       fetch(getBackendUrl('/api/auth/sync-profile'), {
         method: 'POST',
         headers: {
@@ -539,16 +549,31 @@ export default function App() {
     }
   };
 
-  // Register PWA Service Worker & fetch initial lists
+  // Register PWA Service Worker & subscribe to real-time updates
   useEffect(() => {
     setIsIframe(window.self !== window.top);
     testConnection();
-    fetchNotifications();
-    fetchTransactions();
-    const pollInterval = setInterval(() => {
+
+    // 1. Real-time notifications listener
+    const unsubscribeNotif = onSnapshot(collection(db, "notifications"), (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => b.timestamp - a.timestamp);
+      setServerNotifications(list);
+      handleNewNotificationAlert(list);
+    }, (error) => {
+      console.error("Real-time notifications listener failed:", error);
       fetchNotifications();
+    });
+
+    // 2. Real-time transactions listener
+    const unsubscribeTx = onSnapshot(collection(db, "transactions"), (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
+      setTransactions(list);
+    }, (error) => {
+      console.error("Real-time transactions listener failed:", error);
       fetchTransactions();
-    }, 8000);
+    });
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -586,8 +611,33 @@ export default function App() {
       setNotifPermission(currentPerm);
     }
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      unsubscribeNotif();
+      unsubscribeTx();
+    };
   }, []);
+
+  // Subscribe to logged-in user profile changes (real-time balance and points)
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const userDocRef = doc(db, 'users', currentUser.email);
+    const unsubscribeUser = onSnapshot(userDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.walletBalance !== undefined && data.walletBalance !== walletBalance) {
+          setWalletBalance(data.walletBalance);
+        }
+        if (data.loyaltyPoints !== undefined && data.loyaltyPoints !== loyaltyPoints) {
+          setLoyaltyPoints(data.loyaltyPoints);
+        }
+      }
+    }, (error) => {
+      console.error("User profile subscription failed:", error);
+    });
+    
+    return () => unsubscribeUser();
+  }, [currentUser?.email]);
 
   // Synchronize Push Subscription with Backend
   const syncPushSubscription = async () => {
