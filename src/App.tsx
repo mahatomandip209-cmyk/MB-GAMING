@@ -44,7 +44,8 @@ import {
   Zap,
   Percent,
   Coins,
-  Facebook
+  Facebook,
+  Copy
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
@@ -931,7 +932,7 @@ export default function App() {
     const finalProdName = quantity > 1 ? `${selectedPkgName} (Qty: ${quantity})` : selectedPkgName;
 
     const newTx: Transaction = {
-      id: `tx-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: `BNY-${Math.floor(100000 + Math.random() * 900000)}`,
       productId: selectedProduct.id,
       productName: finalProdName,
       provider: selectedProduct.provider,
@@ -940,7 +941,9 @@ export default function App() {
       targetAccount: finalTarget,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'PENDING',
-      pinCode: pinString
+      pinCode: pinString,
+      userEmail: currentUser?.email,
+      email: currentUser?.email
     };
 
     setTransactions([newTx, ...transactions]);
@@ -1953,83 +1956,183 @@ export default function App() {
                   Sign In / Register
                 </button>
               </div>
-            ) : transactions.length > 0 ? (
-              <div className="divide-y divide-zinc-105">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                    <div className="flex items-start gap-3">
-                      {(() => {
-                        const associatedProduct = products.find(p => p.id === tx.productId);
-                        return associatedProduct?.imageUrl ? (
-                          <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-155 shrink-0 shadow-sm mt-0.5">
-                            <img
-                              src={associatedProduct.imageUrl}
-                              alt={tx.productName}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-700 shrink-0 mt-0.5">
-                            <ReceiptText className="w-4.5 h-4.5" />
-                          </div>
-                        );
-                      })()}
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-extrabold text-zinc-900 uppercase">{tx.productName}</span>
-                          <span className="text-[9px] font-mono bg-zinc-105 text-zinc-500 font-bold px-1.5 py-0.2 rounded">
-                            {tx.id}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-400">
-                          <span className="font-mono font-bold bg-zinc-50 px-1 py-0.1 rounded text-zinc-650 select-all">{tx.targetAccount}</span>
-                          <span>•</span>
-                          <span>{tx.timestamp}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-4 self-stretch sm:self-center">
-                      <div className="text-left sm:text-right">
-                        <span className="block text-xs font-mono font-extrabold text-zinc-900">
-                          Rs. {tx.amount}
-                        </span>
-                        {tx.pinCode && (
-                          <span className="text-[9px] font-bold text-blue-600 underline cursor-pointer select-all" title="Copy code">
-                            CODE: {tx.pinCode}
-                          </span>
-                        )}
-                      </div>
-                      {(tx.status === 'PENDING' || !tx.status) && (
-                        <div className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] rounded font-bold flex items-center gap-1 border border-amber-200/50 animate-pulse">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          <span>PENDING</span>
-                        </div>
-                      )}
-                      {(tx.status === 'SUCCESS' || tx.status === 'DISPATCHED') && (
-                        <div className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] rounded font-bold flex items-center gap-1 border border-emerald-100">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          <span>COMPLETED</span>
-                        </div>
-                      )}
-                      {(tx.status === 'FAILED' || tx.status === 'REJECTED') && (
-                        <div className="px-2.5 py-1 bg-red-50 text-red-700 text-[10px] rounded font-bold flex items-center gap-1 border border-red-200/40">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                          <span>REJECTED</span>
-                        </div>
-                      )}
-                    </div>
+            ) : (() => {
+              const userTxs = transactions.filter(tx => 
+                currentUser && (
+                  tx.userEmail?.toLowerCase() === currentUser.email.toLowerCase() ||
+                  tx.email?.toLowerCase() === currentUser.email.toLowerCase()
+                )
+              );
+              if (userTxs.length === 0) {
+                return (
+                  <div className="py-12 text-center text-zinc-400">
+                    <ReceiptText className="w-10 h-10 text-zinc-200 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-zinc-700">No Orders Placed Yet</p>
+                    <p className="text-[10px] text-zinc-400 mt-1">Order some game diamonds or top-ups below to see your history!</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-12 text-center text-zinc-400">
-                <ReceiptText className="w-10 h-10 text-zinc-200 mx-auto mb-2" />
-                <p className="text-xs font-bold text-zinc-700">No Orders Placed Yet</p>
-                <p className="text-[10px] text-zinc-400 mt-1">Refill is empty. Order some game diamonds or top-ups below!</p>
-              </div>
-            )}
+                );
+              }
+              return (
+                <div className="space-y-4">
+                  {userTxs.map((tx) => {
+                    const displayId = tx.id.startsWith('BNY-') ? tx.id : `BNY-${tx.id.replace(/\D/g, '').slice(0, 6).padEnd(6, '0')}`;
+                    const associatedProduct = products.find(p => p.id === tx.productId);
+                    const gameName = tx.provider || associatedProduct?.provider || associatedProduct?.name || 'Game';
+                    
+                    return (
+                      <div key={tx.id} className="bg-zinc-50 rounded-2xl p-4 border border-zinc-200/60 shadow-sm relative space-y-3.5 hover:shadow-md transition-all">
+                        {/* Top Bar inside Order Box: Game Image, Name & Order ID in Top Right */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3 text-left">
+                            {associatedProduct?.imageUrl ? (
+                              <div className="w-11 h-11 rounded-xl overflow-hidden border border-zinc-200 shrink-0 shadow-sm">
+                                <img
+                                  src={associatedProduct.imageUrl}
+                                  alt={gameName}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                                <ReceiptText className="w-5 h-5" />
+                              </div>
+                            )}
+                            <div>
+                              <h4 className="text-xs font-black text-zinc-900 uppercase tracking-tight leading-tight">{gameName}</h4>
+                              <p className="text-[10px] text-zinc-400 font-bold mt-0.5">{tx.timestamp}</p>
+                            </div>
+                          </div>
+
+                          {/* Order ID on the top right with Copy Option */}
+                          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-zinc-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                            <span className="text-[10px] font-mono font-black text-zinc-650 tracking-wider">
+                              {displayId}
+                            </span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(displayId);
+                                triggerToast('📋 Order ID copied!');
+                              }}
+                              className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer"
+                              title="Copy Order ID"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mid Section: Product Name, Product Price, and Status Badge */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2.5 border-t border-zinc-200/50">
+                          {/* Product Info */}
+                          <div className="space-y-1 text-left">
+                            <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">Product Bundle / Price</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-extrabold text-zinc-800 uppercase">{tx.productName}</span>
+                              <span className="text-xs font-black text-blue-600">NPR {tx.amount}</span>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="flex items-center justify-start md:justify-end gap-2">
+                            <span className="text-[10px] font-black text-zinc-400 tracking-wider uppercase mr-1">Status:</span>
+                            {(tx.status === 'PENDING' || !tx.status) && (
+                              <div className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] rounded-lg font-black flex items-center gap-1.5 border border-amber-200/50 animate-pulse">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                <span>PENDING</span>
+                              </div>
+                            )}
+                            {(tx.status === 'SUCCESS' || tx.status === 'DISPATCHED') && (
+                              <div className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] rounded-lg font-black flex items-center gap-1.5 border border-emerald-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <span>COMPLETED</span>
+                              </div>
+                            )}
+                            {(tx.status === 'FAILED' || tx.status === 'REJECTED') && (
+                              <div className="px-2.5 py-1 bg-red-50 text-red-700 text-[10px] rounded-lg font-black flex items-center gap-1.5 border border-red-200/40">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                <span>REJECTED</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bottom Section: Order Requirements */}
+                        <div className="bg-white rounded-xl p-3 border border-zinc-200/60 text-left space-y-2">
+                          <span className="block text-[9px] font-black text-zinc-400 tracking-wider uppercase">Provided Requirements / Account Details</span>
+                          
+                          {/* Requirements with Copy Buttons */}
+                          <div className="space-y-1.5">
+                            {tx.targetAccount && tx.targetAccount.includes('|') ? (
+                              tx.targetAccount.split('|').map((part, index) => {
+                                const [key, ...valParts] = part.split(':');
+                                const val = valParts.join(':').trim();
+                                const label = key ? key.trim() : 'Detail';
+                                return (
+                                  <div key={index} className="flex items-center justify-between gap-4 text-xs bg-zinc-50/60 px-2.5 py-1.5 rounded-lg border border-zinc-150">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-extrabold text-zinc-500">{label}:</span>
+                                      <span className="font-bold text-zinc-800 font-mono">{val}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(val);
+                                        triggerToast(`📋 Copied ${label}!`);
+                                      }}
+                                      className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer shrink-0"
+                                      title={`Copy ${label}`}
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="flex items-center justify-between gap-4 text-xs bg-zinc-50/60 px-2.5 py-1.5 rounded-lg border border-zinc-150">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-zinc-500">{associatedProduct?.inputLabel || 'Account ID'}:</span>
+                                  <span className="font-bold text-zinc-800 font-mono">{tx.targetAccount}</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(tx.targetAccount);
+                                    triggerToast('📋 Copied Account ID!');
+                                  }}
+                                  className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer shrink-0"
+                                  title="Copy Account ID"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+
+                            {tx.pinCode && (
+                              <div className="flex items-center justify-between gap-4 text-xs bg-blue-50/40 px-2.5 py-1.5 rounded-lg border border-blue-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-blue-600 uppercase">PIN CODE:</span>
+                                  <span className="font-black text-blue-700 font-mono select-all">{tx.pinCode}</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(tx.pinCode || '');
+                                    triggerToast('📋 Copied PIN Code!');
+                                  }}
+                                  className="text-blue-400 hover:text-blue-700 p-0.5 hover:bg-blue-100 rounded transition-all cursor-pointer shrink-0"
+                                  title="Copy PIN Code"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </section>
         )}
 

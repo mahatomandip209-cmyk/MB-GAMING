@@ -37,4 +37,6 @@ export interface Transaction {
   quantity?: number;
   enteredBy?: string;
   description?: string;
+  userEmail?: string;
+  email?: string;
 }
