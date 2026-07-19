@@ -19,6 +19,7 @@ import {
   Mail,
   ArrowLeft,
   Check,
+  Copy,
   AlertCircle,
   Eye,
   EyeOff,
@@ -2207,148 +2208,290 @@ export default function AdminPanel({
             
             {/* 2. ORDERS / RECHARGE REQUESTS TAB */}
             {activeTab === 'orders' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="text-left">
                     <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Recharge Orders</h2>
-                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Manually approve, reject or delete client game recharges.</p>
+                    <p className="text-xs text-zinc-500 font-semibold mt-0.5 font-sans">Manually approve, reject or delete client game recharges.</p>
                   </div>
-                  <span className="bg-zinc-900 text-white text-[10px] font-black px-2.5 py-1 rounded-xl">
+                  <span className="bg-zinc-950 text-white text-[10px] font-black px-3 py-1.5 rounded-xl font-mono self-start sm:self-center shadow-xs">
                     Pending Queue: {transactions.filter(t => t.status === 'PENDING').length}
                   </span>
                 </div>
 
                 {/* Filter / Actions bar */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4.5 border border-zinc-200 rounded-2xl">
-                  {/* Status Selection Buttons */}
-                  <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 p-1 rounded-xl shrink-0">
-                    {(['PENDING', 'SUCCESS', 'REJECTED', 'ALL'] as const).map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => setOrderFilterStatus(status)}
-                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                          orderFilterStatus === status
-                            ? 'bg-blue-650 text-white shadow-xs'
-                            : 'text-zinc-550 hover:text-zinc-900 hover:bg-zinc-100/50'
-                        }`}
-                      >
-                        {status === 'SUCCESS' ? 'COMPLETED' : status}
-                      </button>
-                    ))}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 border border-zinc-200/80 rounded-2xl shadow-xs">
+                  {/* Status Selection Buttons - Redesigned & Beautiful */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-100/65 p-1.5 rounded-2xl border border-zinc-200/60 w-full lg:max-w-3xl">
+                    {(['PENDING', 'SUCCESS', 'REJECTED', 'ALL'] as const).map((status) => {
+                      const count = status === 'ALL' 
+                        ? transactions.length 
+                        : transactions.filter(t => {
+                            if (status === 'REJECTED') {
+                              return t.status === 'FAILED' || (t.status as any) === 'REJECTED';
+                            }
+                            return (t.status || 'PENDING') === (status as any);
+                          }).length;
+                      
+                      const isSelected = orderFilterStatus === status;
+                      
+                      let label = 'Pending';
+                      let colorClass = 'text-amber-700 bg-amber-50 border-amber-200/60';
+                      let icon = <Clock className="w-4 h-4 shrink-0 text-amber-500" />;
+                      
+                      if (status === 'SUCCESS') {
+                        label = 'Completed';
+                        colorClass = 'text-emerald-700 bg-emerald-50 border-emerald-150';
+                        icon = <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />;
+                      } else if (status === 'REJECTED') {
+                        label = 'Rejected';
+                        colorClass = 'text-red-700 bg-red-50 border-red-150';
+                        icon = <XCircle className="w-4 h-4 shrink-0 text-red-500" />;
+                      } else if (status === 'ALL') {
+                        label = 'All Orders';
+                        colorClass = 'text-blue-700 bg-blue-50 border-blue-150';
+                        icon = <FileText className="w-4 h-4 shrink-0 text-blue-500" />;
+                      }
+
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => setOrderFilterStatus(status)}
+                          className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
+                            isSelected 
+                              ? 'bg-white border-zinc-300 text-zinc-950 shadow-xs font-black' 
+                              : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-white/40'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {icon}
+                            <span className="tracking-tight uppercase text-[9.5px] truncate">{label}</span>
+                          </div>
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-lg border ${colorClass} font-black shrink-0`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                    <input
-                      type="text"
-                      placeholder="Search Transaction ID or Player Account..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-semibold"
-                    />
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:max-w-md">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                      <input
+                        type="text"
+                        placeholder="Search ID, Account, or Name..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-semibold shadow-xs"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to clear transaction history logs?')) {
+                          setTransactions([]);
+                          triggerToast('Logs cleared successfully.');
+                        }
+                      }}
+                      className="bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider py-3 px-4 rounded-xl border border-red-100 transition-all cursor-pointer shrink-0"
+                    >
+                      Clear History
+                    </button>
                   </div>
-                  
-                  <button
-                    onClick={() => {
-                      if (confirm('Are you sure you want to clear transaction history logs?')) {
-                        setTransactions([]);
-                        triggerToast('Logs cleared successfully.');
-                      }
-                    }}
-                    className="bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl border border-red-100 transition-all cursor-pointer"
-                  >
-                    Clear History Logs
-                  </button>
                 </div>
 
-                {/* Orders grid table */}
-                <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-zinc-100 text-zinc-400 uppercase text-[9px] font-black tracking-widest bg-zinc-50/50">
-                          <th className="py-3.5 px-4">Date & Time</th>
-                          <th className="py-3.5 px-4">Transaction ID</th>
-                          <th className="py-3.5 px-4">Product Name</th>
-                          <th className="py-3.5 px-4">Player Account / UID</th>
-                          <th className="py-3.5 px-4">Price Charged</th>
-                          <th className="py-3.5 px-4">Order Status</th>
-                          <th className="py-3.5 px-4 text-right">Approve Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-100 font-medium">
-                        {(() => {
-                          const filteredList = transactions.filter(t => {
-                            const matchesSearch = t.id.toLowerCase().includes(productSearch.toLowerCase()) || 
-                                                  t.targetAccount.toLowerCase().includes(productSearch.toLowerCase()) || 
-                                                  t.productName.toLowerCase().includes(productSearch.toLowerCase());
-                            const matchesStatus = orderFilterStatus === 'ALL' || (t.status || 'PENDING') === orderFilterStatus;
-                            return matchesSearch && matchesStatus;
-                          });
+                {/* Orders Grid Layout - Redesigned to Different Grids instead of table */}
+                {(() => {
+                  const filteredList = transactions.filter(t => {
+                    const matchesSearch = t.id.toLowerCase().includes(productSearch.toLowerCase()) || 
+                                          t.targetAccount.toLowerCase().includes(productSearch.toLowerCase()) || 
+                                          t.productName.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                          (t.userEmail && t.userEmail.toLowerCase().includes(productSearch.toLowerCase())) ||
+                                          (t.email && t.email.toLowerCase().includes(productSearch.toLowerCase()));
+                    
+                    let matchesStatus = false;
+                    if (orderFilterStatus === 'ALL') {
+                      matchesStatus = true;
+                    } else if (orderFilterStatus === 'REJECTED') {
+                      matchesStatus = t.status === 'FAILED' || (t.status as any) === 'REJECTED';
+                    } else {
+                      matchesStatus = (t.status || 'PENDING') === (orderFilterStatus as any);
+                    }
+                    return matchesSearch && matchesStatus;
+                  });
 
-                          if (filteredList.length === 0) {
-                            return (
-                              <tr>
-                                <td colSpan={7} className="text-center py-14 text-zinc-400 font-bold text-xs">
-                                  No orders matching criteria found.
-                                </td>
-                              </tr>
-                            );
-                          }
+                  if (filteredList.length === 0) {
+                    return (
+                      <div className="bg-white border border-zinc-200 rounded-3xl p-14 text-center text-zinc-400 font-bold text-xs shadow-xs space-y-2">
+                        <div className="w-10 h-10 rounded-full bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-300">
+                          <Eye className="w-4 h-4" />
+                        </div>
+                        <p>No orders matching search criteria found.</p>
+                      </div>
+                    );
+                  }
 
-                          return filteredList.map(tx => (
-                              <tr key={tx.id} className="hover:bg-zinc-50/40 transition-colors">
-                                <td className="py-4 px-4 text-[10.5px] text-zinc-500 font-mono">{tx.timestamp}</td>
-                                <td className="py-4 px-4 text-[10.5px] text-zinc-900 font-extrabold font-mono">{tx.id}</td>
-                                <td className="py-4 px-4">
-                                  <div className="font-extrabold text-zinc-900 text-[11px]">{tx.productName}</div>
-                                </td>
-                                <td className="py-4 px-4">
-                                  <span className="text-[11px] text-zinc-700 font-extrabold bg-zinc-100/45 font-mono rounded-lg px-2 py-1 border border-zinc-200/50">
-                                    {tx.targetAccount}
+                  // Auto requirements detection helper
+                  const parseRequirements = (target: string) => {
+                    if (!target) return [];
+                    if (target.includes(' | ')) {
+                      return target.split(' | ').map(item => {
+                        const idx = item.indexOf(':');
+                        if (idx !== -1) {
+                          return {
+                            name: item.substring(0, idx).trim(),
+                            value: item.substring(idx + 1).trim()
+                          };
+                        }
+                        return { name: 'Field Value', value: item.trim() };
+                      });
+                    } else {
+                      const idx = target.indexOf(':');
+                      if (idx !== -1 && idx > 2 && idx < 25) {
+                        return [{
+                          name: target.substring(0, idx).trim(),
+                          value: target.substring(idx + 1).trim()
+                        }];
+                      }
+                      return [{ name: 'Player ID / Account', value: target.trim() }];
+                    }
+                  };
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredList.map(tx => {
+                        const detectedReqs = parseRequirements(tx.targetAccount);
+                        const unitPrice = tx.amount / (tx.quantity || 1);
+
+                        return (
+                          <div 
+                            key={tx.id} 
+                            className="bg-white border border-zinc-200 hover:border-zinc-300 rounded-3xl p-5 shadow-xs transition-all duration-200 flex flex-col justify-between hover:shadow-sm space-y-4"
+                          >
+                            {/* Card Header: Client Email (FIRST) */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                                <div className="flex items-center gap-2 text-left min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100/30 flex items-center justify-center text-blue-600 shrink-0">
+                                    <Mail className="w-4 h-4" />
+                                  </div>
+                                  <div className="text-left min-w-0">
+                                    <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">Client Email</span>
+                                    <span className="block text-xs font-extrabold text-zinc-800 truncate" title={tx.userEmail || tx.email || 'guest@example.com'}>
+                                      {tx.userEmail || tx.email || 'guest@example.com'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="block text-[8px] font-mono text-zinc-400">{tx.timestamp}</span>
+                                  <span className="block text-[10px] font-black text-zinc-500 font-mono">#{tx.id}</span>
+                                </div>
+                              </div>
+
+                              {/* Product & Order Details block */}
+                              <div className="bg-zinc-50 rounded-2xl p-3.5 space-y-3">
+                                <div className="text-left">
+                                  <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400 block mb-0.5">Product Name</span>
+                                  <span className="text-[13px] font-extrabold text-zinc-900 leading-snug block">
+                                    {tx.productName}
                                   </span>
-                                </td>
-                                <td className="py-4 px-4 text-[11.5px] font-black text-zinc-900">Rs. {tx.amount.toLocaleString()}</td>
-                                <td className="py-4 px-4">
-                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                    (tx.status === 'SUCCESS' || (tx.status as any) === 'DISPATCHED') ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/30' :
-                                    (tx.status === 'PENDING' || !tx.status) ? 'bg-amber-50 text-amber-600 border border-amber-200/30 animate-pulse' :
-                                    'bg-red-50 text-red-600 border border-red-200/30'
-                                  }`}>
-                                    ● {tx.status || 'PENDING'}
-                                  </span>
-                                </td>
-                                <td className="py-4 px-4 text-right">
-                                  {tx.status === 'PENDING' ? (
-                                    <div className="flex items-center justify-end gap-1.5">
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 border-t border-zinc-200/50 pt-2.5 text-left">
+                                  <div>
+                                    <span className="block text-[8px] font-bold uppercase tracking-wider text-zinc-400">Unit Price</span>
+                                    <span className="block text-[11px] font-black text-zinc-800 font-mono mt-0.5">
+                                      Rs. {Math.round(unitPrice).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[8px] font-bold uppercase tracking-wider text-zinc-400">Quantity</span>
+                                    <span className="block text-[11px] font-black text-zinc-800 font-mono mt-0.5">
+                                      {tx.quantity || 1}x
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[8px] font-bold uppercase tracking-wider text-blue-500">Total Cost</span>
+                                    <span className="block text-[11px] font-black text-blue-600 font-mono mt-0.5">
+                                      Rs. {tx.amount.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Requirements Block with Auto Detection */}
+                              <div className="space-y-2 text-left pt-1">
+                                <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                                  Player Account Details
+                                </span>
+                                <div className="space-y-1.5">
+                                  {detectedReqs.map((req, rIdx) => (
+                                    <div 
+                                      key={rIdx} 
+                                      className="flex items-center justify-between gap-2 bg-zinc-50/50 border border-zinc-150 p-2.5 rounded-xl text-xs font-medium"
+                                    >
+                                      <div className="min-w-0 flex-1">
+                                        <span className="block text-[8px] font-black uppercase text-zinc-400 leading-none mb-1">
+                                          {req.name}
+                                        </span>
+                                        <span className="block text-xs font-bold text-zinc-800 font-mono truncate">
+                                          {req.value}
+                                        </span>
+                                      </div>
                                       <button
-                                        onClick={() => handleUpdateTransactionStatus(tx.id, 'SUCCESS')}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-wider border-none"
-                                        title="Complete Order"
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(req.value);
+                                          triggerToast(`📋 Copied: ${req.value}`);
+                                        }}
+                                        className="p-1.5 hover:bg-zinc-150 rounded-lg text-zinc-400 hover:text-blue-600 transition-all border-none cursor-pointer shrink-0"
+                                        title={`Copy ${req.name}`}
                                       >
-                                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                        <span>Complete</span>
-                                      </button>
-                                      <button
-                                        onClick={() => handleUpdateTransactionStatus(tx.id, 'FAILED')}
-                                        className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-wider border-none"
-                                        title="Reject Order"
-                                      >
-                                        <X className="w-3.5 h-3.5 stroke-[3]" />
-                                        <span>Reject</span>
+                                        <Copy className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
-                                  ) : (
-                                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Locked</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ));
-                          })()}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card Footer: Action Buttons (below) */}
+                            <div className="border-t border-zinc-100 pt-4 mt-2">
+                              {tx.status === 'PENDING' ? (
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  <button
+                                    onClick={() => handleUpdateTransactionStatus(tx.id, 'FAILED')}
+                                    className="bg-red-50 hover:bg-red-100 active:scale-97 text-red-600 py-2.5 px-4 rounded-xl border border-red-100 font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  >
+                                    <X className="w-4 h-4 stroke-[3]" />
+                                    <span>Reject</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateTransactionStatus(tx.id, 'SUCCESS')}
+                                    className="bg-emerald-600 hover:bg-emerald-500 active:scale-97 text-white py-2.5 px-4 rounded-xl shadow-xs font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none"
+                                  >
+                                    <Check className="w-4 h-4 stroke-[3]" />
+                                    <span>Complete</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between bg-zinc-50 px-3.5 py-2.5 rounded-xl border border-zinc-150">
+                                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Order Status</span>
+                                  <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                                    tx.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700 border-emerald-150' : 'bg-red-50 text-red-700 border-red-150'
+                                  }`}>
+                                    {tx.status === 'SUCCESS' ? 'APPROVED' : 'REJECTED'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
               </div>
             )}
