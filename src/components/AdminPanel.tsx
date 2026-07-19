@@ -161,6 +161,7 @@ export default function AdminPanel({
   const [pkgFormIndex, setPkgFormIndex] = useState<number | null>(null);
   const [pkgFormName, setPkgFormName] = useState('');
   const [pkgFormPrice, setPkgFormPrice] = useState<number>(0);
+  const [pkgFormPasteList, setPkgFormPasteList] = useState('');
   const [customPackagesList, setCustomPackagesList] = useState<Record<string, { name: string; price: number }[]>>(() => {
     const result: Record<string, { name: string; price: number }[]> = {};
     try {
@@ -393,6 +394,79 @@ export default function AdminPanel({
           }
         })();
       }
+    }
+  };
+
+  const handleBulkAddPackages = () => {
+    if (!pkgFormPasteList.trim()) return;
+    if (!selectedGameForPkgs) return;
+
+    const lines = pkgFormPasteList.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const parsedPackages: { name: string; price: number }[] = [];
+
+    for (const line of lines) {
+      let price = 0;
+      let name = line;
+
+      // Matches delimiters like - : = , or spaces followed by optional Rs/NPR and digits at the end
+      const endPriceRegex = /(?:[-:=,–—]|\s+)\s*(?:Rs\.?|NPR)?\s*(\d+)\s*$/i;
+      const match = line.match(endPriceRegex);
+      if (match) {
+        price = Number(match[1]);
+        name = line.substring(0, line.lastIndexOf(match[0])).trim();
+      } else {
+        // Fallback to searching for the last number at the end of the line
+        const lastNumberRegex = /(\d+)\s*$/;
+        const lastNumMatch = line.match(lastNumberRegex);
+        if (lastNumMatch) {
+          price = Number(lastNumMatch[1]);
+          name = line.substring(0, line.lastIndexOf(lastNumMatch[0])).trim();
+        }
+      }
+
+      // Clean up trailing punctuation or spaces from the detected name
+      name = name.replace(/[-:=,–—\s]+$/, '').trim();
+
+      if (name && price >= 0) {
+        parsedPackages.push({ name, price });
+      }
+    }
+
+    if (parsedPackages.length === 0) {
+      triggerToast('Could not detect any product options. Use format: "Product Name - Price".');
+      return;
+    }
+
+    const gameId = selectedGameForPkgs.id;
+    const currentPkgs = [...getGamePackages(gameId)];
+
+    parsedPackages.forEach(p => {
+      currentPkgs.push(p);
+    });
+
+    const nextCustom = { ...customPackagesList, [gameId]: currentPkgs };
+    setCustomPackagesList(nextCustom);
+    localStorage.setItem(`mb_packages_${gameId}`, JSON.stringify(currentPkgs));
+    setPkgFormPasteList('');
+    setIsPkgModalOpen(false);
+
+    // Sync back to Firestore on the selected game/product
+    const productToUpdate = products.find(p => p.id === gameId);
+    if (productToUpdate) {
+      const updatedProduct = {
+        ...productToUpdate,
+        packages: currentPkgs
+      };
+      setProducts(prev => prev.map(pr => pr.id === gameId ? updatedProduct : pr));
+      (async () => {
+        try {
+          await setDoc(doc(db, "products", gameId), updatedProduct);
+          triggerToast(`Successfully added ${parsedPackages.length} detected products!`);
+        } catch (err) {
+          console.error("Failed to sync package to Firestore:", err);
+          triggerToast(`Added locally, but failed to sync to Firestore: ${err}`);
+        }
+      })();
     }
   };
 
@@ -3225,6 +3299,7 @@ export default function AdminPanel({
                             setPkgFormIndex(null);
                             setPkgFormName('');
                             setPkgFormPrice(100);
+                            setPkgFormPasteList('');
                             setIsPkgModalOpen(true);
                           }}
                           className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
@@ -3261,6 +3336,7 @@ export default function AdminPanel({
                                     setPkgFormIndex(idx);
                                     setPkgFormName(pkg.name);
                                     setPkgFormPrice(pkg.price);
+                                    setPkgFormPasteList('');
                                     setIsPkgModalOpen(true);
                                   }}
                                   className="p-1.5 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
@@ -3952,7 +4028,7 @@ export default function AdminPanel({
                 <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Product Name / Package Name</label>
                 <input
                   type="text"
-                  required
+                  required={!pkgFormPasteList.trim()}
                   value={pkgFormName}
                   onChange={(e) => setPkgFormName(e.target.value)}
                   placeholder="e.g. 115 Diamonds 💎, Weekly Membership"
@@ -3965,19 +4041,54 @@ export default function AdminPanel({
                 <input
                   type="number"
                   min={0}
-                  required
-                  value={pkgFormPrice}
-                  onChange={(e) => setPkgFormPrice(Number(e.target.value))}
+                  required={!pkgFormPasteList.trim()}
+                  value={pkgFormPrice || ''}
+                  onChange={(e) => setPkgFormPrice(e.target.value === '' ? 0 : Number(e.target.value))}
                   placeholder="e.g. 210"
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-bold"
                 />
               </div>
 
+              <div className="space-y-1 pt-2 border-t border-zinc-100">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center justify-between">
+                  <span>Paste Full List (Optional)</span>
+                  <span className="text-[9px] text-zinc-400 normal-case font-semibold">One option per line</span>
+                </label>
+                <textarea
+                  value={pkgFormPasteList}
+                  onChange={(e) => setPkgFormPasteList(e.target.value)}
+                  placeholder="e.g.&#10;115 Diamonds - Rs. 150&#10;Weekly Membership - 250&#10;Monthly Membership - Rs. 1000"
+                  rows={4}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-mono resize-none leading-normal"
+                />
+              </div>
+
+              {pkgFormPasteList.trim().length > 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl space-y-1.5">
+                  <p className="text-[10px] text-blue-700 font-black uppercase tracking-wide">Bulk Detection Option</p>
+                  <p className="text-[9px] text-zinc-500 leading-normal font-semibold">
+                    We detected lines of products. Click below to automatically detect product name & price and add all of them.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleBulkAddPackages}
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer font-bold"
+                  >
+                    <PlusCircle className="w-4 h-4" /> Detect & Bulk Add Products
+                  </button>
+                </div>
+              )}
+
               {/* Form buttons */}
               <div className="flex items-center gap-2.5 pt-3 border-t border-zinc-100">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider py-3 rounded-xl shadow-md transition-all cursor-pointer text-center"
+                  disabled={pkgFormPasteList.trim().length > 0}
+                  className={`flex-1 text-[11px] font-black uppercase tracking-wider py-3 rounded-xl shadow-md transition-all cursor-pointer text-center ${
+                    pkgFormPasteList.trim().length > 0
+                      ? 'bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed shadow-none'
+                      : 'bg-blue-600 hover:bg-blue-500 text-white'
+                  }`}
                 >
                   {editingPkg ? 'Save Option' : 'Add Option'}
                 </button>
