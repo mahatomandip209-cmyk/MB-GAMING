@@ -142,7 +142,7 @@ export default function AdminPanel({
   const [selectedDepositForScreenshot, setSelectedDepositForScreenshot] = useState<string | null>(null);
   const [depositSearchQuery, setDepositSearchQuery] = useState('');
   const [depositFilterStatus, setDepositFilterStatus] = useState<'PENDING' | 'COMPLETED' | 'REJECTED'>('PENDING');
-  const [orderFilterStatus, setOrderFilterStatus] = useState<'ALL' | 'PENDING' | 'SUCCESS' | 'REJECTED'>('PENDING');
+  const [orderFilterStatus, setOrderFilterStatus] = useState<'PENDING' | 'SUCCESS' | 'REJECTED'>('PENDING');
 
   // Category states
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -2220,59 +2220,22 @@ export default function AdminPanel({
                 </div>
 
                 {/* Filter / Actions bar */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 border border-zinc-200/80 rounded-2xl shadow-xs">
-                  {/* Status Selection Buttons - Redesigned & Beautiful */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-100/65 p-1.5 rounded-2xl border border-zinc-200/60 w-full lg:max-w-3xl">
-                    {(['PENDING', 'SUCCESS', 'REJECTED', 'ALL'] as const).map((status) => {
-                      const count = status === 'ALL' 
-                        ? transactions.length 
-                        : transactions.filter(t => {
-                            if (status === 'REJECTED') {
-                              return t.status === 'FAILED' || (t.status as any) === 'REJECTED';
-                            }
-                            return (t.status || 'PENDING') === (status as any);
-                          }).length;
-                      
-                      const isSelected = orderFilterStatus === status;
-                      
-                      let label = 'Pending';
-                      let colorClass = 'text-amber-700 bg-amber-50 border-amber-200/60';
-                      let icon = <Clock className="w-4 h-4 shrink-0 text-amber-500" />;
-                      
-                      if (status === 'SUCCESS') {
-                        label = 'Completed';
-                        colorClass = 'text-emerald-700 bg-emerald-50 border-emerald-150';
-                        icon = <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />;
-                      } else if (status === 'REJECTED') {
-                        label = 'Rejected';
-                        colorClass = 'text-red-700 bg-red-50 border-red-150';
-                        icon = <XCircle className="w-4 h-4 shrink-0 text-red-500" />;
-                      } else if (status === 'ALL') {
-                        label = 'All Orders';
-                        colorClass = 'text-blue-700 bg-blue-50 border-blue-150';
-                        icon = <FileText className="w-4 h-4 shrink-0 text-blue-500" />;
-                      }
-
-                      return (
-                        <button
-                          key={status}
-                          onClick={() => setOrderFilterStatus(status)}
-                          className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
-                            isSelected 
-                              ? 'bg-white border-zinc-300 text-zinc-950 shadow-xs font-black' 
-                              : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-white/40'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {icon}
-                            <span className="tracking-tight uppercase text-[9.5px] truncate">{label}</span>
-                          </div>
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-lg border ${colorClass} font-black shrink-0`}>
-                            {count}
-                          </span>
-                        </button>
-                      );
-                    })}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4.5 border border-zinc-200 rounded-2xl shadow-xs">
+                  {/* Status Selection Buttons */}
+                  <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 p-1 rounded-xl shrink-0">
+                    {(['PENDING', 'SUCCESS', 'REJECTED'] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setOrderFilterStatus(status)}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                          orderFilterStatus === status
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-zinc-550 hover:text-zinc-900 hover:bg-zinc-100/50'
+                        }`}
+                      >
+                        {status === 'SUCCESS' ? 'COMPLETED' : status}
+                      </button>
+                    ))}
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:max-w-md">
@@ -2283,7 +2246,7 @@ export default function AdminPanel({
                         placeholder="Search ID, Account, or Name..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-semibold shadow-xs"
+                        className="w-full pl-10 pr-4 py-2.5 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-semibold shadow-xs bg-zinc-50/20"
                       />
                     </div>
                     
@@ -2311,9 +2274,7 @@ export default function AdminPanel({
                                           (t.email && t.email.toLowerCase().includes(productSearch.toLowerCase()));
                     
                     let matchesStatus = false;
-                    if (orderFilterStatus === 'ALL') {
-                      matchesStatus = true;
-                    } else if (orderFilterStatus === 'REJECTED') {
+                    if (orderFilterStatus === 'REJECTED') {
                       matchesStatus = t.status === 'FAILED' || (t.status as any) === 'REJECTED';
                     } else {
                       matchesStatus = (t.status || 'PENDING') === (orderFilterStatus as any);
@@ -2384,7 +2345,6 @@ export default function AdminPanel({
                                   </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                  <span className="block text-[8px] font-mono text-zinc-400">{tx.timestamp}</span>
                                   <span className="block text-[10px] font-black text-zinc-500 font-mono">#{tx.id}</span>
                                 </div>
                               </div>

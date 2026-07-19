@@ -78,6 +78,43 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quality = 0.6): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+  });
+};
+
 export default function App() {
   // STATE MANAGEMENT
   const [products, setProducts] = useState<Product[]>(() => {
@@ -2337,15 +2374,17 @@ export default function App() {
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.size > 3 * 1024 * 1024) {
-                                    setWalletError('Screenshot size exceeds 3MB limit! Please upload a smaller receipt.');
-                                    return;
-                                  }
                                   const reader = new FileReader();
-                                  reader.onloadend = () => {
+                                  reader.onloadend = async () => {
                                     if (typeof reader.result === 'string') {
-                                      setDepositScreenshotBase64(reader.result);
-                                      setWalletError('');
+                                      try {
+                                        const compressed = await compressImage(reader.result);
+                                        setDepositScreenshotBase64(compressed);
+                                        setWalletError('');
+                                      } catch (error) {
+                                        setDepositScreenshotBase64(reader.result);
+                                        setWalletError('');
+                                      }
                                     }
                                   };
                                   reader.readAsDataURL(file);
@@ -3243,15 +3282,17 @@ export default function App() {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            if (file.size > 3 * 1024 * 1024) {
-                              setWalletError('Screenshot size exceeds 3MB limit! Please upload a smaller receipt.');
-                              return;
-                            }
                             const reader = new FileReader();
-                            reader.onloadend = () => {
+                            reader.onloadend = async () => {
                               if (typeof reader.result === 'string') {
-                                setDepositScreenshotBase64(reader.result);
-                                setWalletError('');
+                                try {
+                                  const compressed = await compressImage(reader.result);
+                                  setDepositScreenshotBase64(compressed);
+                                  setWalletError('');
+                                } catch (error) {
+                                  setDepositScreenshotBase64(reader.result);
+                                  setWalletError('');
+                                }
                               }
                             };
                             reader.readAsDataURL(file);
