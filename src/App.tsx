@@ -891,7 +891,7 @@ export default function App() {
       ? `PIN-${Math.floor(10000000 + Math.random() * 90000000)}` 
       : undefined;
 
-    const finalTarget = currentUser?.email || 'N/A';
+    const finalTarget = checkoutTarget.trim() || currentUser?.email || 'N/A';
     const selectedPkgName = getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`;
     const finalProdName = quantity > 1 ? `${selectedPkgName} (Qty: ${quantity})` : selectedPkgName;
 
@@ -2823,6 +2823,9 @@ export default function App() {
                   {(() => {
                     const reqs = (() => {
                       try {
+                        if (selectedProduct.requirements && Array.isArray(selectedProduct.requirements) && selectedProduct.requirements.length > 0) {
+                          return selectedProduct.requirements;
+                        }
                         const saved = localStorage.getItem('mb_game_requirements');
                         if (saved) {
                           const parsed = JSON.parse(saved);
