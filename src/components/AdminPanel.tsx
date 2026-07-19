@@ -405,30 +405,35 @@ export default function AdminPanel({
     const parsedPackages: { name: string; price: number }[] = [];
 
     for (const line of lines) {
-      let price = 0;
-      let name = line;
+      let price: number | null = null;
+      let name = '';
 
-      // Matches delimiters like - : = , or spaces followed by optional Rs/NPR and digits at the end
-      const endPriceRegex = /(?:[-:=,–—]|\s+)\s*(?:Rs\.?|NPR)?\s*(\d+)\s*$/i;
+      // Main regex: matches a delimiter or space, optional currency indicators like Rs/NPR, the digits,
+      // and optional trailing non-alphanumeric, non-parenthesis characters (like spaces, emojis, currency symbols)
+      const endPriceRegex = /(?:[-:=,–—]|\s+)\s*(?:Rs\.?|NPR|💵)?\s*(\d+)[^a-zA-Z0-9()]*$/i;
       const match = line.match(endPriceRegex);
-      if (match) {
+
+      if (match && match.index !== undefined) {
         price = Number(match[1]);
-        name = line.substring(0, line.lastIndexOf(match[0])).trim();
+        name = line.substring(0, match.index).trim();
       } else {
-        // Fallback to searching for the last number at the end of the line
-        const lastNumberRegex = /(\d+)\s*$/;
-        const lastNumMatch = line.match(lastNumberRegex);
-        if (lastNumMatch) {
+        // Fallback: search for the last sequence of digits followed by any non-alphanumeric, non-parenthesis characters
+        const lastNumRegex = /(\d+)[^a-zA-Z0-9()]*$/;
+        const lastNumMatch = line.match(lastNumRegex);
+        if (lastNumMatch && lastNumMatch.index !== undefined) {
           price = Number(lastNumMatch[1]);
-          name = line.substring(0, line.lastIndexOf(lastNumMatch[0])).trim();
+          name = line.substring(0, lastNumMatch.index).trim();
         }
       }
 
-      // Clean up trailing punctuation or spaces from the detected name
-      name = name.replace(/[-:=,–—\s]+$/, '').trim();
+      if (price !== null && !isNaN(price)) {
+        // Clean up trailing punctuation, spaces, or delimiters from the name
+        // E.g. "25💎=" -> "25💎"
+        name = name.replace(/[-:=,–—\s]+$/, '').trim();
 
-      if (name && price >= 0) {
-        parsedPackages.push({ name, price });
+        if (name) {
+          parsedPackages.push({ name, price });
+        }
       }
     }
 
