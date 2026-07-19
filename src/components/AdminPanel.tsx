@@ -129,10 +129,19 @@ export default function AdminPanel({
     | 'coupons'
     | 'requirements'
     | 'products'
+    | 'payments'
     | 'legal'
     | 'ai_chatbot'
     | 'settings'
+    | 'deposits'
   >('dashboard');
+
+  // Deposits State
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [selectedDepositForScreenshot, setSelectedDepositForScreenshot] = useState<string | null>(null);
+  const [depositSearchQuery, setDepositSearchQuery] = useState('');
+  const [depositFilterStatus, setDepositFilterStatus] = useState<'PENDING' | 'COMPLETED' | 'REJECTED'>('PENDING');
+  const [orderFilterStatus, setOrderFilterStatus] = useState<'ALL' | 'PENDING' | 'SUCCESS' | 'REJECTED'>('PENDING');
 
   // Category states
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -628,6 +637,67 @@ export default function AdminPanel({
       setSentPushLogs(list);
     } catch (fsErr) {
       console.error("Failed to fetch logs from Firestore:", fsErr);
+    }
+  };
+
+  // Deposits real-time sync
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const q = query(collection(db, "deposits"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      setDeposits(list);
+    }, (error) => {
+      console.error("Deposits snapshot error in admin panel:", error);
+    });
+    return () => unsubscribe();
+  }, [isLoggedIn]);
+
+  const handleApproveDeposit = async (dep: any) => {
+    try {
+      // 1. Update deposit status to COMPLETED
+      await setDoc(doc(db, 'deposits', dep.id), { ...dep, status: 'COMPLETED' }, { merge: true });
+      
+      // 2. Load latest user document and credit funds
+      const userRef = doc(db, 'users', dep.userEmail);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        const currentBalance = Number(userData.balance || 0);
+        const newBalance = currentBalance + Number(dep.amount);
+        await setDoc(userRef, { ...userData, balance: newBalance }, { merge: true });
+      } else {
+        const listUser = userList.find(u => u.email === dep.userEmail);
+        const currentBalance = Number(listUser?.balance || 0);
+        const newBalance = currentBalance + Number(dep.amount);
+        const userObj = listUser ? { ...listUser, balance: newBalance } : {
+          id: 'usr-' + Date.now(),
+          name: dep.userEmail.split('@')[0],
+          email: dep.userEmail,
+          balance: newBalance,
+          points: 0,
+          blocked: false
+        };
+        await setDoc(userRef, userObj);
+      }
+      triggerToast(`🎉 Deposit of Rs. ${dep.amount} approved & credited!`);
+    } catch (err) {
+      console.error("Failed to approve deposit:", err);
+      triggerToast("Error approving deposit.");
+    }
+  };
+
+  const handleRejectDeposit = async (dep: any) => {
+    try {
+      await setDoc(doc(db, 'deposits', dep.id), { ...dep, status: 'REJECTED' }, { merge: true });
+      triggerToast(`Deposit of Rs. ${dep.amount} rejected.`);
+    } catch (err) {
+      console.error("Failed to reject deposit:", err);
+      triggerToast("Error rejecting deposit.");
     }
   };
 
@@ -1573,6 +1643,7 @@ export default function AdminPanel({
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                 { id: 'orders', label: 'Orders', icon: ShoppingCart },
+                { id: 'deposits', label: 'Deposits', icon: Wallet },
                 { id: 'users', label: 'Users', icon: Users },
                 { id: 'categories', label: 'Categories', icon: Tags },
                 { id: 'games', label: 'Games', icon: Gamepad2 },
@@ -1652,6 +1723,7 @@ export default function AdminPanel({
                 {[
                   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'orders', label: 'Orders', icon: ShoppingCart },
+                  { id: 'deposits', label: 'Deposits', icon: Wallet },
                   { id: 'users', label: 'Users', icon: Users },
                   { id: 'categories', label: 'Categories', icon: Tags },
                   { id: 'games', label: 'Games', icon: Gamepad2 },
@@ -2147,7 +2219,24 @@ export default function AdminPanel({
                 </div>
 
                 {/* Filter / Actions bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4.5 border border-zinc-200 rounded-2xl">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4.5 border border-zinc-200 rounded-2xl">
+                  {/* Status Selection Buttons */}
+                  <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 p-1 rounded-xl shrink-0">
+                    {(['PENDING', 'SUCCESS', 'REJECTED', 'ALL'] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setOrderFilterStatus(status)}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                          orderFilterStatus === status
+                            ? 'bg-blue-650 text-white shadow-xs'
+                            : 'text-zinc-550 hover:text-zinc-900 hover:bg-zinc-100/50'
+                        }`}
+                      >
+                        {status === 'SUCCESS' ? 'COMPLETED' : status}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     <input
@@ -2155,7 +2244,7 @@ export default function AdminPanel({
                       placeholder="Search Transaction ID or Player Account..."
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-semibold"
                     />
                   </div>
                   
@@ -2188,16 +2277,26 @@ export default function AdminPanel({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 font-medium">
-                        {transactions.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="text-center py-12 text-zinc-400 font-bold text-xs">
-                              No orders matching criteria found.
-                            </td>
-                          </tr>
-                        ) : (
-                          transactions
-                            .filter(t => t.id.toLowerCase().includes(productSearch.toLowerCase()) || t.targetAccount.toLowerCase().includes(productSearch.toLowerCase()) || t.productName.toLowerCase().includes(productSearch.toLowerCase()))
-                            .map(tx => (
+                        {(() => {
+                          const filteredList = transactions.filter(t => {
+                            const matchesSearch = t.id.toLowerCase().includes(productSearch.toLowerCase()) || 
+                                                  t.targetAccount.toLowerCase().includes(productSearch.toLowerCase()) || 
+                                                  t.productName.toLowerCase().includes(productSearch.toLowerCase());
+                            const matchesStatus = orderFilterStatus === 'ALL' || (t.status || 'PENDING') === orderFilterStatus;
+                            return matchesSearch && matchesStatus;
+                          });
+
+                          if (filteredList.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={7} className="text-center py-14 text-zinc-400 font-bold text-xs">
+                                  No orders matching criteria found.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return filteredList.map(tx => (
                               <tr key={tx.id} className="hover:bg-zinc-50/40 transition-colors">
                                 <td className="py-4 px-4 text-[10.5px] text-zinc-500 font-mono">{tx.timestamp}</td>
                                 <td className="py-4 px-4 text-[10.5px] text-zinc-900 font-extrabold font-mono">{tx.id}</td>
@@ -2244,8 +2343,8 @@ export default function AdminPanel({
                                   )}
                                 </td>
                               </tr>
-                            ))
-                        )}
+                            ));
+                          })()}
                       </tbody>
                     </table>
                   </div>
@@ -2738,6 +2837,191 @@ export default function AdminPanel({
                 </div>
               </div>
             )}
+
+            {/* DEPOSITS VERIFICATION REQUESTS TAB */}
+            {activeTab === 'deposits' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Deposit Requests</h2>
+                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Verify and approve client wallet deposit requests with receipt screenshots.</p>
+                  </div>
+                  <span className="bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-xl">
+                    Pending Deposits: {deposits.filter(d => d.status === 'PENDING').length}
+                  </span>
+                </div>
+
+                {/* Filters, Tabs & Search */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4.5 border border-zinc-200 rounded-2xl shadow-xs">
+                  {/* Status Selection Buttons */}
+                  <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 p-1 rounded-xl shrink-0">
+                    {(['PENDING', 'COMPLETED', 'REJECTED'] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setDepositFilterStatus(status)}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                          depositFilterStatus === status
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-zinc-550 hover:text-zinc-900 hover:bg-zinc-100/50'
+                        }`}
+                      >
+                        {status === 'COMPLETED' ? 'APPROVED' : status}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Option */}
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input
+                      type="text"
+                      placeholder="Search Email, Amount, or ID..."
+                      value={depositSearchQuery}
+                      onChange={(e) => setDepositSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-blue-500 transition-all font-semibold bg-zinc-50/20"
+                    />
+                  </div>
+                </div>
+
+                {/* Table list */}
+                <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-zinc-100 text-zinc-400 uppercase text-[9px] font-black tracking-widest bg-zinc-50/50">
+                          <th className="py-3.5 px-4">Date Submitted</th>
+                          <th className="py-3.5 px-4">Request ID</th>
+                          <th className="py-3.5 px-4">User Email</th>
+                          <th className="py-3.5 px-4">Amount</th>
+                          <th className="py-3.5 px-4">Screenshot</th>
+                          <th className="py-3.5 px-4">Status</th>
+                          <th className="py-3.5 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 font-medium">
+                        {(() => {
+                          const list = deposits.filter(dep => {
+                            const matchesStatus = dep.status === depositFilterStatus;
+                            const matchesSearch = dep.userEmail?.toLowerCase().includes(depositSearchQuery.toLowerCase()) || 
+                                                  dep.amount?.toString().includes(depositSearchQuery) || 
+                                                  dep.id?.toLowerCase().includes(depositSearchQuery.toLowerCase());
+                            return matchesStatus && matchesSearch;
+                          });
+
+                          if (list.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={7} className="text-center py-14 text-zinc-400 font-bold text-xs">
+                                  No {depositFilterStatus.toLowerCase()} deposit requests found.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return list.map((dep) => (
+                            <tr key={dep.id} className="hover:bg-zinc-50/40 transition-colors">
+                              <td className="py-4 px-4 text-[10.5px] text-zinc-500 font-mono">{dep.timestamp}</td>
+                              <td className="py-4 px-4 text-[10.5px] text-zinc-900 font-extrabold font-mono">{dep.id}</td>
+                              <td className="py-4 px-4">
+                                <span className="font-extrabold text-zinc-800 text-[11px] bg-zinc-50 border border-zinc-150 px-2 py-1 rounded-lg font-mono">
+                                  {dep.userEmail}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 text-[11.5px] font-black text-blue-600">Rs. {dep.amount}</td>
+                              <td className="py-4 px-4">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedDepositForScreenshot(dep.screenshot)}
+                                  className="px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[9.5px] font-bold border border-zinc-200 transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>View Receipt</span>
+                                </button>
+                              </td>
+                              <td className="py-4 px-4">
+                                {dep.status === 'PENDING' && (
+                                  <span className="px-2 py-0.5 text-[8.5px] font-black bg-amber-50 text-amber-700 border border-amber-200/40 rounded-md animate-pulse">
+                                    PENDING
+                                  </span>
+                                )}
+                                {dep.status === 'COMPLETED' && (
+                                  <span className="px-2 py-0.5 text-[8.5px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md">
+                                    APPROVED
+                                  </span>
+                                )}
+                                {dep.status === 'REJECTED' && (
+                                  <span className="px-2 py-0.5 text-[8.5px] font-black bg-red-50 text-red-700 border border-red-100 rounded-md">
+                                    REJECTED
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-4 px-4 text-right">
+                                {dep.status === 'PENDING' ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApproveDeposit(dep)}
+                                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRejectDeposit(dep)}
+                                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer border-none"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-400 font-extrabold uppercase">PROCESSED</span>
+                                )}
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* BIG DEPOSIT RECEIPT PREVIEW LIGHTBOX OVERLAY */}
+            <AnimatePresence>
+              {selectedDepositForScreenshot && (
+                <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 cursor-zoom-out"
+                    onClick={() => setSelectedDepositForScreenshot(null)}
+                  />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative max-w-xl max-h-[85vh] bg-neutral-900 border border-zinc-800 rounded-3xl p-3 z-10 shadow-2xl flex flex-col"
+                  >
+                    <button
+                      onClick={() => setSelectedDepositForScreenshot(null)}
+                      className="absolute -top-3 -right-3 p-2 bg-zinc-900 hover:bg-zinc-850 text-white rounded-full shadow-lg border border-zinc-800 transition-all cursor-pointer hover:scale-105"
+                      title="Close receipt image"
+                    >
+                      <X className="w-5 h-5 stroke-[2.5]" />
+                    </button>
+                    <div className="overflow-auto rounded-2xl flex items-center justify-center max-h-[80vh]">
+                      <img 
+                        src={selectedDepositForScreenshot} 
+                        alt="Deposit Receipt" 
+                        className="max-w-full max-h-[75vh] object-contain rounded-xl"
+                      />
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
 
             {/* 5. PAYMENTS / RECHARGE SETTINGS TAB */}
             {activeTab === 'payments' && (

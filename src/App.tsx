@@ -45,7 +45,9 @@ import {
   Percent,
   Coins,
   Facebook,
-  Copy
+  Copy,
+  Upload,
+  Eye
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
@@ -203,6 +205,15 @@ export default function App() {
   // Wallet top-up state
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
   const [customWalletAdd, setCustomWalletAdd] = useState<string>('');
+  const [paymentSettings, setPaymentSettings] = useState({
+    qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+    esewaNumber: '9841234567',
+    minDeposit: 100,
+  });
+  const [depositRequests, setDepositRequests] = useState<any[]>([]);
+  const [selectedDepositScreenshot, setSelectedDepositScreenshot] = useState<string | null>(null);
+  const [depositScreenshotBase64, setDepositScreenshotBase64] = useState<string>('');
+  const [isDepositing, setIsDepositing] = useState<boolean>(false);
   
   // Success states
   const [showSuccessOverlay, setShowSuccessOverlay] = useState<boolean>(false);
@@ -423,6 +434,20 @@ export default function App() {
       fetchTransactions();
     });
 
+    // Real-time payments settings listener
+    const unsubscribePayments = onSnapshot(doc(db, "settings", "payments"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPaymentSettings({
+          qrImageUrl: data.qrImageUrl || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+          esewaNumber: data.esewaNumber || data.esewa?.number || '9841234567',
+          minDeposit: data.minDeposit !== undefined ? Number(data.minDeposit) : 100,
+        });
+      }
+    }, (error) => {
+      console.error("Failed to load payments settings:", error);
+    });
+
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
       if (!snapshot.empty) {
@@ -519,6 +544,7 @@ export default function App() {
     return () => {
       unsubscribeNotif();
       unsubscribeTx();
+      unsubscribePayments();
       unsubscribeProducts();
       unsubscribeCategories();
     };
@@ -544,6 +570,24 @@ export default function App() {
     });
     
     return () => unsubscribeUser();
+  }, [currentUser?.email]);
+
+  // Subscribe to logged-in user's deposit/refill requests
+  useEffect(() => {
+    if (!currentUser) {
+      setDepositRequests([]);
+      return;
+    }
+    const unsubscribeDeposits = onSnapshot(collection(db, "deposits"), (snapshot) => {
+      const list = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((dep: any) => dep.userEmail?.toLowerCase() === currentUser.email.toLowerCase());
+      list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
+      setDepositRequests(list);
+    }, (error) => {
+      console.error("Failed to load user deposit requests:", error);
+    });
+    return () => unsubscribeDeposits();
   }, [currentUser?.email]);
 
   // Synchronize Push Subscription with Backend
@@ -943,7 +987,8 @@ export default function App() {
       status: 'PENDING',
       pinCode: pinString,
       userEmail: currentUser?.email,
-      email: currentUser?.email
+      email: currentUser?.email,
+      quantity: quantity
     };
 
     setTransactions([newTx, ...transactions]);
@@ -975,25 +1020,48 @@ export default function App() {
     }, 4500);
   };
 
-  // Handle addition to wallet balance
-  const handleLoadWallet = (e: FormEvent) => {
+  // Handle submission of deposit request with screenshot to Firestore
+  const handleDepositSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const cleanAmt = parseInt(customWalletAdd, 10);
-    if (isNaN(cleanAmt) || cleanAmt <= 0) {
-      setWalletError('Please input a valid amount (greater than zero).');
+    if (!currentUser) {
+      setWalletError('Please sign in to submit a deposit request.');
       return;
     }
-    
-    setWalletBalance(prev => prev + cleanAmt);
-    setCustomWalletAdd('');
-    setShowWalletModal(false);
-    triggerToast(`Added Rs. ${cleanAmt} to your Wallet!`);
-  };
 
-  const loadPresetWallet = (amt: number) => {
-    setWalletBalance(prev => prev + amt);
-    setShowWalletModal(false);
-    triggerToast(`Added Rs. ${amt} to Wallet Balance!`);
+    const cleanAmt = Number(customWalletAdd);
+    if (isNaN(cleanAmt) || cleanAmt < paymentSettings.minDeposit) {
+      setWalletError(`Minimum deposit amount is Rs. ${paymentSettings.minDeposit}`);
+      return;
+    }
+
+    if (!depositScreenshotBase64) {
+      setWalletError('Please select or upload a payment receipt screenshot.');
+      return;
+    }
+
+    setIsDepositing(true);
+    setWalletError('');
+    try {
+      const depId = `DEP-${Math.floor(100000 + Math.random() * 900000)}`;
+      const newDeposit = {
+        id: depId,
+        userEmail: currentUser.email,
+        amount: cleanAmt,
+        screenshot: depositScreenshotBase64,
+        status: 'PENDING',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
+      };
+
+      await setDoc(doc(db, 'deposits', depId), newDeposit);
+      setCustomWalletAdd('');
+      setDepositScreenshotBase64('');
+      triggerToast('🎉 Deposit request submitted! Pending verification.');
+    } catch (err: any) {
+      setWalletError('Failed to submit deposit request. Please try again.');
+      console.error(err);
+    } finally {
+      setIsDepositing(false);
+    }
   };
 
   // Router check for Admin Panel
@@ -1034,6 +1102,8 @@ export default function App() {
       />
     );
   }
+
+  const displayProduct = selectedProduct ? (products.find(p => p.id === selectedProduct.id) || selectedProduct) : null;
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans pb-28 selection:bg-blue-600 selection:text-white">
@@ -1171,14 +1241,14 @@ export default function App() {
               {(() => {
                 const reqs = (() => {
                   try {
-                    if (selectedProduct.requirements && Array.isArray(selectedProduct.requirements) && selectedProduct.requirements.length > 0) {
-                      return selectedProduct.requirements;
+                    if (displayProduct && displayProduct.requirements && Array.isArray(displayProduct.requirements) && displayProduct.requirements.length > 0) {
+                      return displayProduct.requirements;
                     }
                     const saved = localStorage.getItem('mb_game_requirements');
                     if (saved) {
                       const parsed = JSON.parse(saved);
                       if (Array.isArray(parsed)) {
-                        return parsed.filter(r => r.gameId === selectedProduct.id);
+                        return parsed.filter(r => r.gameId === (displayProduct?.id || ''));
                       }
                     }
                   } catch (e) {}
@@ -1214,7 +1284,7 @@ export default function App() {
                 return (
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-wide" htmlFor="checkout-target-acc-inline">
-                      {selectedProduct.inputLabel || 'Player ID / Account'} <span className="text-red-500">*</span>
+                      {displayProduct?.inputLabel || 'Player ID / Account'} <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="checkout-target-acc-inline"
@@ -1222,7 +1292,7 @@ export default function App() {
                       required
                       value={checkoutTarget}
                       onChange={(e) => setCheckoutTarget(e.target.value)}
-                      placeholder={selectedProduct.inputPlaceholder || 'Enter Player ID'}
+                      placeholder={displayProduct?.inputPlaceholder || 'Enter Player ID'}
                       className="w-full text-xs font-bold px-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-blue-500 transition-all font-mono"
                     />
                   </div>
@@ -1248,7 +1318,7 @@ export default function App() {
               </span>
 
               <div className="grid grid-cols-2 gap-4">
-                {getProductPackages(selectedProduct).map((pkg) => {
+                {getProductPackages(displayProduct).map((pkg) => {
                   const isSelected = checkoutAmount === pkg.price;
                   return (
                     <div
@@ -1283,7 +1353,7 @@ export default function App() {
             </div>
 
             {/* SELECT QUANTITY */}
-            {checkoutAmount > 0 && (
+            {displayProduct && (
               <div className="bg-white rounded-[24px] p-5 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex items-center justify-between animate-fade-in">
                 <div className="space-y-0.5 text-left">
                   <span className="block text-[10px] font-black text-blue-600 tracking-wider uppercase">
@@ -1930,16 +2000,6 @@ export default function App() {
         {/* ORDERS VIEW */}
         {activeBottomNav === 'orders' && (
           <section className="bg-white rounded-2xl p-5 border border-zinc-200/80 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <div>
-                <h3 className="text-base font-extrabold text-zinc-900 uppercase tracking-tight">Order Logs & History</h3>
-                <p className="text-xs text-zinc-400">Status of your recharge commands</p>
-              </div>
-              <div className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] rounded font-bold uppercase tracking-wider">
-                Authorized Secure
-              </div>
-            </div>
-
             {!currentUser ? (
               <div className="py-12 text-center text-zinc-400 space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-400 shadow-sm">
@@ -2027,8 +2087,13 @@ export default function App() {
                           {/* Product Info */}
                           <div className="space-y-1 text-left">
                             <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">Product Bundle / Price</span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-extrabold text-zinc-800 uppercase">{tx.productName}</span>
+                              {tx.quantity && tx.quantity > 1 && (
+                                <span className="text-[10px] font-black bg-zinc-100 text-zinc-700 px-1.5 py-0.5 rounded-md font-mono">
+                                  Qty: {tx.quantity}
+                                </span>
+                              )}
                               <span className="text-xs font-black text-blue-600">NPR {tx.amount}</span>
                             </div>
                           </div>
@@ -2063,48 +2128,53 @@ export default function App() {
                           
                           {/* Requirements with Copy Buttons */}
                           <div className="space-y-1.5">
-                            {tx.targetAccount && tx.targetAccount.includes('|') ? (
+                            {tx.targetAccount ? (
                               tx.targetAccount.split('|').map((part, index) => {
-                                const [key, ...valParts] = part.split(':');
-                                const val = valParts.join(':').trim();
-                                const label = key ? key.trim() : 'Detail';
-                                return (
-                                  <div key={index} className="flex items-center justify-between gap-4 text-xs bg-zinc-50/60 px-2.5 py-1.5 rounded-lg border border-zinc-150">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-extrabold text-zinc-500">{label}:</span>
-                                      <span className="font-bold text-zinc-800 font-mono">{val}</span>
+                                if (part.includes(':')) {
+                                  const [key, ...valParts] = part.split(':');
+                                  const val = valParts.join(':').trim();
+                                  const label = key ? key.trim() : 'Detail';
+                                  return (
+                                    <div key={index} className="flex items-center justify-between gap-4 text-xs bg-zinc-50/60 px-2.5 py-1.5 rounded-lg border border-zinc-150">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-extrabold text-zinc-500">{label}:</span>
+                                        <span className="font-bold text-zinc-800 font-mono">{val}</span>
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(val);
+                                          triggerToast(`📋 Copied ${label}!`);
+                                        }}
+                                        className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer shrink-0"
+                                        title={`Copy ${label}`}
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                      </button>
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(val);
-                                        triggerToast(`📋 Copied ${label}!`);
-                                      }}
-                                      className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer shrink-0"
-                                      title={`Copy ${label}`}
-                                    >
-                                      <Copy className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                );
+                                  );
+                                } else {
+                                  const label = associatedProduct?.inputLabel || 'Account ID';
+                                  return (
+                                    <div key={index} className="flex items-center justify-between gap-4 text-xs bg-zinc-50/60 px-2.5 py-1.5 rounded-lg border border-zinc-150">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-extrabold text-zinc-500">{label}:</span>
+                                        <span className="font-bold text-zinc-800 font-mono">{part.trim()}</span>
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(part.trim());
+                                          triggerToast(`📋 Copied ${label}!`);
+                                        }}
+                                        className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer shrink-0"
+                                        title={`Copy ${label}`}
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  );
+                                }
                               })
-                            ) : (
-                              <div className="flex items-center justify-between gap-4 text-xs bg-zinc-50/60 px-2.5 py-1.5 rounded-lg border border-zinc-150">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-extrabold text-zinc-500">{associatedProduct?.inputLabel || 'Account ID'}:</span>
-                                  <span className="font-bold text-zinc-800 font-mono">{tx.targetAccount}</span>
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(tx.targetAccount);
-                                    triggerToast('📋 Copied Account ID!');
-                                  }}
-                                  className="text-zinc-400 hover:text-blue-600 p-0.5 hover:bg-zinc-100 rounded transition-all cursor-pointer shrink-0"
-                                  title="Copy Account ID"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
+                            ) : null}
 
                             {tx.pinCode && (
                               <div className="flex items-center justify-between gap-4 text-xs bg-blue-50/40 px-2.5 py-1.5 rounded-lg border border-blue-100">
@@ -2886,96 +2956,262 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowWalletModal(false)}
-              className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm"
             />
             
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white border border-zinc-200 shadow-2xl rounded-2xl w-full max-w-md p-6 relative z-10 space-y-5"
+              className="bg-white border border-zinc-200 shadow-2xl rounded-[28px] w-full max-w-lg p-6 relative z-10 max-h-[90vh] overflow-y-auto space-y-6"
             >
-              <div className="flex justify-between items-start">
+              {/* Header */}
+              <div className="flex justify-between items-start border-b border-zinc-100 pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-zinc-50 text-zinc-800 rounded-xl border border-zinc-150">
-                    <Wallet className="w-5 h-5" />
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100/40">
+                    <Wallet className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <div>
-                    <h4 className="text-base font-extrabold text-zinc-900 uppercase">Refill Active Balance</h4>
-                    <p className="text-xs text-zinc-400">Instantly credit via virtual gateway</p>
+                  <div className="text-left">
+                    <h4 className="text-base font-extrabold text-zinc-950 uppercase tracking-tight">Refill Wallet Cash</h4>
+                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Deposit funds securely using eSewa QR</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setShowWalletModal(false)}
-                  className="p-1 rounded-lg text-zinc-300 hover:text-zinc-500 hover:bg-zinc-50 transition-all cursor-pointer"
+                  className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-650 hover:bg-zinc-100 transition-all cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {walletError && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2.5 text-xs text-red-650">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="p-3.5 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 font-bold">
+                  <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5 text-red-500" />
                   <span>{walletError}</span>
                 </div>
               )}
 
-              {/* Preset quick adding choices */}
-              <div>
-                <span className="block text-[10px] font-bold text-zinc-400 mb-2 uppercase">CHOOSE PRE-SET</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[200, 500, 1000, 2000, 5000].map((num) => (
+              {/* Big QR Code Section */}
+              <div className="bg-zinc-50 rounded-2xl p-4.5 border border-zinc-200/60 flex flex-col items-center text-center space-y-3.5">
+                <div className="bg-white p-3 rounded-2xl border border-zinc-150 shadow-sm">
+                  <img 
+                    src={paymentSettings.qrImageUrl} 
+                    alt="eSewa QR Scan" 
+                    referrerPolicy="no-referrer"
+                    className="w-48 h-48 sm:w-56 sm:h-56 object-contain"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-blue-600 tracking-wider uppercase block">Recipient Details</span>
+                  <div className="flex items-center gap-2 justify-center bg-white border border-zinc-200 px-3.5 py-1.5 rounded-xl shadow-xs">
+                    <span className="text-xs font-black text-zinc-800 font-mono">eSewa: {paymentSettings.esewaNumber}</span>
                     <button
-                      key={num}
-                      type="button"
-                      onClick={() => loadPresetWallet(num)}
-                      className="py-2.5 text-xs font-bold font-mono text-zinc-700 bg-zinc-50 hover:bg-blue-600 hover:text-white border border-zinc-200 rounded-xl transition-all cursor-pointer"
+                      onClick={() => {
+                        navigator.clipboard.writeText(paymentSettings.esewaNumber);
+                        triggerToast('📋 Recipient eSewa number copied!');
+                      }}
+                      className="p-1 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-blue-600 transition-all cursor-pointer"
+                      title="Copy eSewa Number"
                     >
-                      + Rs. {num}
+                      <Copy className="w-3.5 h-3.5" />
                     </button>
-                  ))}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 font-semibold pt-1 leading-normal max-w-xs">
+                    Please scan this QR code or transfer to the mobile number above, then submit your receipt screenshot below.
+                  </p>
                 </div>
               </div>
 
-              {/* Manual input */}
-              <form onSubmit={handleLoadWallet} className="space-y-4 pt-1">
-                <div>
-                  <label className="block text-[10px] font-extrabold text-zinc-400 mb-1.5 uppercase" htmlFor="custom-wallet-input">
-                    CUSTOM RS. AMOUNT TO ADD
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="custom-wallet-input"
-                      type="number"
-                      min="1"
-                      required
-                      value={customWalletAdd}
-                      onChange={(e) => setCustomWalletAdd(e.target.value)}
-                      placeholder="e.g. 1500"
-                      className="w-full text-xs font-semibold pl-10 pr-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-zinc-500 transition-all"
-                    />
-                    <span className="text-xs font-bold text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 font-mono">
-                      Rs.
-                    </span>
+              {/* Form Input */}
+              <form onSubmit={handleDepositSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Enter Amount */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-wide">
+                      Deposit Amount (Rs.) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={paymentSettings.minDeposit}
+                        required
+                        value={customWalletAdd}
+                        onChange={(e) => setCustomWalletAdd(e.target.value)}
+                        placeholder={`Min Rs. ${paymentSettings.minDeposit}`}
+                        className="w-full text-xs font-bold pl-10 pr-3 py-3 bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-blue-500 rounded-xl focus:outline-none transition-all font-mono"
+                      />
+                      <span className="text-xs font-bold text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 font-mono">
+                        Rs.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Upload Receipt Screen */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-wide">
+                      Payment Screenshot <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        required={!depositScreenshotBase64}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 3 * 1024 * 1024) {
+                              setWalletError('Screenshot size exceeds 3MB limit! Please upload a smaller receipt.');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (typeof reader.result === 'string') {
+                                setDepositScreenshotBase64(reader.result);
+                                setWalletError('');
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                      />
+                      <div className="border border-dashed border-zinc-200 hover:border-blue-500 bg-zinc-50 hover:bg-white rounded-xl py-2 px-3 text-center transition-all cursor-pointer flex items-center justify-center gap-2 h-[42px]">
+                        <Upload className="w-4 h-4 text-zinc-400 shrink-0" />
+                        <span className="text-[10px] font-bold text-zinc-600 truncate">
+                          {depositScreenshotBase64 ? '📁 Receipt Selected' : 'Choose Receipt'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowWalletModal(false)}
-                    className="flex-1 py-3 bg-zinc-50 text-zinc-700 hover:bg-zinc-105 text-xs font-bold rounded-xl border border-zinc-200 transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 bg-blue-600 text-white hover:bg-blue-500 text-xs font-bold rounded-xl transition-all shadow-sm shadow-blue-500/10 cursor-pointer"
-                  >
-                    Confirm Recharge
-                  </button>
-                </div>
+                {/* Screenshot Preview */}
+                {depositScreenshotBase64 && (
+                  <div className="flex items-center justify-between bg-zinc-50 border border-zinc-200/80 px-3.5 py-2.5 rounded-xl">
+                    <div className="flex items-center gap-2.5">
+                      <img 
+                        src={depositScreenshotBase64} 
+                        alt="Receipt preview" 
+                        className="w-10 h-10 object-cover rounded-lg border border-zinc-200 shadow-xs shrink-0"
+                      />
+                      <span className="text-[10px] text-zinc-500 font-bold">Screenshot attached successfully</span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setDepositScreenshotBase64('')}
+                      className="text-red-500 hover:text-red-650 hover:bg-red-50 p-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isDepositing}
+                  className="w-full py-3.5 bg-blue-650 hover:bg-blue-600 disabled:bg-blue-400 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm shadow-blue-500/10 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isDepositing ? (
+                    <>
+                      <div className="w-4.5 h-4.5 border-2 border-white/35 border-t-white rounded-full animate-spin" />
+                      <span>Submitting Request...</span>
+                    </>
+                  ) : (
+                    <span>Submit Deposit Request</span>
+                  )}
+                </button>
               </form>
+
+              {/* Deposit History Logs */}
+              <div className="space-y-3 pt-3 border-t border-zinc-100 text-left">
+                <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">
+                  Your Deposit Requests History
+                </span>
+
+                <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
+                  {depositRequests.length === 0 ? (
+                    <div className="py-6 text-center text-zinc-400 text-[11px] font-bold">
+                      No deposit request logs found yet.
+                    </div>
+                  ) : (
+                    depositRequests.map((dep) => (
+                      <div key={dep.id} className="flex items-center justify-between p-3 bg-zinc-50/50 rounded-xl border border-zinc-200/70 shadow-xs">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold text-zinc-900 font-mono">Rs. {dep.amount}</span>
+                            <span className="text-[9px] text-zinc-400 font-bold">{dep.timestamp}</span>
+                          </div>
+                          <span className="block text-[9px] font-bold text-zinc-400 font-mono uppercase">ID: {dep.id}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {/* Status Badge */}
+                          {dep.status === 'PENDING' && (
+                            <span className="px-2 py-0.5 text-[8.5px] font-black bg-amber-50 text-amber-700 border border-amber-200 rounded-md animate-pulse">
+                              PENDING
+                            </span>
+                          )}
+                          {dep.status === 'COMPLETED' && (
+                            <span className="px-2 py-0.5 text-[8.5px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md">
+                              APPROVED
+                            </span>
+                          )}
+                          {dep.status === 'REJECTED' && (
+                            <span className="px-2 py-0.5 text-[8.5px] font-black bg-red-50 text-red-700 border border-red-100 rounded-md">
+                              REJECTED
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDepositScreenshot(dep.screenshot)}
+                            className="bg-white hover:bg-zinc-100 text-zinc-700 text-[9px] font-black px-2 py-1 rounded-lg border border-zinc-200 transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                          >
+                            <Eye className="w-3 h-3 text-zinc-500" />
+                            <span>Receipt</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* BIG SCREENSHOT PREVIEW OVERLAY */}
+      <AnimatePresence>
+        {selectedDepositScreenshot && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 cursor-zoom-out"
+              onClick={() => setSelectedDepositScreenshot(null)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-xl max-h-[85vh] bg-neutral-900 border border-zinc-800 rounded-3xl p-3 z-10 shadow-2xl flex flex-col"
+            >
+              <button
+                onClick={() => setSelectedDepositScreenshot(null)}
+                className="absolute -top-3 -right-3 p-2 bg-zinc-900 hover:bg-zinc-850 text-white rounded-full shadow-lg border border-zinc-800 transition-all cursor-pointer hover:scale-105"
+                title="Close receipt image"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+              <div className="overflow-auto rounded-2xl flex items-center justify-center max-h-[80vh]">
+                <img 
+                  src={selectedDepositScreenshot} 
+                  alt="Receipt Full View" 
+                  referrerPolicy="no-referrer"
+                  className="max-w-full max-h-[75vh] object-contain rounded-xl"
+                />
+              </div>
             </motion.div>
           </div>
         )}
