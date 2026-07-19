@@ -820,6 +820,7 @@ export default function App() {
   const openCheckout = (product: Product) => {
     setSelectedProduct(product);
     setCheckoutTarget('');
+    (window as any)._customReqValues = {};
     setMlbbUserId('');
     setMlbbZoneId('');
     setModalError('');
@@ -853,7 +854,39 @@ export default function App() {
       return;
     }
 
-    // No target account input validation required since player info requirements are removed
+    // Requirements validation
+    const reqs = (() => {
+      try {
+        if (selectedProduct.requirements && Array.isArray(selectedProduct.requirements) && selectedProduct.requirements.length > 0) {
+          return selectedProduct.requirements;
+        }
+        const saved = localStorage.getItem('mb_game_requirements');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return parsed.filter(r => r.gameId === selectedProduct.id);
+          }
+        }
+      } catch (e) {}
+      return [];
+    })();
+
+    let finalTarget = '';
+    if (reqs.length > 0) {
+      const missing = reqs.filter(r => !((window as any)._customReqValues?.[r.name]?.trim()));
+      if (missing.length > 0) {
+        setModalError(`Please fill in all required fields: ${missing.map(m => m.name).join(', ')}`);
+        return;
+      }
+      finalTarget = reqs.map(r => `${r.name}: ${((window as any)._customReqValues?.[r.name] || '').trim()}`).join(' | ');
+    } else {
+      if (!checkoutTarget.trim()) {
+        setModalError(`Please enter a valid ${selectedProduct.inputLabel || 'Player ID'}.`);
+        return;
+      }
+      finalTarget = checkoutTarget.trim();
+    }
+
     if (checkoutAmount <= 0) {
       setModalError('Enter or choose a valid positive topup amount.');
       return;
@@ -891,7 +924,9 @@ export default function App() {
       ? `PIN-${Math.floor(10000000 + Math.random() * 90000000)}` 
       : undefined;
 
-    const finalTarget = checkoutTarget.trim() || currentUser?.email || 'N/A';
+    if (!finalTarget) {
+      finalTarget = currentUser?.email || 'N/A';
+    }
     const selectedPkgName = getProductPackages(selectedProduct).find(p => p.price === checkoutAmount)?.name || `${selectedProduct.name} Custom`;
     const finalProdName = quantity > 1 ? `${selectedPkgName} (Qty: ${quantity})` : selectedPkgName;
 
@@ -1119,7 +1154,81 @@ export default function App() {
           /* GORGEOUS INLINE PRODUCT DETAIL PAGE FOR CLICKED GAME AND REQUIREMENTS */
           <div className="max-w-xl mx-auto space-y-6">
             
-            {/* PLAYER INFORMATION CARD REMOVED AS REQUESTED BY USER */}
+            {/* PLAYER / GAME REQUIREMENTS CARD */}
+            <div className="bg-white rounded-[24px] p-5 border border-zinc-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-4 text-left animate-fade-in">
+              <div className="flex items-center gap-2 pb-1 border-b border-zinc-100">
+                <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                  <User className="w-4.5 h-4.5" />
+                </div>
+                <span className="block text-[10px] font-black text-zinc-400 tracking-wider uppercase">
+                  Required Account Details
+                </span>
+              </div>
+
+              {(() => {
+                const reqs = (() => {
+                  try {
+                    if (selectedProduct.requirements && Array.isArray(selectedProduct.requirements) && selectedProduct.requirements.length > 0) {
+                      return selectedProduct.requirements;
+                    }
+                    const saved = localStorage.getItem('mb_game_requirements');
+                    if (saved) {
+                      const parsed = JSON.parse(saved);
+                      if (Array.isArray(parsed)) {
+                        return parsed.filter(r => r.gameId === selectedProduct.id);
+                      }
+                    }
+                  } catch (e) {}
+                  return [];
+                })();
+
+                if (reqs.length > 0) {
+                  return (
+                    <div className="space-y-3">
+                      {reqs.map((req) => (
+                        <div key={req.id} className="space-y-1.5">
+                          <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-wide">
+                            {req.name} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type={req.type === 'number' ? 'number' : 'text'}
+                            required
+                            placeholder={`Enter ${req.name}`}
+                            onChange={(e) => {
+                              const nextValues = { ...((window as any)._customReqValues || {}), [req.name]: e.target.value };
+                              (window as any)._customReqValues = nextValues;
+                              const combined = reqs.map(r => `${r.name}: ${nextValues[r.name] || ''}`).join(' | ');
+                              setCheckoutTarget(combined);
+                            }}
+                            className="w-full text-xs font-bold px-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-blue-500 transition-all font-mono"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-wide" htmlFor="checkout-target-acc-inline">
+                      {selectedProduct.inputLabel || 'Player ID / Account'} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="checkout-target-acc-inline"
+                      type="text"
+                      required
+                      value={checkoutTarget}
+                      onChange={(e) => setCheckoutTarget(e.target.value)}
+                      placeholder={selectedProduct.inputPlaceholder || 'Enter Player ID'}
+                      className="w-full text-xs font-bold px-4 py-3 bg-zinc-50 focus:bg-white rounded-xl border border-zinc-200 focus:outline-none focus:border-blue-500 transition-all font-mono"
+                    />
+                  </div>
+                );
+              })()}
+              <p className="text-[9px] text-zinc-400 font-semibold leading-relaxed">
+                * Please ensure your details are 100% correct. Recharges are completed instantly using these details and cannot be reversed.
+              </p>
+            </div>
 
             {/* ERROR SUMMARY */}
             {modalError && (
