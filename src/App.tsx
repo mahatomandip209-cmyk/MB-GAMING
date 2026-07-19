@@ -37,6 +37,7 @@ import {
   RotateCcw,
   XCircle,
   ShieldCheck,
+  ShieldAlert,
   LogIn,
   LogOut,
   Headphones,
@@ -180,6 +181,29 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mb_gaming_loyalty', loyaltyPoints.toString());
   }, [loyaltyPoints]);
+
+  const [teamMembers, setTeamMembers] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('mb_team_member_emails');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const unsubscribeTeam = onSnapshot(collection(db, 'team_members'), (snapshot) => {
+      const emails: string[] = [];
+      snapshot.forEach((doc) => {
+        emails.push(doc.id.toLowerCase());
+      });
+      setTeamMembers(emails);
+      localStorage.setItem('mb_team_member_emails', JSON.stringify(emails));
+    }, (error) => {
+      console.error("Error listening to team members in App.tsx:", error);
+    });
+    return () => unsubscribeTeam();
+  }, []);
 
   // Sync user profile state changes
   useEffect(() => {
@@ -1121,6 +1145,65 @@ export default function App() {
   }, []);
 
   if (isAdminRoute) {
+    if (!currentUser) {
+      return (
+        <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-md bg-white border border-zinc-200 rounded-[32px] p-8 shadow-md space-y-6">
+            <div className="mx-auto w-14 h-14 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-black text-zinc-900 uppercase">Login Required</h2>
+              <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
+                You must be logged in to access the administrator panel. Please return home and log in first.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/');
+                const navEvent = new PopStateEvent('popstate');
+                window.dispatchEvent(navEvent);
+              }}
+              className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-xs font-black uppercase tracking-wider py-3.5 rounded-xl transition-all cursor-pointer border-none"
+            >
+              Go to Home Screen
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const email = currentUser.email.toLowerCase();
+    const isAuthorized = email === 'mandipmahato717@gmail.com' || teamMembers.includes(email);
+
+    if (!isAuthorized) {
+      return (
+        <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-md bg-white border border-zinc-200 rounded-[32px] p-8 shadow-md space-y-6">
+            <div className="mx-auto w-14 h-14 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-black text-zinc-900 uppercase">Restricted Area</h2>
+              <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
+                Access Denied: The account <span className="font-mono text-blue-600 font-black">{currentUser.email}</span> does not have administrator privileges.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/');
+                const navEvent = new PopStateEvent('popstate');
+                window.dispatchEvent(navEvent);
+              }}
+              className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-xs font-black uppercase tracking-wider py-3.5 rounded-xl transition-all cursor-pointer border-none"
+            >
+              Go to Home Screen
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <AdminPanel
         products={products}
@@ -2276,16 +2359,33 @@ export default function App() {
                     <h3 className="text-base font-extrabold text-zinc-900 uppercase">My Wallet Balance</h3>
                     <p className="text-xs text-zinc-400 mt-0.5">Use your prepaid balance to top up instantly at any time.</p>
                   </div>
-                  <div className="bg-zinc-950 text-white rounded-2xl p-5 flex items-center justify-between min-w-[240px] relative overflow-hidden shadow-md">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
-                    <div className="text-left">
-                      <span className="text-[9px] font-extrabold tracking-wider text-zinc-400 uppercase block">Available Funds</span>
-                      <span className="text-2xl font-black text-white font-mono tracking-tight leading-none block mt-1">
-                        Rs. {walletBalance}
-                      </span>
+                  <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full md:w-auto shrink-0">
+                    {/* Funds Card */}
+                    <div className="bg-zinc-950 text-white rounded-2xl p-4 flex items-center justify-between min-w-[170px] sm:min-w-[190px] relative overflow-hidden shadow-md flex-1">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
+                      <div className="text-left">
+                        <span className="text-[9px] font-extrabold tracking-wider text-zinc-400 uppercase block">Available Funds</span>
+                        <span className="text-xl font-black text-white font-mono tracking-tight leading-none block mt-1">
+                          Rs. {walletBalance}
+                        </span>
+                      </div>
+                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs ml-4 shrink-0">
+                        <Wallet className="w-5 h-5 text-blue-400" />
+                      </div>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs ml-4">
-                      <Wallet className="w-5.5 h-5.5 text-blue-400" />
+
+                    {/* Points Card */}
+                    <div className="bg-blue-600 text-white rounded-2xl p-4 flex items-center justify-between min-w-[170px] sm:min-w-[190px] relative overflow-hidden shadow-md flex-1">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/20 to-transparent pointer-events-none rounded-bl-full" />
+                      <div className="text-left">
+                        <span className="text-[9px] font-extrabold tracking-wider text-blue-100 uppercase block">Available Points</span>
+                        <span className="text-xl font-black text-white font-mono tracking-tight leading-none block mt-1">
+                          {loyaltyPoints.toLocaleString()} Pts
+                        </span>
+                      </div>
+                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs ml-4 shrink-0">
+                        <Link className="w-5 h-5 text-blue-200" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3205,6 +3305,24 @@ export default function App() {
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Available Balance & Points Cards in Modal */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-zinc-950 text-white rounded-xl p-3 relative overflow-hidden shadow-sm flex items-center justify-between">
+                  <div className="text-left">
+                    <span className="text-[8px] font-extrabold tracking-wider text-zinc-400 uppercase block">Available Funds</span>
+                    <span className="text-sm font-black text-white font-mono tracking-tight block mt-0.5">Rs. {walletBalance}</span>
+                  </div>
+                  <Wallet className="w-4 h-4 text-blue-400 opacity-80 shrink-0" />
+                </div>
+                <div className="bg-blue-600 text-white rounded-xl p-3 relative overflow-hidden shadow-sm flex items-center justify-between">
+                  <div className="text-left">
+                    <span className="text-[8px] font-extrabold tracking-wider text-blue-100 uppercase block">Available Points</span>
+                    <span className="text-sm font-black text-white font-mono tracking-tight block mt-0.5">{loyaltyPoints.toLocaleString()} Pts</span>
+                  </div>
+                  <Link className="w-4 h-4 text-blue-200 opacity-85 shrink-0" />
+                </div>
               </div>
 
               {walletError && (

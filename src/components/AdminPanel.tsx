@@ -526,6 +526,10 @@ export default function AdminPanel({
   const [newAnnMessage, setNewAnnMessage] = useState('');
   const [newAnnType, setNewAnnType] = useState<'info' | 'alert' | 'success'>('info');
 
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<'admin' | 'member'>('admin');
+
   // Push Notification inputs
   const [pushTitle, setPushTitle] = useState('');
   const [pushBody, setPushBody] = useState('');
@@ -663,29 +667,45 @@ export default function AdminPanel({
       // 1. Update deposit status to COMPLETED
       await setDoc(doc(db, 'deposits', dep.id), { ...dep, status: 'COMPLETED' }, { merge: true });
       
-      // 2. Load latest user document and credit funds
+      // 2. Load latest user document and credit funds & points
       const userRef = doc(db, 'users', dep.userEmail);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const userData = userSnap.data();
-        const currentBalance = Number(userData.balance || 0);
+        const currentBalance = Number(userData.walletBalance ?? userData.balance ?? 0);
         const newBalance = currentBalance + Number(dep.amount);
-        await setDoc(userRef, { ...userData, balance: newBalance }, { merge: true });
+        const currentPoints = Number(userData.loyaltyPoints ?? userData.points ?? 0);
+        const newPoints = currentPoints + Number(dep.amount); // credit points equal to deposit amount
+
+        await setDoc(userRef, { 
+          ...userData, 
+          balance: newBalance, 
+          walletBalance: newBalance,
+          points: newPoints,
+          loyaltyPoints: newPoints
+        }, { merge: true });
       } else {
         const listUser = userList.find(u => u.email === dep.userEmail);
-        const currentBalance = Number(listUser?.balance || 0);
+        const currentBalance = Number(listUser?.walletBalance ?? listUser?.balance ?? 0);
         const newBalance = currentBalance + Number(dep.amount);
-        const userObj = listUser ? { ...listUser, balance: newBalance } : {
-          id: 'usr-' + Date.now(),
-          name: dep.userEmail.split('@')[0],
+        const currentPoints = Number(listUser?.loyaltyPoints ?? listUser?.points ?? 0);
+        const newPoints = currentPoints + Number(dep.amount);
+
+        const userObj = {
+          id: listUser?.id || 'usr-' + Date.now(),
+          name: listUser?.name || dep.userEmail.split('@')[0],
           email: dep.userEmail,
           balance: newBalance,
-          points: 0,
-          blocked: false
+          walletBalance: newBalance,
+          points: newPoints,
+          loyaltyPoints: newPoints,
+          phone: listUser?.phone || '98XXXXXXXX',
+          blocked: listUser?.blocked || false,
+          registered: listUser?.registered || new Date().toISOString().split('T')[0]
         };
         await setDoc(userRef, userObj);
       }
-      triggerToast(`🎉 Deposit of Rs. ${dep.amount} approved & credited!`);
+      triggerToast(`🎉 Deposit of Rs. ${dep.amount} approved & credited with +${dep.amount} Points!`);
     } catch (err) {
       console.error("Failed to approve deposit:", err);
       triggerToast("Error approving deposit.");
@@ -788,18 +808,41 @@ export default function AdminPanel({
   useEffect(() => {
     if (!isLoggedIn) return;
 
+    // 1b. Set up real-time listener for Team Members
+    const unsubscribeTeam = onSnapshot(collection(db, 'team_members'), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      setTeamMembers(list);
+    }, (error) => {
+      console.error("Team members snapshot failed:", error);
+    });
+
     // 1. Set up real-time listener for Users collection
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       if (!snapshot.empty) {
-        const fetchedUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const fetchedUsers = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const bal = data.walletBalance ?? data.balance ?? 0;
+          const pts = data.loyaltyPoints ?? data.points ?? 0;
+          return {
+            id: doc.id,
+            ...data,
+            balance: bal,
+            walletBalance: bal,
+            points: pts,
+            loyaltyPoints: pts
+          };
+        });
         setUserList(fetchedUsers);
       } else {
         const initialUsers = [
-          { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, points: 1500, registered: '2026-06-01' },
-          { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, points: 230, registered: '2026-06-10' },
-          { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, points: 450, registered: '2026-06-14' },
-          { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, points: 80, registered: '2026-06-18' },
-          { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, points: 900, registered: '2026-06-22' }
+          { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, walletBalance: 5000, points: 1500, loyaltyPoints: 1500, registered: '2026-06-01' },
+          { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, walletBalance: 150, points: 230, loyaltyPoints: 230, registered: '2026-06-10' },
+          { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, walletBalance: 1200, points: 450, loyaltyPoints: 450, registered: '2026-06-14' },
+          { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, walletBalance: 0, points: 80, loyaltyPoints: 80, registered: '2026-06-18' },
+          { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, walletBalance: 4500, points: 900, loyaltyPoints: 900, registered: '2026-06-22' }
         ];
         initialUsers.forEach(async (u) => {
           await setDoc(doc(db, 'users', u.email), u);
@@ -948,6 +991,7 @@ export default function AdminPanel({
     loadAllFirestoreData();
     return () => {
       unsubscribeUsers();
+      unsubscribeTeam();
     };
   }, [isLoggedIn]);
 
@@ -1522,7 +1566,9 @@ export default function AdminPanel({
       email: newUserEmail.trim().toLowerCase(),
       phone: newUserPhone.trim() || '98XXXXXXXX',
       balance: 0,
+      walletBalance: 0,
       points: 0, // starts at 0 points
+      loyaltyPoints: 0,
       registered: new Date().toISOString().split('T')[0]
     };
 
@@ -1541,7 +1587,7 @@ export default function AdminPanel({
   };
 
   const handleUpdateUserBalance = async (userId: string, val: number) => {
-    const updated = userList.map(u => (u.id === userId ? { ...u, balance: val } : u));
+    const updated = userList.map(u => (u.id === userId ? { ...u, balance: val, walletBalance: val } : u));
     setUserList(updated);
     localStorage.setItem('mb_admin_users', JSON.stringify(updated));
 
@@ -1557,7 +1603,7 @@ export default function AdminPanel({
   };
 
   const handleUpdateUserPoints = async (userId: string, val: number) => {
-    const updated = userList.map(u => (u.id === userId ? { ...u, points: val } : u));
+    const updated = userList.map(u => (u.id === userId ? { ...u, points: val, loyaltyPoints: val } : u));
     setUserList(updated);
     localStorage.setItem('mb_admin_users', JSON.stringify(updated));
 
@@ -1652,9 +1698,7 @@ export default function AdminPanel({
                 { id: 'products', label: 'Products', icon: ShoppingBag },
                 { id: 'payments', label: 'Payments', icon: CreditCard },
                 { id: 'banners', label: 'Banners', icon: ImageIcon },
-                { id: 'coupons', label: 'Coupons', icon: Ticket },
                 { id: 'legal', label: 'Legal', icon: FileText },
-                { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
                 { id: 'settings', label: 'Settings', icon: Settings },
               ].map((item) => {
                 const Icon = item.icon;
@@ -1732,9 +1776,7 @@ export default function AdminPanel({
                   { id: 'products', label: 'Products', icon: ShoppingBag },
                   { id: 'payments', label: 'Payments', icon: CreditCard },
                   { id: 'banners', label: 'Banners', icon: ImageIcon },
-                  { id: 'coupons', label: 'Coupons', icon: Ticket },
                   { id: 'legal', label: 'Legal', icon: FileText },
-                  { id: 'ai_chatbot', label: 'AI Chatbot', icon: Bot },
                   { id: 'settings', label: 'Settings', icon: Settings },
                 ].map((item) => {
                   const Icon = item.icon;
@@ -2221,21 +2263,18 @@ export default function AdminPanel({
 
                 {/* Filter / Actions bar */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4.5 border border-zinc-200 rounded-2xl shadow-xs">
-                  {/* Status Selection Buttons */}
-                  <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 p-1 rounded-xl shrink-0">
-                    {(['PENDING', 'SUCCESS', 'REJECTED'] as const).map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => setOrderFilterStatus(status)}
-                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                          orderFilterStatus === status
-                            ? 'bg-blue-600 text-white shadow-xs'
-                            : 'text-zinc-550 hover:text-zinc-900 hover:bg-zinc-100/50'
-                        }`}
-                      >
-                        {status === 'SUCCESS' ? 'COMPLETED' : status}
-                      </button>
-                    ))}
+                  {/* Status Selection Dropdown */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-black uppercase text-zinc-400 font-mono">Filter Status:</span>
+                    <select
+                      value={orderFilterStatus}
+                      onChange={(e) => setOrderFilterStatus(e.target.value as any)}
+                      className="bg-white border border-zinc-250 rounded-xl px-3.5 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-800 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="PENDING">🕒 Pending Orders</option>
+                      <option value="SUCCESS">✅ Completed Orders</option>
+                      <option value="REJECTED">❌ Rejected Orders</option>
+                    </select>
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:max-w-md">
@@ -2992,7 +3031,6 @@ export default function AdminPanel({
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-zinc-100 text-zinc-400 uppercase text-[9px] font-black tracking-widest bg-zinc-50/50">
-                          <th className="py-3.5 px-4">Date Submitted</th>
                           <th className="py-3.5 px-4">Request ID</th>
                           <th className="py-3.5 px-4">User Email</th>
                           <th className="py-3.5 px-4">Amount</th>
@@ -3023,7 +3061,6 @@ export default function AdminPanel({
 
                           return list.map((dep) => (
                             <tr key={dep.id} className="hover:bg-zinc-50/40 transition-colors">
-                              <td className="py-4 px-4 text-[10.5px] text-zinc-500 font-mono">{dep.timestamp}</td>
                               <td className="py-4 px-4 text-[10.5px] text-zinc-900 font-extrabold font-mono">{dep.id}</td>
                               <td className="py-4 px-4">
                                 <span className="font-extrabold text-zinc-800 text-[11px] bg-zinc-50 border border-zinc-150 px-2 py-1 rounded-lg font-mono">
@@ -3994,116 +4031,121 @@ export default function AdminPanel({
                   </div>
                 </div>
 
-                <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-2xs space-y-4">
-                  <h3 className="text-xs font-black uppercase text-red-600 tracking-tight">Change Admin Password</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-zinc-400 font-mono">New Password Credentials</label>
-                      <input
-                        type="password"
-                        value={adminPassword}
-                        onChange={async (e) => {
-                          setAdminPassword(e.target.value);
-                          localStorage.setItem('mb_admin_password', e.target.value);
-                          try {
-                            await setDoc(doc(db, 'settings', 'general'), { storeName, storeContact, adminPassword: e.target.value });
-                          } catch (err) {}
-                        }}
-                        className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-bold"
-                      />
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => triggerToast('Admin credentials secured successfully.')}
-                    className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
-                  >
-                    Secure Password
-                  </button>
-                </div>
-
-                <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-2xs space-y-4">
-                  <h3 className="text-xs font-black uppercase text-blue-600 tracking-tight flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                        connectionStatus === 'connected' ? 'bg-emerald-400' : connectionStatus === 'checking' ? 'bg-amber-400' : 'bg-rose-400'
-                      }`}></span>
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                        connectionStatus === 'connected' ? 'bg-emerald-500' : connectionStatus === 'checking' ? 'bg-amber-500' : 'bg-rose-500'
-                      }`}></span>
-                    </span>
-                    API & Backend Server Connection
-                  </h3>
-                  
-                  <p className="text-xs text-zinc-500 leading-relaxed font-semibold">
-                    Configure the custom API gateway endpoint for synchronizing operations with remote clients (e.g. if hosted on custom servers or Vercel).
-                  </p>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-zinc-400 font-mono">Backend Base URL</label>
-                      <input
-                        type="url"
-                        value={customBackendUrl}
-                        onChange={(e) => {
-                          const val = e.target.value.trim();
-                          setCustomBackendUrl(val);
-                          localStorage.setItem('mb_backend_api_url', val);
-                        }}
-                        placeholder="e.g. https://ais-pre-ieaqsnp6gakw5nbka46zmw-976319483466.asia-southeast1.run.app"
-                        className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-medium"
-                      />
-                      <p className="text-[10px] text-zinc-400 mt-1">
-                        Leave blank to connect directly to this workspace instance.
+                {/* Team Members Management Section */}
+                <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-2xs space-y-6">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                    <div className="text-left">
+                      <h3 className="text-xs font-black uppercase text-blue-600 tracking-tight flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-blue-500" />
+                        Team Members & Admins
+                      </h3>
+                      <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">
+                        Manage authorized users who can access this administrator panel.
                       </p>
                     </div>
-
-                    {connectionStatus === 'connected' && (
-                      <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] p-3 rounded-xl flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                        <div>
-                          <strong>Connection active!</strong> Server responded successfully to ping requests.
-                        </div>
-                      </div>
-                    )}
-
-                    {connectionStatus === 'disconnected' && (
-                      <div className="bg-rose-50 border border-rose-100 text-rose-700 text-[11px] p-3 rounded-xl flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <strong>Connection verification failed.</strong>
-                          <p className="mt-0.5 text-[10px] text-rose-600 leading-normal font-mono">{connectionError || "Unknown connection error"}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {connectionStatus === 'checking' && (
-                      <div className="bg-amber-50 border border-amber-100 text-amber-700 text-[11px] p-3 rounded-xl flex items-center gap-2">
-                        <span className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                        Verifying server connection...
-                      </div>
-                    )}
                   </div>
 
-                  <div className="flex gap-2.5 pt-1">
-                    <button
-                      onClick={() => testConnection()}
-                      className="flex-1 bg-zinc-950 hover:bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
-                    >
-                      Verify & Test Connection
-                    </button>
-                    <button
-                      onClick={() => {
-                        setCustomBackendUrl('');
-                        localStorage.removeItem('mb_backend_api_url');
-                        setConnectionStatus('checking');
-                        setTimeout(() => testConnection(''), 200);
-                        triggerToast('Reset to default local workspace backend.');
-                      }}
-                      className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-black uppercase tracking-wider px-4 rounded-xl transition-all cursor-pointer text-center"
-                    >
-                      Reset to Default
-                    </button>
+                  {/* Add Member Form */}
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const email = newMemberEmail.trim().toLowerCase();
+                    if (!email) return;
+                    try {
+                      await setDoc(doc(db, 'team_members', email), {
+                        email,
+                        role: newMemberRole,
+                        addedAt: new Date().toISOString()
+                      });
+                      setNewMemberEmail('');
+                      triggerToast(`🎉 Authorized admin added: ${email}`);
+                    } catch (err) {
+                      triggerToast('Failed to authorize member.');
+                    }
+                  }} className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end bg-zinc-50/50 p-4 rounded-2xl border border-zinc-150">
+                    <div className="sm:col-span-2 text-left">
+                      <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono">User Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. co-owner@example.com"
+                        value={newMemberEmail}
+                        onChange={(e) => setNewMemberEmail(e.target.value)}
+                        className="w-full mt-1.5 bg-white border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono">Permission Role</label>
+                      <select
+                        value={newMemberRole}
+                        onChange={(e) => setNewMemberRole(e.target.value as any)}
+                        className="w-full mt-1.5 bg-white border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-extrabold text-zinc-800"
+                      >
+                        <option value="admin">ADMIN (Full Access)</option>
+                        <option value="member">MEMBER</option>
+                      </select>
+                    </div>
+                    <div className="sm:col-span-3">
+                      <button
+                        type="submit"
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center border-none"
+                      >
+                        Add Team Member
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Team Members List */}
+                  <div className="space-y-2 text-left">
+                    <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                      Currently Authorized Accounts ({1 + teamMembers.length})
+                    </span>
+                    <div className="divide-y divide-zinc-100 max-h-60 overflow-y-auto pr-1">
+                      {/* Primary Owner (Always Authorized) */}
+                      <div className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-100/30">
+                            👑
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-xs font-black text-zinc-850 truncate">mandipmahato717@gmail.com</span>
+                            <span className="block text-[8px] font-bold uppercase tracking-wider text-amber-600 font-mono">Primary Owner</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Other authorized members */}
+                      {teamMembers.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between py-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/30">
+                              <User className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="block text-xs font-extrabold text-zinc-800 truncate">{member.email}</span>
+                              <span className="block text-[8px] font-bold uppercase tracking-wider text-blue-500 font-mono">
+                                {member.role || 'admin'}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (confirm(`Remove administrator access for ${member.email}?`)) {
+                                try {
+                                  await deleteDoc(doc(db, 'team_members', member.id));
+                                  triggerToast(`Revoked access for ${member.email}`);
+                                } catch (err) {
+                                  triggerToast('Failed to remove team member.');
+                                }
+                              }
+                            }}
+                            className="p-1 px-2.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border border-red-100/30"
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
