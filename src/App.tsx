@@ -2206,89 +2206,273 @@ export default function App() {
           </section>
         )}
 
-        {/* WALLET MANUAL CONTROLS VIEW */}
+        {/* WALLET DEPOSIT REQUESTS VIEW */}
         {activeBottomNav === 'wallet' && (
-          <section className="bg-white rounded-2xl p-6 border border-zinc-200/80 space-y-6">
-            <div>
-              <h3 className="text-base font-extrabold text-zinc-900 uppercase">Interactive Wallet Panel</h3>
-              <p className="text-xs text-zinc-400">Simulate cash addition to top-up orders instantly</p>
-            </div>
-
+          <section className="space-y-6">
             {!currentUser ? (
-              <div className="py-12 text-center text-zinc-400 space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-400 shadow-sm">
-                  <Wallet className="w-5.5 h-5.5 text-blue-600" />
+              <div className="bg-white rounded-2xl p-6 border border-zinc-200/80 space-y-6">
+                <div>
+                  <h3 className="text-base font-extrabold text-zinc-900 uppercase">App Wallet Panel</h3>
+                  <p className="text-xs text-zinc-400">Load funds securely and track your transaction status</p>
                 </div>
-                <div className="max-w-xs mx-auto">
-                  <h4 className="text-xs font-black text-zinc-800 uppercase">Manage App Wallet</h4>
-                  <p className="text-[10px] text-zinc-400 font-semibold mt-1">Please log in or register to load extra credit, view wallet status, and run secure transactions.</p>
+                <div className="py-12 text-center text-zinc-400 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-400 shadow-sm">
+                    <Wallet className="w-5.5 h-5.5 text-blue-600" />
+                  </div>
+                  <div className="max-w-xs mx-auto">
+                    <h4 className="text-xs font-black text-zinc-800 uppercase">Manage App Wallet</h4>
+                    <p className="text-[10px] text-zinc-400 font-semibold mt-1">Please log in or register to load extra credit, view wallet status, and run secure transactions.</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveBottomNav('profile')}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md transition-all active:scale-98 cursor-pointer border-none"
+                  >
+                    Log In / Register
+                  </button>
                 </div>
-                <button
-                  onClick={() => setActiveBottomNav('profile')}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] uppercase rounded-xl shadow-md transition-all active:scale-98 cursor-pointer border-none"
-                >
-                  Log In / Register
-                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                
-                {/* Left Display card */}
-                <div className="bg-zinc-950 text-white rounded-2xl p-6 flex flex-col justify-between min-h-[160px] relative overflow-hidden shadow-md">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">PRE-PAID APP WALLET</span>
-                    <Wallet className="w-5 h-5 text-zinc-400" />
+              <div className="space-y-6">
+                {/* 1. Wallet Balance Card & Header */}
+                <div className="bg-white rounded-2xl p-5 border border-zinc-200/80 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xs">
+                  <div className="text-left">
+                    <h3 className="text-base font-extrabold text-zinc-900 uppercase">My Wallet Balance</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">Use your prepaid balance to top up instantly at any time.</p>
                   </div>
-                  <div>
-                    <span className="text-3xl font-extrabold text-white font-mono tracking-tight leading-none block">
-                      Rs. {walletBalance}
-                    </span>
-                    <span className="text-[10px] text-emerald-400 font-bold block mt-2">● Online Verification Connected</span>
+                  <div className="bg-zinc-950 text-white rounded-2xl p-5 flex items-center justify-between min-w-[240px] relative overflow-hidden shadow-md">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
+                    <div className="text-left">
+                      <span className="text-[9px] font-extrabold tracking-wider text-zinc-400 uppercase block">Available Funds</span>
+                      <span className="text-2xl font-black text-white font-mono tracking-tight leading-none block mt-1">
+                        Rs. {walletBalance}
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs ml-4">
+                      <Wallet className="w-5.5 h-5.5 text-blue-400" />
+                    </div>
                   </div>
                 </div>
 
-                {/* Right Presets and Quick tools */}
-                <div className="space-y-4">
-                  <span className="block text-xs font-extrabold text-zinc-400">LOAD EXTRA CREDIT</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[200, 500, 1000].map(amt => (
-                      <button
-                        key={amt}
-                        onClick={() => {
-                          setWalletBalance(prev => prev + amt);
-                          triggerToast(`Added Rs. ${amt} via simulated UPI bank transfer!`);
-                        }}
-                        className="py-2.5 bg-zinc-50 border border-zinc-200 hover:bg-zinc-950 hover:text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
-                      >
-                        + Rs. {amt}
-                      </button>
-                    ))}
+                {/* 2. Big QR Code & Form Container */}
+                <div className="bg-white rounded-2xl p-6 border border-zinc-200/80 shadow-xs space-y-6">
+                  <div className="text-left">
+                    <h3 className="text-base font-extrabold text-zinc-900 uppercase">Refill Wallet Cash</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">Scan the QR below via eSewa / Bank app, then upload receipt details to request credit.</p>
                   </div>
 
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const amtVal = parseInt(customWalletAdd, 10);
-                    if (!isNaN(amtVal) && amtVal > 0) {
-                      setWalletBalance(prev => prev + amtVal);
-                      setCustomWalletAdd('');
-                      triggerToast(`Added Rs. ${amtVal} from virtual gateway!`);
-                    }
-                  }} className="flex gap-2">
-                    <input
-                      type="number"
-                      value={customWalletAdd}
-                      onChange={(e) => setCustomWalletAdd(e.target.value)}
-                      placeholder="Other cash amount..."
-                      className="flex-grow px-3.5 py-2 bg-zinc-50 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:border-zinc-400 font-bold"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500"
-                    >
-                      Add Cash
-                    </button>
-                  </form>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    {/* Big QR Code Panel */}
+                    <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-200/60 flex flex-col items-center text-center space-y-4">
+                      <div className="bg-white p-3.5 rounded-3xl border border-zinc-200 shadow-sm transition-transform hover:scale-102 duration-300">
+                        <img 
+                          src={paymentSettings.qrImageUrl} 
+                          alt="eSewa QR Scan" 
+                          referrerPolicy="no-referrer"
+                          className="w-56 h-56 sm:w-64 sm:h-64 object-contain"
+                        />
+                      </div>
+                      <div className="space-y-2 w-full max-w-xs">
+                        <span className="text-[10px] font-black text-blue-600 tracking-wider uppercase block">Recipient eSewa details</span>
+                        <div className="flex items-center justify-between bg-white border border-zinc-200 px-4 py-2 rounded-xl shadow-xs">
+                          <span className="text-xs font-extrabold text-zinc-800 font-mono">eSewa: {paymentSettings.esewaNumber}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(paymentSettings.esewaNumber);
+                              triggerToast('📋 Recipient eSewa number copied!');
+                            }}
+                            className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-400 hover:text-blue-600 transition-all cursor-pointer border-none"
+                            title="Copy eSewa Number"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 font-semibold leading-normal pt-1">
+                          Scan QR or send funds directly to the eSewa wallet listed above.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Form Input fields */}
+                    <div className="space-y-5">
+                      {walletError && (
+                        <div className="p-3.5 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 font-bold animate-shake">
+                          <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5 text-red-500" />
+                          <span>{walletError}</span>
+                        </div>
+                      )}
+
+                      <form onSubmit={handleDepositSubmit} className="space-y-5">
+                        {/* Deposit Amount */}
+                        <div className="space-y-1.5 text-left">
+                          <label className="block text-xs font-black text-zinc-700 uppercase tracking-wide">
+                            Deposit Amount (Rs.) <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={paymentSettings.minDeposit}
+                              required
+                              value={customWalletAdd}
+                              onChange={(e) => setCustomWalletAdd(e.target.value)}
+                              placeholder={`Min Rs. ${paymentSettings.minDeposit}`}
+                              className="w-full text-xs font-bold pl-10 pr-3 py-3.5 bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-blue-500 rounded-xl focus:outline-none transition-all font-mono shadow-xs"
+                            />
+                            <span className="text-xs font-bold text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 font-mono">
+                              Rs.
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Screenshot Input */}
+                        <div className="space-y-1.5 text-left">
+                          <label className="block text-xs font-black text-zinc-700 uppercase tracking-wide">
+                            Payment Receipt Screenshot <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              required={!depositScreenshotBase64}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 3 * 1024 * 1024) {
+                                    setWalletError('Screenshot size exceeds 3MB limit! Please upload a smaller receipt.');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    if (typeof reader.result === 'string') {
+                                      setDepositScreenshotBase64(reader.result);
+                                      setWalletError('');
+                                    }
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                            />
+                            <div className="border border-dashed border-zinc-250 hover:border-blue-500 bg-zinc-50 hover:bg-white rounded-xl py-3.5 px-4 text-center transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs">
+                              <Upload className="w-4.5 h-4.5 text-zinc-400 shrink-0" />
+                              <span className="text-xs font-black text-zinc-700 truncate">
+                                {depositScreenshotBase64 ? '📁 Receipt Selected' : 'Choose Payment Screenshot'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Screenshot Preview */}
+                        {depositScreenshotBase64 && (
+                          <div className="flex items-center justify-between bg-zinc-50 border border-zinc-200/80 px-4 py-3 rounded-xl animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={depositScreenshotBase64} 
+                                alt="Receipt preview" 
+                                className="w-12 h-12 object-cover rounded-lg border border-zinc-200 shadow-xs shrink-0"
+                              />
+                              <div className="text-left">
+                                <span className="block text-xs font-bold text-zinc-800">Screenshot Attached</span>
+                                <span className="block text-[10px] text-zinc-400 font-semibold">Ready to upload</span>
+                              </div>
+                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => setDepositScreenshotBase64('')}
+                              className="text-red-500 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Submit button */}
+                        <button
+                          type="submit"
+                          disabled={isDepositing}
+                          className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/10 cursor-pointer flex items-center justify-center gap-2 active:scale-98 border-none mt-4"
+                        >
+                          {isDepositing ? (
+                            <>
+                              <div className="w-4.5 h-4.5 border-2 border-white/35 border-t-white rounded-full animate-spin" />
+                              <span>Submitting Request...</span>
+                            </>
+                          ) : (
+                            <span>Submit Deposit Request</span>
+                          )}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Deposit History Logs - Beautiful Design */}
+                <div className="bg-white rounded-2xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                    <div className="text-left">
+                      <h4 className="text-sm font-black text-zinc-950 uppercase tracking-tight">Deposit Requests History</h4>
+                      <p className="text-[10px] text-zinc-400 font-semibold">Real-time status of your deposit verifications.</p>
+                    </div>
+                    <span className="bg-zinc-100 text-zinc-600 text-[10px] font-black px-2.5 py-1 rounded-full">
+                      Total Requests: {depositRequests.length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                    {depositRequests.length === 0 ? (
+                      <div className="py-12 text-center text-zinc-400 text-xs font-bold space-y-2">
+                        <div className="w-10 h-10 rounded-full bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-300">
+                          <Eye className="w-4 h-4" />
+                        </div>
+                        <p>No deposit requests submitted yet.</p>
+                      </div>
+                    ) : (
+                      depositRequests.map((dep) => (
+                        <div key={dep.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-zinc-50/40 rounded-2xl border border-zinc-200/80 hover:border-zinc-300 transition-all shadow-xs gap-3">
+                          <div className="flex items-center gap-3.5 text-left">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100/30 flex items-center justify-center text-blue-600 shrink-0">
+                              <span className="text-xs font-black font-mono">Rs</span>
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-black text-zinc-900 font-mono">Rs. {dep.amount}</span>
+                                <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase bg-zinc-100 px-1.5 py-0.5 rounded">ID: {dep.id}</span>
+                              </div>
+                              <span className="block text-[10px] text-zinc-400 font-semibold">{dep.timestamp}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between sm:justify-end gap-3.5 border-t sm:border-t-0 border-zinc-100 pt-2.5 sm:pt-0">
+                            {/* Status Badge */}
+                            {dep.status === 'PENDING' && (
+                              <span className="px-2.5 py-1 text-[9px] font-black bg-amber-50 text-amber-700 border border-amber-200/60 rounded-lg animate-pulse">
+                                PENDING
+                              </span>
+                            )}
+                            {dep.status === 'COMPLETED' && (
+                              <span className="px-2.5 py-1 text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-150 rounded-lg">
+                                APPROVED
+                              </span>
+                            )}
+                            {dep.status === 'REJECTED' && (
+                              <span className="px-2.5 py-1 text-[9px] font-black bg-red-50 text-red-700 border border-red-150 rounded-lg">
+                                REJECTED
+                              </span>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDepositScreenshot(dep.screenshot)}
+                              className="bg-white hover:bg-zinc-100 active:scale-97 text-zinc-700 text-[10px] font-black px-3.5 py-2 rounded-xl border border-zinc-200 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-zinc-500" />
+                              <span>View Receipt</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
               </div>
