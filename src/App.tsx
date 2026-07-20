@@ -1159,65 +1159,6 @@ export default function App() {
   }, []);
 
   if (isAdminRoute) {
-    if (!currentUser) {
-      return (
-        <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-md bg-white border border-zinc-200 rounded-[32px] p-8 shadow-md space-y-6">
-            <div className="mx-auto w-14 h-14 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600">
-              <ShieldAlert className="w-7 h-7" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-lg font-black text-zinc-900 uppercase">Login Required</h2>
-              <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
-                You must be logged in to access the administrator panel. Please return home and log in first.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                window.history.pushState({}, '', '/');
-                const navEvent = new PopStateEvent('popstate');
-                window.dispatchEvent(navEvent);
-              }}
-              className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-xs font-black uppercase tracking-wider py-3.5 rounded-xl transition-all cursor-pointer border-none"
-            >
-              Go to Home Screen
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    const email = currentUser.email.toLowerCase();
-    const isAuthorized = email === 'mandipmahato717@gmail.com' || email === 'bnyshopadminpanel@gmail.com' || teamMembers.includes(email);
-
-    if (!isAuthorized) {
-      return (
-        <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-md bg-white border border-zinc-200 rounded-[32px] p-8 shadow-md space-y-6">
-            <div className="mx-auto w-14 h-14 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center text-red-600">
-              <ShieldAlert className="w-7 h-7" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-lg font-black text-zinc-900 uppercase">Restricted Area</h2>
-              <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
-                Access Denied: The account <span className="font-mono text-blue-600 font-black">{currentUser.email}</span> does not have administrator privileges.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                window.history.pushState({}, '', '/');
-                const navEvent = new PopStateEvent('popstate');
-                window.dispatchEvent(navEvent);
-              }}
-              className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-xs font-black uppercase tracking-wider py-3.5 rounded-xl transition-all cursor-pointer border-none"
-            >
-              Go to Home Screen
-            </button>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <AdminPanel
         products={products}
@@ -1228,7 +1169,7 @@ export default function App() {
         setWalletBalance={setWalletBalance}
         categories={categories}
         setCategories={setCategories}
-        currentUser={currentUser}
+        currentUser={currentUser || { name: 'Administrator', email: 'bnyshopadminpanel@gmail.com', walletBalance: 0, loyaltyPoints: 0 }}
         onClose={() => {
           window.history.pushState({}, '', '/');
           const navEvent = new PopStateEvent('popstate');
