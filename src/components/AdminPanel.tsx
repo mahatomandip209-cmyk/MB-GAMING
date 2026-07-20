@@ -539,11 +539,58 @@ export default function AdminPanel({
   const currentUserTeamDoc = teamMembers.find(t => t.email?.toLowerCase() === currentUser?.email?.toLowerCase());
   const hasControlAccess = isPrimaryOwner || currentUserTeamDoc?.role === 'admin';
 
-  useEffect(() => {
-    if (!hasControlAccess && (activeTab === 'orders' || activeTab === 'deposits')) {
-      setActiveTab('dashboard');
+  const getAvailableTabs = () => {
+    const email = currentUser?.email?.toLowerCase();
+    const isOwner = email === 'mandipmahato717@gmail.com' || email === 'bnyshopadminpanel@gmail.com';
+    const memberDoc = teamMembers.find(t => t.email?.toLowerCase() === email);
+    const isAdminOptionEnabled = memberDoc?.role === 'admin';
+
+    if (isOwner) {
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'orders', label: 'Orders', icon: ShoppingCart },
+        { id: 'deposits', label: 'Deposits', icon: Wallet },
+        { id: 'users', label: 'Users', icon: Users },
+        { id: 'categories', label: 'Categories', icon: Tags },
+        { id: 'games', label: 'Games', icon: Gamepad2 },
+        { id: 'requirements', label: 'Requirements', icon: FileText },
+        { id: 'products', label: 'Products', icon: ShoppingBag },
+        { id: 'payments', label: 'Payments', icon: CreditCard },
+        { id: 'banners', label: 'Banners', icon: ImageIcon },
+        { id: 'legal', label: 'Legal', icon: FileText },
+        { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'team', label: 'Add Team Member', icon: UserPlus },
+      ];
+    } else if (isAdminOptionEnabled) {
+      return [
+        { id: 'orders', label: 'Orders', icon: ShoppingCart },
+        { id: 'deposits', label: 'Deposits', icon: Wallet },
+      ];
+    } else {
+      // Normal guest or team member (MEMBER) with Admin Option disabled
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'users', label: 'Users', icon: Users },
+        { id: 'categories', label: 'Categories', icon: Tags },
+        { id: 'games', label: 'Games', icon: Gamepad2 },
+        { id: 'requirements', label: 'Requirements', icon: FileText },
+        { id: 'products', label: 'Products', icon: ShoppingBag },
+        { id: 'payments', label: 'Payments', icon: CreditCard },
+        { id: 'banners', label: 'Banners', icon: ImageIcon },
+        { id: 'legal', label: 'Legal', icon: FileText },
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ];
     }
-  }, [activeTab, hasControlAccess]);
+  };
+
+  useEffect(() => {
+    const available = getAvailableTabs();
+    if (!available.some(t => t.id === activeTab)) {
+      if (available.length > 0) {
+        setActiveTab(available[0].id as any);
+      }
+    }
+  }, [activeTab, teamMembers, currentUser]);
 
   // Push Notification inputs
   const [pushTitle, setPushTitle] = useState('');
@@ -1702,23 +1749,7 @@ export default function AdminPanel({
 
             {/* Sidebar Navigation Options */}
             <nav className="flex-1 p-3.5 space-y-1 overflow-y-auto scrollbar-thin">
-              {[
-                { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                ...(hasControlAccess ? [
-                  { id: 'orders', label: 'Orders', icon: ShoppingCart },
-                  { id: 'deposits', label: 'Deposits', icon: Wallet },
-                ] : []),
-                { id: 'users', label: 'Users', icon: Users },
-                { id: 'categories', label: 'Categories', icon: Tags },
-                { id: 'games', label: 'Games', icon: Gamepad2 },
-                { id: 'requirements', label: 'Requirements', icon: FileText },
-                { id: 'products', label: 'Products', icon: ShoppingBag },
-                { id: 'payments', label: 'Payments', icon: CreditCard },
-                { id: 'banners', label: 'Banners', icon: ImageIcon },
-                { id: 'legal', label: 'Legal', icon: FileText },
-                { id: 'settings', label: 'Settings', icon: Settings },
-                { id: 'team', label: 'Add Team Member', icon: UserPlus },
-              ].map((item) => {
+              {getAvailableTabs().map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -1781,25 +1812,9 @@ export default function AdminPanel({
                 </span>
               </div>
 
-              {/* 11 Tab Buttons matching Screenshot 1 (minus Requirements and Products) */}
+              {/* Dynamic Tab Buttons matching getAvailableTabs */}
               <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                  ...(hasControlAccess ? [
-                    { id: 'orders', label: 'Orders', icon: ShoppingCart },
-                    { id: 'deposits', label: 'Deposits', icon: Wallet },
-                  ] : []),
-                  { id: 'users', label: 'Users', icon: Users },
-                  { id: 'categories', label: 'Categories', icon: Tags },
-                  { id: 'games', label: 'Games', icon: Gamepad2 },
-                  { id: 'requirements', label: 'Requirements', icon: FileText },
-                  { id: 'products', label: 'Products', icon: ShoppingBag },
-                  { id: 'payments', label: 'Payments', icon: CreditCard },
-                  { id: 'banners', label: 'Banners', icon: ImageIcon },
-                  { id: 'legal', label: 'Legal', icon: FileText },
-                  { id: 'settings', label: 'Settings', icon: Settings },
-                  { id: 'team', label: 'Add Team Member', icon: UserPlus },
-                ].map((item) => {
+                {getAvailableTabs().map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   return (
@@ -3886,17 +3901,26 @@ export default function AdminPanel({
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Team Members Management Section */}
-                <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-2xs space-y-6">
+            {/* 14. ADD TEAM MEMBER TAB */}
+            {activeTab === 'team' && (
+              <div className="space-y-6 max-w-2xl">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Add Team Member</h2>
+                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">Authorize team members and configure their navigation access privileges.</p>
+                </div>
+
+                <div className="bg-white border border-zinc-200/80 p-6 rounded-3xl space-y-6 shadow-2xs">
                   <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                     <div className="text-left">
                       <h3 className="text-xs font-black uppercase text-blue-600 tracking-tight flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-blue-500" />
-                        Team Members & Admins
+                        <UserPlus className="w-4 h-4 text-blue-500" />
+                        Authorize New Team Member
                       </h3>
                       <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">
-                        Manage authorized users who can access this administrator panel.
+                        Added users start as MEMBER. Use the Admin Option below to grant deposit & order privileges.
                       </p>
                     </div>
                   </div>
@@ -3909,15 +3933,15 @@ export default function AdminPanel({
                     try {
                       await setDoc(doc(db, 'team_members', email), {
                         email,
-                        role: newMemberRole,
+                        role: 'member', // locked to member on creation
                         addedAt: new Date().toISOString()
                       });
                       setNewMemberEmail('');
-                      triggerToast(`🎉 Authorized admin added: ${email}`);
+                      triggerToast(`🎉 Authorized team member added: ${email}`);
                     } catch (err) {
                       triggerToast('Failed to authorize member.');
                     }
-                  }} className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end bg-zinc-50/50 p-4 rounded-2xl border border-zinc-150">
+                  }} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end bg-zinc-50/50 p-4 rounded-2xl border border-zinc-150">
                     <div className="sm:col-span-2 text-left">
                       <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono">User Email Address</label>
                       <input
@@ -3929,79 +3953,116 @@ export default function AdminPanel({
                         className="w-full mt-1.5 bg-white border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-medium"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono">Permission Role</label>
-                      <select
-                        value={newMemberRole}
-                        onChange={(e) => setNewMemberRole(e.target.value as any)}
-                        className="w-full mt-1.5 bg-white border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-extrabold text-zinc-800"
-                      >
-                        <option value="admin">ADMIN (Full Access)</option>
-                        <option value="member">MEMBER</option>
-                      </select>
+                    <div className="text-left">
+                      <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono font-bold">Permission Role</label>
+                      <input
+                        type="text"
+                        value="MEMBER"
+                        disabled
+                        className="w-full mt-1.5 bg-zinc-150/80 border border-zinc-200 text-zinc-400 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-black tracking-widest cursor-not-allowed text-center uppercase"
+                      />
                     </div>
                     <div className="sm:col-span-3">
                       <button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center border-none"
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center border-none shadow-sm"
                       >
                         Add Team Member
                       </button>
                     </div>
                   </form>
+                </div>
 
-                  {/* Team Members List */}
-                  <div className="space-y-2 text-left">
-                    <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400">
-                      Currently Authorized Accounts ({1 + teamMembers.length})
+                {/* Team Members List */}
+                <div className="bg-white border border-zinc-200/80 p-6 rounded-3xl space-y-6 shadow-2xs">
+                  <div className="text-left pb-3 border-b border-zinc-100">
+                    <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400 font-bold">
+                      Currently Authorized Team ({1 + teamMembers.length})
                     </span>
-                    <div className="divide-y divide-zinc-100 max-h-60 overflow-y-auto pr-1">
-                      {/* Primary Owner (Always Authorized) */}
-                      <div className="flex items-center justify-between py-2.5">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-100/30">
-                            👑
-                          </div>
-                          <div className="min-w-0">
-                            <span className="block text-xs font-black text-zinc-850 truncate">mandipmahato717@gmail.com</span>
-                            <span className="block text-[8px] font-bold uppercase tracking-wider text-amber-600 font-mono">Primary Owner</span>
-                          </div>
+                  </div>
+                  <div className="divide-y divide-zinc-100">
+                    {/* Primary Owner (Always Authorized) */}
+                    <div className="flex items-center justify-between py-3.5">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm shrink-0 border border-amber-100/30">
+                          👑
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <span className="block text-xs font-black text-zinc-800 truncate">mandipmahato717@gmail.com</span>
+                          <span className="block text-[8px] font-extrabold uppercase tracking-wider text-amber-600 font-mono mt-0.5">Primary Owner</span>
                         </div>
                       </div>
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
+                        Full Control
+                      </span>
+                    </div>
 
-                      {/* Other authorized members */}
-                      {teamMembers.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between py-2.5">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/30">
-                              <User className="w-3.5 h-3.5" />
+                    {/* Other authorized members */}
+                    {teamMembers.map((member) => {
+                      const isAdmin = member.role === 'admin';
+                      return (
+                        <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/30">
+                              <User className="w-4 h-4" />
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                               <span className="block text-xs font-extrabold text-zinc-800 truncate">{member.email}</span>
-                              <span className="block text-[8px] font-bold uppercase tracking-wider text-blue-500 font-mono">
-                                {member.role || 'admin'}
-                              </span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`text-[8px] font-extrabold uppercase tracking-widest font-mono px-1.5 py-0.5 rounded ${
+                                  isAdmin ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-zinc-100 text-zinc-500'
+                                }`}>
+                                  {isAdmin ? 'ADMIN' : 'MEMBER'}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (confirm(`Remove administrator access for ${member.email}?`)) {
+                          
+                          <div className="flex items-center gap-2 sm:self-center self-end">
+                            {/* Admin Option Toggle/Button */}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const newRole = member.role === 'admin' ? 'member' : 'admin';
                                 try {
-                                  await deleteDoc(doc(db, 'team_members', member.id));
-                                  triggerToast(`Revoked access for ${member.email}`);
+                                  await setDoc(doc(db, 'team_members', member.id), {
+                                    ...member,
+                                    role: newRole
+                                  });
+                                  triggerToast(`Updated privilege for ${member.email} to ${newRole.toUpperCase()}`);
                                 } catch (err) {
-                                  triggerToast('Failed to remove team member.');
+                                  triggerToast('Failed to update privilege.');
                                 }
-                              }
-                            }}
-                            className="p-1 px-2.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer border border-red-100/30"
-                          >
-                            Revoke
-                          </button>
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
+                                isAdmin 
+                                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' 
+                                  : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border-zinc-200'
+                              }`}
+                            >
+                              ⚙️ Admin Option: {isAdmin ? 'Enabled' : 'Disabled'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm(`Remove access for ${member.email}?`)) {
+                                  try {
+                                    await deleteDoc(doc(db, 'team_members', member.id));
+                                    triggerToast(`Revoked access for ${member.email}`);
+                                  } catch (err) {
+                                    triggerToast('Failed to remove team member.');
+                                  }
+                                }
+                              }}
+                              className="p-1.5 px-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer border border-red-150/30"
+                            >
+                              Revoke
+                            </button>
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
