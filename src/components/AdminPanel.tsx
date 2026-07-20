@@ -535,7 +535,7 @@ export default function AdminPanel({
   const [newMemberRole, setNewMemberRole] = useState<'admin' | 'member'>('admin');
 
   // Enforce access control for non-admin team members
-  const isPrimaryOwner = currentUser?.email?.toLowerCase() === 'mandipmahato717@gmail.com';
+  const isPrimaryOwner = currentUser?.email?.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser?.email?.toLowerCase() === 'bnyshopadminpanel@gmail.com';
   const currentUserTeamDoc = teamMembers.find(t => t.email?.toLowerCase() === currentUser?.email?.toLowerCase());
   const hasControlAccess = isPrimaryOwner || currentUserTeamDoc?.role === 'admin';
 

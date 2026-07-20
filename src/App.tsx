@@ -1188,7 +1188,7 @@ export default function App() {
     }
 
     const email = currentUser.email.toLowerCase();
-    const isAuthorized = email === 'mandipmahato717@gmail.com' || teamMembers.includes(email);
+    const isAuthorized = email === 'mandipmahato717@gmail.com' || email === 'bnyshopadminpanel@gmail.com' || teamMembers.includes(email);
 
     if (!isAuthorized) {
       return (
@@ -2375,20 +2375,6 @@ export default function App() {
                     <p className="text-xs text-zinc-400 mt-0.5">Use your prepaid balance to top up instantly at any time.</p>
                   </div>
                   <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full md:w-auto shrink-0">
-                    {/* Funds Card */}
-                    <div className="bg-zinc-950 text-white rounded-2xl p-4 flex items-center justify-between min-w-[170px] sm:min-w-[190px] relative overflow-hidden shadow-md flex-1">
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-500/20 to-transparent pointer-events-none rounded-bl-full" />
-                      <div className="text-left">
-                        <span className="text-[9px] font-extrabold tracking-wider text-zinc-400 uppercase block">Available Funds</span>
-                        <span className="text-xl font-black text-white font-mono tracking-tight leading-none block mt-1">
-                          Rs. {walletBalance}
-                        </span>
-                      </div>
-                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs ml-4 shrink-0">
-                        <Wallet className="w-5 h-5 text-blue-400" />
-                      </div>
-                    </div>
-
                     {/* Points Card */}
                     <div className="bg-blue-600 text-white rounded-2xl p-4 flex items-center justify-between min-w-[170px] sm:min-w-[190px] relative overflow-hidden shadow-md flex-1">
                       <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/20 to-transparent pointer-events-none rounded-bl-full" />
@@ -2727,7 +2713,7 @@ export default function App() {
                   <div className="flex items-center gap-3.5">
                     {/* User Profile Avatar Image from Unsplash or initials */}
                     <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 shadow-md flex items-center justify-center bg-blue-50">
-                      {currentUser.email === 'mandipmahato717@gmail.com' ? (
+                      {(currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com') ? (
                         <img 
                           src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&h=150&q=80" 
                           alt={currentUser.name} 
@@ -2766,7 +2752,7 @@ export default function App() {
                 <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
                   
                   {/* Admin Panel Option (Visible only to authorized members) */}
-                  {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
+                  {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
                     <div 
                       onClick={() => {
                         window.history.pushState({}, '', '/admin');
@@ -3346,14 +3332,7 @@ export default function App() {
               </div>
 
               {/* Available Balance & Points Cards in Modal */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-zinc-950 text-white rounded-xl p-3 relative overflow-hidden shadow-sm flex items-center justify-between">
-                  <div className="text-left">
-                    <span className="text-[8px] font-extrabold tracking-wider text-zinc-400 uppercase block">Available Funds</span>
-                    <span className="text-sm font-black text-white font-mono tracking-tight block mt-0.5">Rs. {walletBalance}</span>
-                  </div>
-                  <Wallet className="w-4 h-4 text-blue-400 opacity-80 shrink-0" />
-                </div>
+              <div className="w-full">
                 <div className="bg-blue-600 text-white rounded-xl p-3 relative overflow-hidden shadow-sm flex items-center justify-between">
                   <div className="text-left">
                     <span className="text-[8px] font-extrabold tracking-wider text-blue-100 uppercase block">Available Points</span>
