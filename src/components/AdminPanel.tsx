@@ -418,14 +418,45 @@ export default function AdminPanel({
     const lines = pkgFormPasteList.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const parsedPackages: { name: string; price: number }[] = [];
 
+    const cleanProductName = (rawName: string): string => {
+      let cleaned = rawName.trim();
+      
+      // 1. Remove leading text indicators like "PRODUCT NAME:", "PRODUCT:", "NAME:", "ITEM:" (case-insensitive)
+      cleaned = cleaned.replace(/^(?:PRODUCT\s*NAME|PRODUCT|NAME|ITEM)\s*[:=-]\s*/gi, '');
+      
+      // 2. Remove trailing text indicators like "PRICE", "PRICE:", "RATE", "RATE:" (case-insensitive)
+      cleaned = cleaned.replace(/\s*(?:PRICE|RATE|COST|RS|RUPEES)\s*[:=-]?\s*$/gi, '');
+      
+      // 3. Remove leading emojis, bullet points, asterisks, tildes, and whitespace
+      cleaned = cleaned.replace(/^[👉✨🔥⭐✅●•\-*~_+\s]+/g, '');
+      
+      // 4. Remove trailing delimiters, currency symbols, and emojis in a loop
+      let previous = '';
+      while (cleaned !== previous) {
+        previous = cleaned;
+        cleaned = cleaned
+          .replace(/[-:=,–—_~*+\s]+$/g, '') // remove trailing delimiters
+          .replace(/(?:💸|💵|💰|💎|💳)+$/gi, '') // remove trailing payment/money/gem emojis
+          .replace(/(?:Rs\.?|NPR|NPR\.?|Rupees|INR|USD|\$|Rs\.?\s*)\s*$/gi, '') // remove trailing currency names/symbols
+          .trim();
+      }
+      
+      // Also remove leading characters again just in case trailing cleanup revealed more
+      cleaned = cleaned.replace(/^[👉✨🔥⭐✅●•\-*~_+\s]+/g, '');
+      
+      return cleaned;
+    };
+
     for (const line of lines) {
+      // If the line has no digits (like headers: "*~PUBG:*"), ignore it
+      if (!/\d/.test(line)) continue;
+
       let price: number | null = null;
       let name = '';
 
-      // Main regex: matches a delimiter or space, optional currency indicators like Rs/NPR, the digits,
-      // and optional trailing non-alphanumeric, non-parenthesis characters (like spaces, emojis, currency symbols)
-      const endPriceRegex = /(?:[-:=,–—]|\s+)\s*(?:Rs\.?|NPR|💵)?\s*(\d+)[^a-zA-Z0-9()]*$/i;
-      const match = line.match(endPriceRegex);
+      // Match the last sequence of digits on the line, potentially preceded by delimiters and currency symbols
+      const priceRegex = /(?:[-:=,–—\s]|Rs\.?|NPR|💸|💵|Rs|\$)*\s*(\d+)\s*[^a-zA-Z0-9()]*$/i;
+      const match = line.match(priceRegex);
 
       if (match && match.index !== undefined) {
         price = Number(match[1]);
@@ -441,12 +472,9 @@ export default function AdminPanel({
       }
 
       if (price !== null && !isNaN(price)) {
-        // Clean up trailing punctuation, spaces, or delimiters from the name
-        // E.g. "25💎=" -> "25💎"
-        name = name.replace(/[-:=,–—\s]+$/, '').trim();
-
-        if (name) {
-          parsedPackages.push({ name, price });
+        const cleanedName = cleanProductName(name);
+        if (cleanedName) {
+          parsedPackages.push({ name: cleanedName, price });
         }
       }
     }
@@ -583,8 +611,11 @@ export default function AdminPanel({
         ];
       }
     } else {
+      // General guest or unlisted user opens the Admin Panel: Show everything including Orders & Deposits by default
       return [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'orders', label: 'Orders', icon: ShoppingCart },
+        { id: 'deposits', label: 'Deposits', icon: Wallet },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'categories', label: 'Categories', icon: Tags },
         { id: 'games', label: 'Games', icon: Gamepad2 },
@@ -594,6 +625,7 @@ export default function AdminPanel({
         { id: 'banners', label: 'Banners', icon: ImageIcon },
         { id: 'legal', label: 'Legal', icon: FileText },
         { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'team', label: 'Add Team Member', icon: UserPlus },
       ];
     }
   };
