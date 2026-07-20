@@ -165,6 +165,13 @@ export default function App() {
   });
 
   const [walletBalance, setWalletBalance] = useState<number>(() => {
+    const savedUser = localStorage.getItem('mb_current_user');
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (u.walletBalance !== undefined) return Number(u.walletBalance);
+      } catch {}
+    }
     const saved = localStorage.getItem('mb_gaming_wallet');
     return saved ? Number(saved) : 2450;
   });
@@ -174,6 +181,13 @@ export default function App() {
   }, [walletBalance]);
 
   const [loyaltyPoints, setLoyaltyPoints] = useState<number>(() => {
+    const savedUser = localStorage.getItem('mb_current_user');
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (u.loyaltyPoints !== undefined) return Number(u.loyaltyPoints);
+      } catch {}
+    }
     const saved = localStorage.getItem('mb_gaming_loyalty');
     return saved ? Number(saved) : 86534;
   });
@@ -619,11 +633,11 @@ export default function App() {
     const unsubscribeUser = onSnapshot(userDocRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        if (data.walletBalance !== undefined && data.walletBalance !== walletBalance) {
-          setWalletBalance(data.walletBalance);
+        if (data.walletBalance !== undefined) {
+          setWalletBalance(Number(data.walletBalance));
         }
-        if (data.loyaltyPoints !== undefined && data.loyaltyPoints !== loyaltyPoints) {
-          setLoyaltyPoints(data.loyaltyPoints);
+        if (data.loyaltyPoints !== undefined) {
+          setLoyaltyPoints(Number(data.loyaltyPoints));
         }
       }
     }, (error) => {
@@ -1214,6 +1228,7 @@ export default function App() {
         setWalletBalance={setWalletBalance}
         categories={categories}
         setCategories={setCategories}
+        currentUser={currentUser}
         onClose={() => {
           window.history.pushState({}, '', '/');
           const navEvent = new PopStateEvent('popstate');
@@ -2750,6 +2765,29 @@ export default function App() {
                 {/* Main Menu Links Grid */}
                 <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
                   
+                  {/* Admin Panel Option (Visible only to authorized members) */}
+                  {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
+                    <div 
+                      onClick={() => {
+                        window.history.pushState({}, '', '/admin');
+                        const navEvent = new PopStateEvent('popstate');
+                        window.dispatchEvent(navEvent);
+                      }}
+                      className="flex items-center justify-between p-2.5 bg-blue-50/50 border border-blue-100 hover:bg-blue-100/30 rounded-xl cursor-pointer transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                          <ShieldCheck className="w-4.5 h-4.5" />
+                        </div>
+                        <div>
+                          <h5 className="text-[11px] font-extrabold text-blue-700">Admin Control Panel</h5>
+                          <p className="text-[10px] text-blue-500 font-semibold mt-0.5">Manage deposits, orders, and products</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                    </div>
+                  )}
+
                   {/* Store Points Option */}
                   <div className="flex items-center justify-between p-2.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group">
                     <div className="flex items-center gap-3">

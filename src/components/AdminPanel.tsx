@@ -50,6 +50,7 @@ import {
   FileText,
   Bot,
   Settings,
+  User,
   UserPlus,
   Coins,
   Award,
@@ -75,6 +76,7 @@ interface AdminPanelProps {
   setWalletBalance: (balance: number) => void;
   categories: { id: string; name: string }[];
   setCategories: React.Dispatch<React.SetStateAction<{ id: string; name: string }[]>>;
+  currentUser?: any;
 }
 
 export default function AdminPanel({
@@ -86,7 +88,8 @@ export default function AdminPanel({
   walletBalance,
   setWalletBalance,
   categories,
-  setCategories
+  setCategories,
+  currentUser
 }: AdminPanelProps) {
   // Helper helper to draw corresponding icon
   const renderProductIcon = (iconName: string, className = "w-5 h-5") => {
@@ -135,6 +138,7 @@ export default function AdminPanel({
     | 'ai_chatbot'
     | 'settings'
     | 'deposits'
+    | 'team'
   >('dashboard');
 
   // Deposits State
@@ -529,6 +533,17 @@ export default function AdminPanel({
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<'admin' | 'member'>('admin');
+
+  // Enforce access control for non-admin team members
+  const isPrimaryOwner = currentUser?.email?.toLowerCase() === 'mandipmahato717@gmail.com';
+  const currentUserTeamDoc = teamMembers.find(t => t.email?.toLowerCase() === currentUser?.email?.toLowerCase());
+  const hasControlAccess = isPrimaryOwner || currentUserTeamDoc?.role === 'admin';
+
+  useEffect(() => {
+    if (!hasControlAccess && (activeTab === 'orders' || activeTab === 'deposits')) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, hasControlAccess]);
 
   // Push Notification inputs
   const [pushTitle, setPushTitle] = useState('');
@@ -1689,8 +1704,10 @@ export default function AdminPanel({
             <nav className="flex-1 p-3.5 space-y-1 overflow-y-auto scrollbar-thin">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                { id: 'orders', label: 'Orders', icon: ShoppingCart },
-                { id: 'deposits', label: 'Deposits', icon: Wallet },
+                ...(hasControlAccess ? [
+                  { id: 'orders', label: 'Orders', icon: ShoppingCart },
+                  { id: 'deposits', label: 'Deposits', icon: Wallet },
+                ] : []),
                 { id: 'users', label: 'Users', icon: Users },
                 { id: 'categories', label: 'Categories', icon: Tags },
                 { id: 'games', label: 'Games', icon: Gamepad2 },
@@ -1700,6 +1717,7 @@ export default function AdminPanel({
                 { id: 'banners', label: 'Banners', icon: ImageIcon },
                 { id: 'legal', label: 'Legal', icon: FileText },
                 { id: 'settings', label: 'Settings', icon: Settings },
+                { id: 'team', label: 'Add Team Member', icon: UserPlus },
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -1767,8 +1785,10 @@ export default function AdminPanel({
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                  { id: 'orders', label: 'Orders', icon: ShoppingCart },
-                  { id: 'deposits', label: 'Deposits', icon: Wallet },
+                  ...(hasControlAccess ? [
+                    { id: 'orders', label: 'Orders', icon: ShoppingCart },
+                    { id: 'deposits', label: 'Deposits', icon: Wallet },
+                  ] : []),
                   { id: 'users', label: 'Users', icon: Users },
                   { id: 'categories', label: 'Categories', icon: Tags },
                   { id: 'games', label: 'Games', icon: Gamepad2 },
@@ -1778,6 +1798,7 @@ export default function AdminPanel({
                   { id: 'banners', label: 'Banners', icon: ImageIcon },
                   { id: 'legal', label: 'Legal', icon: FileText },
                   { id: 'settings', label: 'Settings', icon: Settings },
+                  { id: 'team', label: 'Add Team Member', icon: UserPlus },
                 ].map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
@@ -3363,134 +3384,6 @@ export default function AdminPanel({
               </div>
             )}
 
-            {/* 7. DISCOUNT COUPONS TAB */}
-            {activeTab === 'coupons' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">Promo Coupons</h2>
-                    <p className="text-xs text-zinc-500 font-semibold mt-0.5">Configure checkout discount coupon codes for game recharges.</p>
-                  </div>
-                </div>
-
-                {/* Add coupon form */}
-                <div className="bg-white border border-zinc-200/80 p-5 rounded-3xl space-y-4 shadow-2xs max-w-xl">
-                  <h3 className="text-xs font-black uppercase text-zinc-800 tracking-tight flex items-center gap-1.5">
-                    <Ticket className="w-4 h-4 text-blue-500" />
-                    Create New Promo Coupon Code
-                  </h3>
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!newCouponCode) return;
-                      const newCp = {
-                        code: newCouponCode.toUpperCase().replace(/\s+/g, ''),
-                        discountPercent: Number(newCouponDiscount),
-                        maxDiscount: Number(newCouponMax),
-                        active: true
-                      };
-                      const updated = [...coupons, newCp];
-                      setCoupons(updated);
-                      localStorage.setItem('mb_admin_coupons', JSON.stringify(updated));
-                      setNewCouponCode('');
-                      triggerToast(`Coupon ${newCp.code} successfully created!`);
-                    }} 
-                    className="grid grid-cols-1 sm:grid-cols-4 gap-3"
-                  >
-                    <input
-                      type="text"
-                      required
-                      placeholder="CODE (e.g. EXTRA15)"
-                      value={newCouponCode}
-                      onChange={(e) => setNewCouponCode(e.target.value)}
-                      className="bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-blue-500"
-                    />
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      max={100}
-                      placeholder="Discount %"
-                      value={newCouponDiscount}
-                      onChange={(e) => setNewCouponDiscount(e.target.value)}
-                      className="bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-blue-500"
-                    />
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      placeholder="Max Discount (Rs)"
-                      value={newCouponMax}
-                      onChange={(e) => setNewCouponMax(e.target.value)}
-                      className="bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-xs focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
-                    >
-                      Save Coupon
-                    </button>
-                  </form>
-                </div>
-
-                {/* Coupons grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {coupons.map((cp: any) => (
-                    <div key={cp.code} className="bg-white border border-zinc-200 p-5 rounded-3xl flex flex-col justify-between shadow-2xs relative">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-black text-blue-600 bg-blue-50 border border-blue-200/50 px-3 py-1 rounded-xl text-xs uppercase tracking-widest">
-                            {cp.code}
-                          </span>
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${cp.active ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-100 text-zinc-400'}`}>
-                            {cp.active ? 'ACTIVE' : 'DISABLED'}
-                          </span>
-                        </div>
-                        <h4 className="text-xl font-black text-zinc-950 pt-2">{cp.discountPercent}% OFF</h4>
-                        <p className="text-[10.5px] text-zinc-500">Max discount limit up to Rs. {cp.maxDiscount}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mt-4.5 pt-3 border-t border-zinc-100">
-                        <button
-                          onClick={async () => {
-                            const updated = coupons.map((c: any) => (c.code === cp.code ? { ...c, active: !c.active } : c));
-                            setCoupons(updated);
-                            localStorage.setItem('mb_admin_coupons', JSON.stringify(updated));
-                            try {
-                              await setDoc(doc(db, 'coupons', cp.code), { ...cp, active: !cp.active });
-                              triggerToast('Coupon updated in Firestore.');
-                            } catch (e) {
-                              triggerToast('Coupon status changed.');
-                            }
-                          }}
-                          className="flex-1 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 text-[9.5px] font-black py-2 rounded-lg transition-all cursor-pointer"
-                        >
-                          Toggle Active
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const updated = coupons.filter((c: any) => c.code !== cp.code);
-                            setCoupons(updated);
-                            localStorage.setItem('mb_admin_coupons', JSON.stringify(updated));
-                            try {
-                              await setDoc(doc(db, 'coupons', cp.code), { ...cp, deleted: true });
-                              triggerToast('Coupon deleted from Firestore.');
-                            } catch (e) {
-                              triggerToast('Coupon deleted.');
-                            }
-                          }}
-                          className="p-2 hover:bg-red-50 text-zinc-400 hover:text-red-600 rounded-lg border border-zinc-100 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            )}
-
             {/* 8. REQUIREMENTS CONFIGURATION TAB */}
             {activeTab === 'requirements' && (
               <div className="space-y-6">
@@ -3944,43 +3837,6 @@ export default function AdminPanel({
                       className="w-full mt-2 bg-zinc-50 border border-zinc-200 rounded-2xl py-3 px-4 text-xs font-medium focus:outline-none focus:border-blue-500 leading-relaxed"
                     />
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* 12. AI CHATBOT TEST PLAYGROUND TAB */}
-            {activeTab === 'ai_chatbot' && (
-              <div className="space-y-4 max-w-xl">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">AI Advisor Playground</h2>
-                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">Test simulated prompt behaviors of the game store AI bot.</p>
-                </div>
-
-                <div className="bg-white border border-zinc-200 p-6 rounded-3xl space-y-4 shadow-2xs">
-                  <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-start gap-2.5">
-                    <Bot className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-900 font-medium leading-relaxed">
-                      This playground tests the behavior guidelines of the store's custom assistant. Configure what tone, greeting and info guidelines the bot adheres to when helping storefront gamers.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-zinc-400">System Instruction Prompt</label>
-                      <textarea
-                        defaultValue="You are the custom digital assistant of MB Gaming Store owned by Mandip Mahato. Always speak in a polite, helpful manner. Assist clients with wallet balance inquiries, point loyalty conversions, and recommend popular game items like Free Fire diamonds."
-                        rows={4}
-                        className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2.5 px-4 text-xs font-medium focus:outline-none focus:border-blue-500 leading-relaxed"
-                      />
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => triggerToast('AI Prompt Configuration updated in server config.')}
-                    className="w-full bg-zinc-950 hover:bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer text-center"
-                  >
-                    Update bot configuration
-                  </button>
                 </div>
               </div>
             )}
