@@ -3089,6 +3089,23 @@ export default function App() {
               <span className="text-[10px] font-bold">Profile</span>
             </button>
 
+            {/* Admin Option (Visible only to authorized owners and team members) */}
+            {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/admin');
+                  const navEvent = new PopStateEvent('popstate');
+                  window.dispatchEvent(navEvent);
+                }}
+                className="flex flex-col items-center gap-1 cursor-pointer transition-colors text-zinc-400 hover:text-zinc-650"
+              >
+                <div className="p-1.5 rounded-xl transition-all hover:bg-zinc-100 text-zinc-500">
+                  <ShieldCheck className="w-5 h-5 text-blue-600 stroke-[2.5]" />
+                </div>
+                <span className="text-[10px] font-bold">Admin</span>
+              </button>
+            )}
+
           </div>
         </div>
       )}

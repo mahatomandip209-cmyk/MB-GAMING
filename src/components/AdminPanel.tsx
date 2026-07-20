@@ -596,19 +596,8 @@ export default function AdminPanel({
           { id: 'deposits', label: 'Deposits', icon: Wallet },
         ];
       } else {
-        // If Admin Option is Disabled for them (role is 'member'), they don't see Orders & Deposits
-        return [
-          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'users', label: 'Users', icon: Users },
-          { id: 'categories', label: 'Categories', icon: Tags },
-          { id: 'games', label: 'Games', icon: Gamepad2 },
-          { id: 'requirements', label: 'Requirements', icon: FileText },
-          { id: 'products', label: 'Products', icon: ShoppingBag },
-          { id: 'payments', label: 'Payments', icon: CreditCard },
-          { id: 'banners', label: 'Banners', icon: ImageIcon },
-          { id: 'legal', label: 'Legal', icon: FileText },
-          { id: 'settings', label: 'Settings', icon: Settings },
-        ];
+        // If Admin Option is Disabled for them, they do not have access to any tabs
+        return [];
       }
     } else {
       // General guest or unlisted user opens the Admin Panel: Show everything including Orders & Deposits by default
@@ -3967,7 +3956,7 @@ export default function AdminPanel({
                         Authorize New Team Member
                       </h3>
                       <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">
-                        Added users start as MEMBER. Use the Admin Option below to grant deposit & order privileges.
+                        Added team members can manage deposits and orders. You can toggle their access anytime.
                       </p>
                     </div>
                   </div>
@@ -3980,7 +3969,7 @@ export default function AdminPanel({
                     try {
                       await setDoc(doc(db, 'team_members', email), {
                         email,
-                        role: 'member', // locked to member on creation
+                        role: 'admin', // starts as admin with deposit & order management access enabled!
                         addedAt: new Date().toISOString()
                       });
                       setNewMemberEmail('');
@@ -4004,7 +3993,7 @@ export default function AdminPanel({
                       <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono font-bold">Permission Role</label>
                       <input
                         type="text"
-                        value="MEMBER"
+                        value="ADMIN"
                         disabled
                         className="w-full mt-1.5 bg-zinc-150/80 border border-zinc-200 text-zinc-400 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-black tracking-widest cursor-not-allowed text-center uppercase"
                       />
