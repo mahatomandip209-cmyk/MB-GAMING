@@ -74,10 +74,10 @@ async function checkForNewPushNotifications() {
             await setLastSeenId(latest.id);
             console.log('[Service Worker] Displaying background notification:', latest.title);
             
-            // Trigger native notification with custom MB Gaming Store logo!
+            // Trigger native notification with custom BNY TOPUP logo!
             await self.registration.showNotification(latest.title, {
               body: latest.body,
-              icon: latest.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+              icon: latest.iconUrl || "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg",
               badge: "https://img.icons8.com/ios-filled/96/ffffff/game-controller.png",
               vibrate: [300, 100, 300],
               sound: "https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3",
@@ -110,9 +110,9 @@ setInterval(() => {
 self.addEventListener('push', (event) => {
   console.log('[Service Worker] Push Received.');
   let payload = {
-    title: 'MB GAMING STORE Alert',
-    body: 'New update available on MB Gaming Store!',
-    icon: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+    title: 'BNY TOPUP Alert',
+    body: 'New update available on BNY TOPUP!',
+    icon: 'https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg',
     url: '/'
   };
 
@@ -124,10 +124,10 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = payload.title || 'MB GAMING STORE Alert';
+  const title = payload.title || 'BNY TOPUP Alert';
   const options = {
-    body: payload.body || 'New update available on MB Gaming Store!',
-    icon: payload.iconUrl || payload.icon || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+    body: payload.body || 'New update available on BNY TOPUP!',
+    icon: payload.iconUrl || payload.icon || 'https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg',
     badge: 'https://img.icons8.com/ios-filled/96/ffffff/game-controller.png',
     vibrate: [200, 100, 200],
     sound: 'https://raw.githubusercontent.com/yis6/Sound-files/master/Notification.mp3',

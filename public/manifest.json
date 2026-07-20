@@ -1,10 +1,10 @@
 {
-  "short_name": "MB GAMING",
-  "name": "MB GAMING STORE",
+  "short_name": "BNY TOPUP",
+  "name": "BNY TOPUP",
   "gcm_sender_id": "103953800507",
   "icons": [
     {
-      "src": "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+      "src": "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg",
       "type": "image/jpeg",
       "sizes": "512x512",
       "purpose": "any maskable"
@@ -14,5 +14,5 @@
   "background_color": "#ffffff",
   "display": "standalone",
   "theme_color": "#2563eb",
-  "description": "MB GAMING STORE - Your ultimate destination for gaming top-ups, subscriptions, and vouchers."
+  "description": "BNY TOPUP - Your ultimate destination for gaming top-ups, subscriptions, and vouchers."
 }

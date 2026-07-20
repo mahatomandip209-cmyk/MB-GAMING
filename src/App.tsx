@@ -840,6 +840,65 @@ export default function App() {
   const [walletError, setWalletError] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // PWA Install states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showPWAInstallBanner, setShowPWAInstallBanner] = useState<boolean>(false);
+
+  useEffect(() => {
+    // 1. Check if already running in standalone mode (installed)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    
+    // 2. Check if already dismissed
+    const isDismissed = localStorage.getItem('pwa_banner_dismissed') === 'true';
+
+    if (isStandalone || isDismissed) {
+      return;
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowPWAInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Fallback for iOS Safari which doesn't support 'beforeinstallprompt'
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (isIOS && !isStandalone && !isDismissed) {
+      setShowPWAInstallBanner(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        localStorage.setItem('pwa_banner_dismissed', 'true');
+        setShowPWAInstallBanner(false);
+      }
+      setDeferredPrompt(null);
+    } else {
+      // Manual prompt fallback / guide
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIOS) {
+        triggerToast("Tap the Safari 'Share' button at the bottom and select 'Add to Home Screen'! 📱");
+      } else {
+        triggerToast("Open browser options menu and click 'Install App' or 'Add to Home Screen'!");
+      }
+    }
+  };
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('pwa_banner_dismissed', 'true');
+    setShowPWAInstallBanner(false);
+  };
+
   // Initial Transaction History
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('mb_gaming_transactions');
@@ -3887,6 +3946,66 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* PWA INSTALLATION BANNER */}
+      <AnimatePresence>
+        {showPWAInstallBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[380px] z-[999] bg-white border border-zinc-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.15)] rounded-2xl p-4 flex flex-col gap-3"
+          >
+            <div className="flex items-start gap-3">
+              {/* Logo */}
+              <img
+                src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg"
+                alt="BNY TOPUP Logo"
+                referrerPolicy="no-referrer"
+                className="w-12 h-12 rounded-xl object-cover border border-zinc-150 shrink-0 shadow-sm"
+              />
+              
+              {/* App Info */}
+              <div className="flex-1 min-w-0 text-left">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-black text-zinc-900 tracking-tight text-zinc-900">BNY TOPUP</h5>
+                  {/* Cross Option */}
+                  <button
+                    type="button"
+                    onClick={handleDismissInstall}
+                    className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0 -mt-1 -mr-1"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed mt-1">
+                  Install BNY TOPUP on your screen for instant access to in-game top-ups and super-fast order processing!
+                </p>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDismissInstall}
+                className="flex-1 py-2 px-3 border border-zinc-200 hover:bg-zinc-50 text-zinc-600 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer bg-white"
+              >
+                No Thanks
+              </button>
+              <button
+                type="button"
+                onClick={handleInstallApp}
+                className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/10 cursor-pointer text-center"
+              >
+                Install Now
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
