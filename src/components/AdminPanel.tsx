@@ -136,7 +136,6 @@ export default function AdminPanel({
     | 'payments'
     | 'legal'
     | 'ai_chatbot'
-    | 'settings'
     | 'deposits'
     | 'team'
   >('dashboard');
@@ -530,7 +529,7 @@ export default function AdminPanel({
     esewaNumber: '9841234567',
     minDeposit: 100,
     esewa: { number: '9841234567', name: 'Mandip Mahato' },
-    khalti: { number: '9801234567', name: 'MB Gaming Digital Center' }
+    khalti: { number: '9801234567', name: 'BNY TOPUP Digital Center' }
   });
   const [banners, setBanners] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -540,12 +539,12 @@ export default function AdminPanel({
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [legalDocs, setLegalDocs] = useState<any>({
-    terms: 'By registering on MB Gaming Store, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
+    terms: 'By registering on BNY TOPUP, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
     refund: 'No refunds are permitted once a digital game recharge or voucher coupon has been officially approved and dispatched by the administrator.'
   });
 
   // Admin system credentials & branding details
-  const [storeName, setStoreName] = useState('MB Gaming Store');
+  const [storeName, setStoreName] = useState('BNY TOPUP');
   const [storeContact, setStoreContact] = useState('mandipmahato717@gmail.com');
   const [adminPassword, setAdminPassword] = useState('Mandip@#0');
 
@@ -586,7 +585,6 @@ export default function AdminPanel({
         { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'banners', label: 'Banners', icon: ImageIcon },
         { id: 'legal', label: 'Legal', icon: FileText },
-        { id: 'settings', label: 'Settings', icon: Settings },
         { id: 'team', label: 'Add Team Member', icon: UserPlus },
       ];
     } else if (memberDoc) {
@@ -613,7 +611,6 @@ export default function AdminPanel({
         { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'banners', label: 'Banners', icon: ImageIcon },
         { id: 'legal', label: 'Legal', icon: FileText },
-        { id: 'settings', label: 'Settings', icon: Settings },
         { id: 'team', label: 'Add Team Member', icon: UserPlus },
       ];
     }
@@ -840,7 +837,7 @@ export default function AdminPanel({
       title: pushTitle.trim(),
       body: pushBody.trim(),
       linkUrl: pushLink.trim() || "/",
-      iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg", // MB Gaming Logo
+      iconUrl: "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg", // BNY TOPUP Logo
       timestamp: Date.now()
     };
 
@@ -963,7 +960,7 @@ export default function AdminPanel({
             esewaNumber: data.esewaNumber || data.esewa?.number || '9841234567',
             minDeposit: data.minDeposit !== undefined ? data.minDeposit : 100,
             esewa: data.esewa || { number: '9841234567', name: 'Mandip Mahato' },
-            khalti: data.khalti || { number: '9801234567', name: 'MB Gaming Digital Center' }
+            khalti: data.khalti || { number: '9801234567', name: 'BNY TOPUP Digital Center' }
           });
         } else {
           const initialPayments = {
@@ -971,7 +968,7 @@ export default function AdminPanel({
             esewaNumber: '9841234567',
             minDeposit: 100,
             esewa: { number: '9841234567', name: 'Mandip Mahato' },
-            khalti: { number: '9801234567', name: 'MB Gaming Digital Center' }
+            khalti: { number: '9801234567', name: 'BNY TOPUP Digital Center' }
           };
           await setDoc(doc(db, 'settings', 'payments'), initialPayments);
           setPaymentSettings(initialPayments);
@@ -1023,7 +1020,7 @@ export default function AdminPanel({
           setAnnouncements(annSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         } else {
           const initialAnn = [
-            { id: 'ann-1', message: '📢 Welcome to MB Gaming Store! Instant UPI recharges available 24/7.', type: 'info' },
+            { id: 'ann-1', message: '📢 Welcome to BNY TOPUP! Instant UPI recharges available 24/7.', type: 'info' },
             { id: 'ann-2', message: '⚠️ eSewa payments might take up to 5 minutes to verify due to central banking gateway delay.', type: 'alert' }
           ];
           for (const a of initialAnn) {
@@ -1055,7 +1052,7 @@ export default function AdminPanel({
           if (data.storeContact) setStoreContact(data.storeContact);
           if (data.adminPassword) setAdminPassword(data.adminPassword);
         } else {
-          const initialGen = { storeName: 'MB Gaming Store', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0' };
+          const initialGen = { storeName: 'BNY TOPUP', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0' };
           await setDoc(doc(db, 'settings', 'general'), initialGen);
         }
 
@@ -1065,7 +1062,7 @@ export default function AdminPanel({
           setLegalDocs(legalDoc.data());
         } else {
           const initialLegal = {
-            terms: 'By registering on MB Gaming Store, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
+            terms: 'By registering on BNY TOPUP, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
             refund: 'No refunds are permitted once a digital game recharge or voucher coupon has been officially approved and dispatched by the administrator.'
           };
           await setDoc(doc(db, 'settings', 'legal'), initialLegal);
@@ -1408,10 +1405,10 @@ export default function AdminPanel({
     const updatedProduct: Product = {
       id: fid,
       name: formName,
-      provider: formProvider || formName || 'MB Gaming',
+      provider: formProvider || formName || 'BNY TOPUP',
       category: formCategory,
       imagePlaceholderColor: 'from-blue-600 to-indigo-700',
-      description: `Premium ${formName} top-up and vouchers from MB GAMING STORE. Instantly processed.`,
+      description: `Premium ${formName} top-up and vouchers from BNY TOPUP. Instantly processed.`,
       minAmount: Number(formMinAmount) || 100,
       maxAmount: Number(formMaxAmount) || 5000,
       inputLabel: formInputLabel || 'Player ID / UID',
@@ -1500,10 +1497,10 @@ export default function AdminPanel({
 
   const handleSaveBanner = async (e: FormEvent) => {
     e.preventDefault();
-    if (!bannerFormTitle.trim()) {
-      triggerToast('Title is required!');
-      return;
-    }
+    
+    const finalTitle = bannerFormTitle.trim() || 'Banner';
+    const finalTagline = bannerFormTagline.trim() || '';
+    const finalBadge = bannerFormBadge.trim() || '';
 
     let updatedBanners = [...banners];
     const img = bannerFormImgUrl.trim() || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
@@ -1512,9 +1509,9 @@ export default function AdminPanel({
       // Update existing
       const updated = {
         ...editingBanner,
-        title: bannerFormTitle,
-        tagline: bannerFormTagline,
-        badge: bannerFormBadge,
+        title: finalTitle,
+        tagline: finalTagline,
+        badge: finalBadge,
         imgUrl: img,
         imageUrl: img, // keep both for safety
         redirect: bannerFormRedirect,
@@ -1535,9 +1532,9 @@ export default function AdminPanel({
       const newId = 'ban-' + Date.now();
       const newBanner = {
         id: newId,
-        title: bannerFormTitle,
-        tagline: bannerFormTagline,
-        badge: bannerFormBadge,
+        title: finalTitle,
+        tagline: finalTagline,
+        badge: finalBadge,
         imgUrl: img,
         imageUrl: img,
         redirect: bannerFormRedirect,
@@ -3802,7 +3799,7 @@ export default function AdminPanel({
                               {ticket.replies.map((reply: string, i: number) => (
                                 <div key={i} className="flex gap-2.5 items-start justify-end">
                                   <div className="bg-zinc-900 text-white p-3 rounded-2xl rounded-tr-none max-w-md">
-                                    <span className="text-[9.5px] font-black text-zinc-400 block mb-1">MB Gaming Support (Admin)</span>
+                                    <span className="text-[9.5px] font-black text-zinc-400 block mb-1">BNY TOPUP Support (Admin)</span>
                                     <p className="text-xs font-semibold leading-relaxed">{reply}</p>
                                   </div>
                                   <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center font-black text-[10px]">
@@ -3892,53 +3889,6 @@ export default function AdminPanel({
               </div>
             )}
 
-            {/* 13. SYSTEM SETTINGS TAB */}
-            {activeTab === 'settings' && (
-              <div className="space-y-4 max-w-xl">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">System Settings</h2>
-                  <p className="text-xs text-zinc-500 font-semibold mt-0.5">Configure system credentials, storefront branding name, and contact info.</p>
-                </div>
-
-                <div className="bg-white border border-zinc-200 p-6 rounded-3xl space-y-4 shadow-2xs">
-                  <h3 className="text-xs font-black uppercase text-zinc-800 tracking-tight">General Branding</h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-zinc-400 font-mono">Store Name Prefix</label>
-                      <input
-                        type="text"
-                        value={storeName}
-                        onChange={async (e) => {
-                          setStoreName(e.target.value);
-                          localStorage.setItem('mb_store_name', e.target.value);
-                          try {
-                            await setDoc(doc(db, 'settings', 'general'), { storeName: e.target.value, storeContact, adminPassword });
-                          } catch (err) {}
-                        }}
-                        className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-black uppercase text-zinc-400 font-mono">Store Contact Email</label>
-                      <input
-                        type="email"
-                        value={storeContact}
-                        onChange={async (e) => {
-                          setStoreContact(e.target.value);
-                          localStorage.setItem('mb_store_contact', e.target.value);
-                          try {
-                            await setDoc(doc(db, 'settings', 'general'), { storeName, storeContact: e.target.value, adminPassword });
-                          } catch (err) {}
-                        }}
-                        className="w-full mt-1.5 bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3.5 text-xs focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* 14. ADD TEAM MEMBER TAB */}
             {activeTab === 'team' && (
@@ -4519,54 +4469,16 @@ export default function AdminPanel({
             {/* Modal body Form */}
             <form onSubmit={handleSaveBanner} className="p-5 space-y-4 text-xs font-medium max-h-[80vh] overflow-y-auto">
               
-              {/* Banner Title */}
+              {/* Optional Redirect Link */}
               <div className="space-y-1">
-                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Banner Title</label>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Redirect URL Link (Optional)</label>
                 <input
                   type="text"
-                  required
-                  value={bannerFormTitle}
-                  onChange={(e) => setBannerFormTitle(e.target.value)}
-                  placeholder="e.g. Free Fire Double Diamonds Top-up Bonus"
+                  value={bannerFormRedirect}
+                  onChange={(e) => setBannerFormRedirect(e.target.value)}
+                  placeholder="e.g. /category/top-up or custom website link"
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
                 />
-              </div>
-
-              {/* Tagline / Subtitle */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Tagline / Subtitle (Optional)</label>
-                <input
-                  type="text"
-                  value={bannerFormTagline}
-                  onChange={(e) => setBannerFormTagline(e.target.value)}
-                  placeholder="e.g. Double your shells and receive free credits inside your store wallet!"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Badge/Category & Optional Redirect Link */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Badge Label (Optional)</label>
-                  <input
-                    type="text"
-                    value={bannerFormBadge}
-                    onChange={(e) => setBannerFormBadge(e.target.value)}
-                    placeholder="e.g. EXCLUSIVE or FLASH SALE"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Redirect URL Link (Optional)</label>
-                  <input
-                    type="text"
-                    value={bannerFormRedirect}
-                    onChange={(e) => setBannerFormRedirect(e.target.value)}
-                    placeholder="e.g. /category/top-up or custom website link"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500"
-                  />
-                </div>
               </div>
 
               {/* Banner Image config */}

@@ -125,12 +125,12 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
               title: "🎉 Registration Successful!",
               body: `Welcome, ${name.trim()}! Your account has been registered successfully.`,
               linkUrl: "/",
-              iconUrl: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"
+              iconUrl: "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg"
             })
           }).catch(() => {});
         } catch (e) {}
 
-        triggerToast("Registration successful! Welcome to MB Gaming.");
+        triggerToast("Registration successful! Welcome to BNY TOPUP.");
         localStorage.setItem('mb_current_user', JSON.stringify(newUserProfile));
         onSuccess(newUserProfile);
       }
@@ -162,7 +162,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         </div>
         <div className="space-y-1">
           <h2 className="text-xl font-black text-zinc-950 tracking-tight">
-            {isLogin ? "Sign In to MB Gaming" : "Create Gamer Account"}
+            {isLogin ? "Sign In to BNY TOPUP" : "Create Gamer Account"}
           </h2>
         </div>
       </div>

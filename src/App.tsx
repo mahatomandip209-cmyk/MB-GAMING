@@ -296,6 +296,7 @@ export default function App() {
 
   // Active Promo Index for the main slider
   const [promoIndex, setPromoIndex] = useState<number>(0);
+  const [banners, setBanners] = useState<any[]>(PROMO_BANNERS);
 
   // Client Notification states
   const [serverNotifications, setServerNotifications] = useState<any[]>([]);
@@ -580,6 +581,19 @@ export default function App() {
       console.error("Real-time categories listener failed:", error);
     });
 
+    // 3c. Real-time banners listener
+    const unsubscribeBanners = onSnapshot(collection(db, "banners"), (snapshot) => {
+      if (!snapshot.empty) {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter((b: any) => !b.deleted) as any[];
+        setBanners(list.length > 0 ? list : PROMO_BANNERS);
+      } else {
+        setBanners(PROMO_BANNERS);
+      }
+    }, (error) => {
+      console.error("Real-time banners listener failed:", error);
+      setBanners(PROMO_BANNERS);
+    });
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((reg) => {
@@ -622,6 +636,7 @@ export default function App() {
       unsubscribePayments();
       unsubscribeProducts();
       unsubscribeCategories();
+      unsubscribeBanners();
     };
   }, []);
 
@@ -787,9 +802,9 @@ export default function App() {
         // Show immediate confirmation message using Service Worker
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;
-          reg.showNotification("MB GAMING STORE", {
+          reg.showNotification("BNY TOPUP", {
             body: "You will now receive alerts for recharges & flash sales! 🔔",
-            icon: "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg",
+            icon: "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg",
             badge: "https://img.icons8.com/ios-filled/96/ffffff/game-controller.png"
           });
         }
@@ -1311,19 +1326,19 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-4 py-3 sm:px-6">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             
-            {/* Logo element representing MB GAMING */}
+            {/* Logo element representing BNY TOPUP */}
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setSelectedCategory('all')}>
               <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                 <img 
-                  src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
-                  alt="MB GAMING STORE Logo" 
+                  src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg" 
+                  alt="BNY TOPUP Logo" 
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
-                  MB GAMING
+                  BNY TOPUP
                 </span>
                 <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
                   S T O R E
@@ -1558,15 +1573,15 @@ export default function App() {
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                       <img 
-                        src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
-                        alt="MB GAMING Logo" 
+                        src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg" 
+                        alt="BNY TOPUP Logo" 
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
-                        MB Gaming Store
+                        BNY TOPUP
                       </span>
                       <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mt-1">
                         NEPAL'S PREMIUM TOP-UP
@@ -1634,7 +1649,7 @@ export default function App() {
               {/* Bottom Copyright Area */}
               <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
                 <div>
-                  © 2026 <span className="text-zinc-750 font-extrabold">MB Gaming Store</span>. All rights reserved.
+                  © 2026 <span className="text-zinc-750 font-extrabold">BNY TOPUP</span>. All rights reserved.
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Developed by</span>
@@ -1656,80 +1671,134 @@ export default function App() {
           <>
             {activeBottomNav === 'home' && (
           <>
-            {/* WEEKEND SPECIAL PROMO SLIDER BANNER WITH CRYSTALS/DIAMONDS (SMALL COMPACT REFRESHED HEIGHT) */}
-            <section className="relative overflow-hidden rounded-[24px] bg-neutral-950 text-white h-[140px] sm:h-[170px] flex items-center shadow-md border border-zinc-900">
+            {/* WEEKEND SPECIAL PROMO SLIDER BANNER WITH DYNAMIC FIRESTORE RECONCILIATION */}
+            {banners.length > 0 && (() => {
+              const activeBanner = banners[promoIndex] || banners[0] || {};
+              const bannerImg = activeBanner.imageUrl || activeBanner.imgUrl;
               
-              {/* STYLISH CSS CYG/BLUE DEEP GLOWING DIAMONDS AND PARTICLES EMULATION */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-900 to-black pointer-events-none" />
-              
-              {/* Glowing emerald orb */}
-              <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blue-500/15 blur-3xl pointer-events-none" />
-              {/* Glowing cyan orb */}
-              <div className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
-              
-              {/* Custom floating gemstone mockups scaled down to fit smaller banner */}
-              <div className="absolute right-[15%] top-[25%] w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-600 opacity-60 rounded-lg blur-[1px] rotate-45 transform pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.4)] animate-pulse" />
-              <div className="absolute right-[8%] bottom-[15%] w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 opacity-50 rounded-tr-2xl rotate-12 blur-[1px] pointer-events-none shadow-[0_0_15px_rgba(6,182,212,0.3)]" />
-              
-              {/* Text Content */}
-              <div className="relative z-10 px-6 sm:px-12 py-3 sm:py-5 max-w-md sm:max-w-xl space-y-1.5 sm:space-y-2">
-                {PROMO_BANNERS[promoIndex].subTitle && (
-                  <span className="inline-block text-[9px] font-bold tracking-widest text-blue-400 uppercase leading-none font-mono">
-                    {PROMO_BANNERS[promoIndex].subTitle}
-                  </span>
-                )}
-                
-                <h3 className="text-base sm:text-xl md:text-2xl font-black font-display tracking-tight text-white leading-tight">
-                  {PROMO_BANNERS[promoIndex].title}
-                </h3>
+              // We consider it has overlays only if the title is not the default 'Banner' or 'Ad Banner' and isn't empty
+              const hasText = activeBanner.title && 
+                              activeBanner.title !== 'Banner' && 
+                              activeBanner.title !== 'Ad Banner' &&
+                              activeBanner.title.trim() !== '';
 
-                <p className="text-zinc-400 text-[10px] sm:text-xs leading-relaxed max-w-[280px] sm:max-w-md line-clamp-1 sm:line-clamp-2">
-                  {PROMO_BANNERS[promoIndex].tagline}
-                </p>
+              return (
+                <section className="relative overflow-hidden rounded-[24px] bg-neutral-950 text-white h-[180px] sm:h-[240px] md:h-[280px] flex items-center shadow-md border border-zinc-900">
+                  {/* BACKGROUND GRAPHIC */}
+                  {bannerImg ? (
+                    <img 
+                      src={bannerImg} 
+                      alt={activeBanner.title || "Banner Image"} 
+                      referrerPolicy="no-referrer"
+                      className="absolute inset-0 w-full h-full object-cover transition-all duration-500" 
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-900 to-black pointer-events-none" />
+                  )}
 
-                <div className="pt-1">
-                  <button 
-                    onClick={() => {
-                      setSelectedCategory('top-up');
-                      triggerToast('Filtered for in-game topups!');
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] sm:text-[10px] font-extrabold tracking-wider uppercase transition-all shadow-md active:scale-95"
-                  >
-                    🚀 {PROMO_BANNERS[promoIndex].buttonText}
-                  </button>
-                </div>
-              </div>
+                  {/* Dark overlay for readability (darker when there is overlay text) */}
+                  <div className={`absolute inset-0 pointer-events-none transition-all ${hasText ? 'bg-black/45' : 'bg-black/10'}`} />
 
-              {/* Left Slider Arrow Navigation */}
-              <button
-                onClick={() => setPromoIndex(prev => (prev === 0 ? PROMO_BANNERS.length - 1 : prev - 1))}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none"
-                aria-label="Previous Promo"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+                  {/* GLOWING AMBIENT DECORATION (Only when no custom image background is set) */}
+                  {!bannerImg && (
+                    <>
+                      <div className="absolute -top-12 -right-12 w-52 h-52 rounded-full bg-blue-500/15 blur-3xl pointer-events-none animate-pulse" />
+                      <div className="absolute -bottom-12 -left-12 w-52 h-52 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+                      <div className="absolute right-[15%] top-[25%] w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-600 opacity-60 rounded-lg blur-[1px] rotate-45 transform pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.4)] animate-pulse" />
+                      <div className="absolute right-[8%] bottom-[15%] w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 opacity-50 rounded-tr-2xl rotate-12 blur-[1px] pointer-events-none shadow-[0_0_15px_rgba(6,182,212,0.3)]" />
+                    </>
+                  )}
 
-              {/* Right Slider Arrow Navigation */}
-              <button
-                onClick={() => setPromoIndex(prev => (prev === PROMO_BANNERS.length - 1 ? 0 : prev + 1))}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none"
-                aria-label="Next Promo"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                  {/* Optional click-through redirect URL link */}
+                  {activeBanner.redirect && (
+                    <a 
+                      href={activeBanner.redirect}
+                      className="absolute inset-0 z-10 cursor-pointer"
+                      onClick={(e) => {
+                        if (activeBanner.redirect.startsWith('/') || activeBanner.redirect.startsWith('category')) {
+                          e.preventDefault();
+                          setSelectedCategory('top-up');
+                          triggerToast('Loading Special Deals & Top-Ups...');
+                        }
+                      }}
+                      title={activeBanner.title || "Special Deal"}
+                    />
+                  )}
 
-              {/* Exact Slide Indicators at bottom center */}
-              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-                {PROMO_BANNERS.map((_, idx) => (
+                  {/* Overlay Text Content - rendered only if valid title or tagline exists */}
+                  {hasText && (
+                    <div className="relative z-10 px-6 sm:px-12 py-4 sm:py-6 max-w-md sm:max-w-xl space-y-2 sm:space-y-3 bg-gradient-to-r from-black/80 via-black/40 to-transparent h-full flex flex-col justify-center text-left">
+                      {activeBanner.badge && (
+                        <span className="inline-block text-[9px] sm:text-[10px] font-black tracking-widest text-blue-400 uppercase leading-none font-mono">
+                          {activeBanner.badge}
+                        </span>
+                      )}
+                      
+                      <h3 className="text-lg sm:text-2xl md:text-3xl font-black font-display tracking-tight text-white leading-tight">
+                        {activeBanner.title}
+                      </h3>
+
+                      {activeBanner.tagline && (
+                        <p className="text-zinc-200 text-[10px] sm:text-xs leading-relaxed max-w-[280px] sm:max-w-md line-clamp-2 font-semibold">
+                          {activeBanner.tagline}
+                        </p>
+                      )}
+
+                      <div className="pt-1.5">
+                        <button 
+                          onClick={() => {
+                            setSelectedCategory('top-up');
+                            triggerToast('Browsing special products...');
+                          }}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] sm:text-[11px] font-black tracking-wider uppercase transition-all shadow-md active:scale-95 cursor-pointer"
+                        >
+                          🚀 {activeBanner.buttonText || 'Recharge Now'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Left Slider Arrow Navigation */}
                   <button
-                    key={idx}
-                    onClick={() => setPromoIndex(idx)}
-                    className={`h-1.5 transition-all duration-300 rounded-full ${idx === promoIndex ? 'w-4 bg-blue-500' : 'w-1.5 bg-zinc-600'}`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </section>
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPromoIndex(prev => (prev === 0 ? banners.length - 1 : prev - 1));
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none z-20 hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label="Previous Promo"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  {/* Right Slider Arrow Navigation */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPromoIndex(prev => (prev === banners.length - 1 ? 0 : prev + 1));
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white backdrop-blur-sm transition-all focus:outline-none z-20 hover:scale-105 active:scale-95 cursor-pointer"
+                    aria-label="Next Promo"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+
+                  {/* Slide Indicators at the bottom */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/25 px-2.5 py-1 rounded-full backdrop-blur-sm">
+                    {banners.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPromoIndex(idx);
+                        }}
+                        className={`h-1.5 transition-all duration-300 rounded-full ${idx === promoIndex ? 'w-4 bg-blue-500' : 'w-1.5 bg-zinc-600'}`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* FULLY COVERED SEARCH BOX CONTAINER */}
             <section className="bg-white rounded-2xl p-1 shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-zinc-150">
@@ -1919,7 +1988,7 @@ export default function App() {
             <section className="pt-10 pb-6 border-t border-zinc-100">
               <div className="text-center space-y-2 mb-10">
                 <h3 className="text-base sm:text-lg font-black tracking-widest text-zinc-900 uppercase">
-                  WHY CHOOSE <span className="text-blue-600">MB GAMING</span>?
+                  WHY CHOOSE <span className="text-blue-600">BNY TOPUP</span>?
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-500 max-w-lg mx-auto font-medium">
                   We provide the fastest, most secure, and affordable top-up service.
@@ -2016,14 +2085,14 @@ export default function App() {
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                       <img 
-                        src="https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg" 
-                        alt="MB GAMING STORE Logo" 
+                        src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg" 
+                        alt="BNY TOPUP Logo" 
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-zinc-950 font-display tracking-tight leading-none">
-                        MB GAMING
+                        BNY TOPUP
                       </span>
                       <span className="text-[9.5px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
                         S T O R E
@@ -2034,7 +2103,7 @@ export default function App() {
                   <span className="block text-[10px] font-black uppercase tracking-wider text-blue-600">NEPAL'S PREMIUM TOP-UP</span>
                   
                   <p className="text-[11px] leading-relaxed text-zinc-500 font-medium">
-                    Welcome to MB Gaming Store, your trusted destination for digital gaming top-ups and gift cards. We provide fast and secure delivery of PUBG Mobile UC, Free Fire Diamonds, Mobile Legends Diamonds, UniPin Vouchers, iTunes Gift Cards, Razer Gold PINs, and other digital products at competitive prices. Enjoy instant service, reliable support, and convenient payment options for all your gaming and digital needs.
+                    Welcome to BNY TOPUP, your trusted destination for digital gaming top-ups and gift cards. We provide fast and secure delivery of PUBG Mobile UC, Free Fire Diamonds, Mobile Legends Diamonds, UniPin Vouchers, iTunes Gift Cards, Razer Gold PINs, and other digital products at competitive prices. Enjoy instant service, reliable support, and convenient payment options for all your gaming and digital needs.
                   </p>
 
                   {/* Social Buttons */}
@@ -2114,7 +2183,7 @@ export default function App() {
               {/* Bottom Copyright Area */}
               <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
                 <div>
-                  © 2026 <span className="text-zinc-750 font-extrabold">MB Gaming Store</span>. All rights reserved.
+                  © 2026 <span className="text-zinc-750 font-extrabold">BNY TOPUP</span>. All rights reserved.
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Developed by</span>
@@ -3254,7 +3323,7 @@ export default function App() {
                   <ol className="text-[10px] text-amber-800/90 space-y-1 pl-4 list-decimal font-semibold">
                     <li>Tap the <strong className="text-amber-900 font-extrabold">Share button</strong> at the bottom of Safari.</li>
                     <li>Choose <strong className="text-amber-900 font-extrabold">"Add to Home Screen"</strong>.</li>
-                    <li>Open MB Gaming Store from your Home Screen and click <strong className="text-amber-900 font-extrabold">"Enable Push"</strong>.</li>
+                    <li>Open BNY TOPUP from your Home Screen and click <strong className="text-amber-900 font-extrabold">"Enable Push"</strong>.</li>
                   </ol>
                 </div>
               )}
@@ -3288,7 +3357,7 @@ export default function App() {
                         className="p-3.5 bg-white hover:bg-zinc-50 border border-zinc-150 rounded-2xl transition-all cursor-pointer flex items-start gap-3 group text-left"
                       >
                         <div className="w-8 h-8 rounded-lg overflow-hidden border border-zinc-150 bg-zinc-50 shrink-0 flex items-center justify-center">
-                          <img src={notif.iconUrl || "https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg"} alt="logo" className="w-full h-full object-cover" />
+                          <img src={notif.iconUrl || "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg"} alt="logo" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 space-y-0.5">
                           <h5 className="text-xs font-extrabold text-zinc-900 group-hover:text-blue-600 transition-colors">{notif.title}</h5>
@@ -3304,7 +3373,7 @@ export default function App() {
               </div>
 
               <div className="pt-2 border-t border-zinc-100 flex items-center justify-center text-[9px] font-bold text-zinc-400 tracking-wider uppercase shrink-0">
-                🔒 Secured by MB Gaming PWA Gateway
+                🔒 Secured by BNY TOPUP PWA Gateway
               </div>
             </motion.div>
           </div>
