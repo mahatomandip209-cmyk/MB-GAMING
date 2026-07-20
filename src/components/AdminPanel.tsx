@@ -561,13 +561,28 @@ export default function AdminPanel({
         { id: 'settings', label: 'Settings', icon: Settings },
         { id: 'team', label: 'Add Team Member', icon: UserPlus },
       ];
-    } else if (isAdminOptionEnabled) {
-      return [
-        { id: 'orders', label: 'Orders', icon: ShoppingCart },
-        { id: 'deposits', label: 'Deposits', icon: Wallet },
-      ];
+    } else if (memberDoc) {
+      if (isAdminOptionEnabled) {
+        return [
+          { id: 'orders', label: 'Orders', icon: ShoppingCart },
+          { id: 'deposits', label: 'Deposits', icon: Wallet },
+        ];
+      } else {
+        // If Admin Option is Disabled for them (role is 'member'), they don't see Orders & Deposits
+        return [
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'users', label: 'Users', icon: Users },
+          { id: 'categories', label: 'Categories', icon: Tags },
+          { id: 'games', label: 'Games', icon: Gamepad2 },
+          { id: 'requirements', label: 'Requirements', icon: FileText },
+          { id: 'products', label: 'Products', icon: ShoppingBag },
+          { id: 'payments', label: 'Payments', icon: CreditCard },
+          { id: 'banners', label: 'Banners', icon: ImageIcon },
+          { id: 'legal', label: 'Legal', icon: FileText },
+          { id: 'settings', label: 'Settings', icon: Settings },
+        ];
+      }
     } else {
-      // Normal guest or team member (MEMBER) with Admin Option disabled
       return [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'users', label: 'Users', icon: Users },
