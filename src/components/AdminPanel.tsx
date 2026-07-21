@@ -134,6 +134,29 @@ export default function AdminPanel({
     
     return false;
   });
+
+  useEffect(() => {
+    if (currentUser?.email) {
+      const email = currentUser.email.toLowerCase().trim();
+      const superAdmins = ['mandipmahato717@gmail.com', 'bnyshopadminpanel@gmail.com', 'bnyadminpanel@hotmail.com'];
+      const isTeamMember = teamMembersProp && teamMembersProp.some(m => m.toLowerCase() === email);
+      const isCachedTeam = (() => {
+        try {
+          const cached = localStorage.getItem('mb_team_member_emails');
+          if (cached) {
+            const parsed = JSON.parse(cached) as string[];
+            return parsed.some(m => m.toLowerCase() === email);
+          }
+        } catch {}
+        return false;
+      })();
+      
+      if (superAdmins.includes(email) || isTeamMember || isCachedTeam || localStorage.getItem('mb_admin_logged_in') === 'true') {
+        setIsLoggedIn(true);
+      }
+    }
+  }, [currentUser, teamMembersProp]);
+
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -474,20 +497,32 @@ export default function AdminPanel({
       let price: number | null = null;
       let name = '';
 
-      // Match the last sequence of digits on the line, potentially preceded by delimiters and currency symbols
-      const priceRegex = /(?:[-:=,–—\s]|Rs\.?|NPR|💸|💵|Rs|\$)*\s*(\d+)\s*[^a-zA-Z0-9()]*$/i;
-      const match = line.match(priceRegex);
+      // Check if line contains a price indicator like "Price:" or "Rs" or similar
+      const priceIndicatorMatch = line.match(/(?:price|rate|cost|rs\.?|npr)\s*[:=-]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)/i);
 
-      if (match && match.index !== undefined) {
-        price = Number(match[1]);
-        name = line.substring(0, match.index).trim();
+      if (priceIndicatorMatch && priceIndicatorMatch.index !== undefined) {
+        const priceStr = priceIndicatorMatch[1].replace(/,/g, '');
+        price = Number(priceStr);
+        name = line.substring(0, priceIndicatorMatch.index).trim();
       } else {
-        // Fallback: search for the last sequence of digits followed by any non-alphanumeric, non-parenthesis characters
-        const lastNumRegex = /(\d+)[^a-zA-Z0-9()]*$/;
-        const lastNumMatch = line.match(lastNumRegex);
-        if (lastNumMatch && lastNumMatch.index !== undefined) {
-          price = Number(lastNumMatch[1]);
-          name = line.substring(0, lastNumMatch.index).trim();
+        // Match a price pattern at the end of the line which can contain commas (e.g. Rs. 1,350)
+        // Note that we exclude comma from the leading delimiter set to avoid matching part of the price
+        const endPriceRegex = /(?:[-:=–—\s]|Rs\.?|NPR|💸|💵|Rs|\$)+\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*[^a-zA-Z0-9()]*$/i;
+        const match = line.match(endPriceRegex);
+
+        if (match && match.index !== undefined) {
+          const priceStr = match[1].replace(/,/g, '');
+          price = Number(priceStr);
+          name = line.substring(0, match.index).trim();
+        } else {
+          // Ultimate fallback: find any last digits group
+          const lastDigitsRegex = /(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)\s*[^a-zA-Z0-9()]*$/;
+          const matchFallback = line.match(lastDigitsRegex);
+          if (matchFallback && matchFallback.index !== undefined) {
+            const priceStr = matchFallback[1].replace(/,/g, '');
+            price = Number(priceStr);
+            name = line.substring(0, matchFallback.index).trim();
+          }
         }
       }
 
@@ -1433,7 +1468,7 @@ export default function AdminPanel({
       inputLabel: formInputLabel || 'Player ID / UID',
       inputPlaceholder: formInputPlaceholder || 'e.g. 123456789',
       iconName: formIconName || 'gamepad',
-      imageUrl: formImageUrl.trim() || undefined,
+      imageUrl: formImageUrl.trim() || "",
       popular: formPopular || false,
       packages: editingProduct?.packages || [],
       requirements: editingProduct?.requirements || []

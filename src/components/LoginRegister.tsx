@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, Gamepad2 } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, Gamepad2, Phone } from 'lucide-react';
 import { 
   auth, 
   db, 
@@ -23,6 +23,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
   const [password, setPassword] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [whatsapp, setWhatsapp] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -128,6 +129,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         const newUserProfile = {
           name: name.trim(),
           email: emailLower,
+          whatsapp: whatsapp.trim() || "",
           walletBalance: 2500,
           loyaltyPoints: 0,
           registered: new Date().toISOString().split('T')[0]
@@ -260,6 +262,28 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
             />
           </div>
         </div>
+
+        {/* Optional WhatsApp Number field (Register only, placed right under email) */}
+        {!isLogin && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-wider">
+                WhatsApp Number
+              </label>
+              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Optional</span>
+            </div>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="e.g. +977 98XXXXXXXX"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner-sm"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Password field */}
         <div className="space-y-1.5">
