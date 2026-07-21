@@ -1181,6 +1181,7 @@ export default function App() {
         categories={categories}
         setCategories={setCategories}
         currentUser={currentUser || { name: 'Administrator', email: 'bnyshopadminpanel@gmail.com', walletBalance: 0, loyaltyPoints: 0 }}
+        teamMembers={teamMembers}
         onClose={() => {
           window.history.pushState({}, '', '/');
           const navEvent = new PopStateEvent('popstate');
@@ -2761,7 +2762,7 @@ export default function App() {
                   <div className="flex items-center gap-3.5">
                     {/* User Profile Avatar Image from Unsplash or initials */}
                     <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-blue-500 shrink-0 shadow-md flex items-center justify-center bg-blue-50">
-                      {(currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com') ? (
+                      {(currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || currentUser.email.toLowerCase() === 'bnyadminpanel@hotmail.com') ? (
                         <img 
                           src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&h=150&q=80" 
                           alt={currentUser.name} 
@@ -2800,7 +2801,7 @@ export default function App() {
                 <div className="bg-white rounded-2xl border border-zinc-200/80 p-3.5 space-y-2.5">
                   
                   {/* Admin Panel Option (Visible only to authorized members) */}
-                  {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
+                  {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || currentUser.email.toLowerCase() === 'bnyadminpanel@hotmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
                     <div 
                       onClick={() => {
                         window.history.pushState({}, '', '/admin');
@@ -3138,7 +3139,7 @@ export default function App() {
             </button>
 
             {/* Admin Option (Visible only to authorized owners and team members) */}
-            {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
+            {currentUser && (currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || currentUser.email.toLowerCase() === 'bnyadminpanel@hotmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
               <button
                 onClick={() => {
                   window.history.pushState({}, '', '/admin');

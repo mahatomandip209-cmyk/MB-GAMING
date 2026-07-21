@@ -77,6 +77,7 @@ interface AdminPanelProps {
   categories: { id: string; name: string }[];
   setCategories: React.Dispatch<React.SetStateAction<{ id: string; name: string }[]>>;
   currentUser?: any;
+  teamMembers?: string[];
 }
 
 export default function AdminPanel({
@@ -89,7 +90,8 @@ export default function AdminPanel({
   setWalletBalance,
   categories,
   setCategories,
-  currentUser
+  currentUser,
+  teamMembers: teamMembersProp
 }: AdminPanelProps) {
   // Helper helper to draw corresponding icon
   const renderProductIcon = (iconName: string, className = "w-5 h-5") => {
@@ -112,7 +114,26 @@ export default function AdminPanel({
   };
 
   // Authentication states
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (!currentUser?.email) return false;
+    const email = currentUser.email.toLowerCase().trim();
+    const superAdmins = ['mandipmahato717@gmail.com', 'bnyshopadminpanel@gmail.com', 'bnyadminpanel@hotmail.com'];
+    if (superAdmins.includes(email)) return true;
+    
+    // Check prop teamMembersProp
+    if (teamMembersProp && teamMembersProp.some(m => m.toLowerCase() === email)) return true;
+    
+    // Check localStorage as fallback
+    try {
+      const cached = localStorage.getItem('mb_team_member_emails');
+      if (cached) {
+        const parsed = JSON.parse(cached) as string[];
+        if (parsed.some(m => m.toLowerCase() === email)) return true;
+      }
+    } catch {}
+    
+    return false;
+  });
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -562,14 +583,14 @@ export default function AdminPanel({
   const [newMemberRole, setNewMemberRole] = useState<'admin' | 'member'>('admin');
 
   // Enforce access control for non-admin team members
-  const isPrimaryOwner = currentUser?.email?.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser?.email?.toLowerCase() === 'bnyshopadminpanel@gmail.com';
+  const isPrimaryOwner = currentUser?.email?.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser?.email?.toLowerCase() === 'bnyshopadminpanel@gmail.com' || currentUser?.email?.toLowerCase() === 'bnyadminpanel@hotmail.com';
   const currentUserTeamDoc = teamMembers.find(t => t.email?.toLowerCase() === currentUser?.email?.toLowerCase());
   const hasControlAccess = isPrimaryOwner || currentUserTeamDoc?.role === 'admin';
 
   const getAvailableTabs = () => {
     const email = currentUser?.email?.toLowerCase();
-    const isOwner = email === 'mandipmahato717@gmail.com' || email === 'bnyshopadminpanel@gmail.com';
-    const memberDoc = teamMembers.find(t => t.email?.toLowerCase() === email);
+    const isOwner = email === 'mandipmahato717@gmail.com' || email === 'bnyshopadminpanel@gmail.com' || email === 'bnyadminpanel@hotmail.com';
+    const memberDoc = teamMembers.find(t => t.email?.toLowerCase() === email || t.id?.toLowerCase() === email);
     const isAdminOptionEnabled = memberDoc?.role === 'admin';
 
     if (isOwner) {
@@ -4231,70 +4252,7 @@ export default function AdminPanel({
                 </select>
               </div>
 
-              {/* Min and Max Amount */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Min Price (NPR)</label>
-                  <input
-                    type="number"
-                    value={formMinAmount}
-                    onChange={(e) => setFormMinAmount(Number(e.target.value))}
-                    placeholder="e.g. 100"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Max Price (NPR)</label>
-                  <input
-                    type="number"
-                    value={formMaxAmount}
-                    onChange={(e) => setFormMaxAmount(Number(e.target.value))}
-                    placeholder="e.g. 5000"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
-                  />
-                </div>
-              </div>
-
-              {/* Default Input Label & Placeholder */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Player ID Field Label</label>
-                  <input
-                    type="text"
-                    value={formInputLabel}
-                    onChange={(e) => setFormInputLabel(e.target.value)}
-                    placeholder="e.g. Player ID / UID"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">ID Placeholder</label>
-                  <input
-                    type="text"
-                    value={formInputPlaceholder}
-                    onChange={(e) => setFormInputPlaceholder(e.target.value)}
-                    placeholder="e.g. e.g. 123456789"
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
-                  />
-                </div>
-              </div>
-
-              {/* Icon Name Selection */}
-              <div className="space-y-1">
-                <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-500">Launcher Icon Type</label>
-                <select
-                  value={formIconName}
-                  onChange={(e) => setFormIconName(e.target.value as any)}
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-blue-500 font-extrabold"
-                >
-                  <option value="gamepad">Gamepad / Controller</option>
-                  <option value="phone">Smartphone / Mobile</option>
-                  <option value="tv">Television / Streaming</option>
-                  <option value="layers">Layers / Design</option>
-                  <option value="shopping">Shopping Bag / Voucher</option>
-                  <option value="wifi">Wifi / Network</option>
-                </select>
-              </div>
+              {/* Hidden configuration defaults to simplify form */}
 
               {/* Product Cover/Logo Graphic Manager */}
               <div className="space-y-3 bg-zinc-50 border border-zinc-200/60 rounded-2xl p-4.5">
