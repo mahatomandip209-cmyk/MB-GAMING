@@ -118,39 +118,13 @@ const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quali
 
 export default function App() {
   // STATE MANAGEMENT
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('mb_gaming_products');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return ALL_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
 
-  useEffect(() => {
-    localStorage.setItem('mb_gaming_products', JSON.stringify(products));
-  }, [products]);
-
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => {
-    const saved = localStorage.getItem('mb_gaming_categories');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return [
-      { id: 'top-up', name: 'Top Up' },
-      { id: 'subscription', name: 'Subscription' },
-      { id: 'design', name: 'Design' }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('mb_gaming_categories', JSON.stringify(categories));
-  }, [categories]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => [
+    { id: 'top-up', name: 'Top Up' },
+    { id: 'subscription', name: 'Subscription' },
+    { id: 'design', name: 'Design' }
+  ]);
 
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; walletBalance: number; loyaltyPoints: number } | null>(() => {
     const saved = localStorage.getItem('mb_current_user');
@@ -267,6 +241,7 @@ export default function App() {
   
   // Navigation states
   const [activeBottomNav, setActiveBottomNav] = useState<'home' | 'orders' | 'wallet' | 'favorites' | 'profile'>('home');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'PENDING' | 'COMPLETED' | 'REJECTED'>('all');
   
   // Modal states
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -526,26 +501,8 @@ export default function App() {
 
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
-      if (!snapshot.empty) {
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        setProducts(list);
-        localStorage.setItem('db_products_seeded', 'true');
-      } else {
-        const alreadySeeded = localStorage.getItem('db_products_seeded');
-        if (alreadySeeded === 'true') {
-          setProducts([]);
-        } else {
-          ALL_PRODUCTS.forEach(async (p) => {
-            try {
-              await setDoc(doc(db, "products", p.id), p);
-            } catch (err) {
-              console.error("Failed to populate initial product:", p.id, err);
-            }
-          });
-          setProducts(ALL_PRODUCTS);
-          localStorage.setItem('db_products_seeded', 'true');
-        }
-      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      setProducts(list);
     }, (error) => {
       console.error("Real-time products listener failed:", error);
     });
@@ -555,27 +512,21 @@ export default function App() {
       if (!snapshot.empty) {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         setCategories(list);
-        localStorage.setItem('db_categories_seeded', 'true');
       } else {
-        const alreadySeeded = localStorage.getItem('db_categories_seeded');
-        if (alreadySeeded === 'true') {
-          setCategories([]);
-        } else {
-          const defaultCategories = [
-            { id: 'top-up', name: 'Top Up' },
-            { id: 'subscription', name: 'Subscription' },
-            { id: 'design', name: 'Design' }
-          ];
-          defaultCategories.forEach(async (cat) => {
-            try {
-              await setDoc(doc(db, "categories", cat.id), { name: cat.name });
-            } catch (err) {
-              console.error("Failed to populate initial category:", cat.id, err);
-            }
-          });
-          setCategories(defaultCategories);
-          localStorage.setItem('db_categories_seeded', 'true');
-        }
+        // Seed initial categories directly to Firestore when empty
+        const defaultCategories = [
+          { id: 'top-up', name: 'Top Up' },
+          { id: 'subscription', name: 'Subscription' },
+          { id: 'design', name: 'Design' }
+        ];
+        defaultCategories.forEach(async (cat) => {
+          try {
+            await setDoc(doc(db, "categories", cat.id), { id: cat.id, name: cat.name });
+          } catch (err) {
+            console.error("Failed to populate initial category:", cat.id, err);
+          }
+        });
+        setCategories(defaultCategories);
       }
     }, (error) => {
       console.error("Real-time categories listener failed:", error);
@@ -802,7 +753,7 @@ export default function App() {
         // Show immediate confirmation message using Service Worker
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.ready;
-          reg.showNotification("BNY TOPUP", {
+          reg.showNotification("BNY SHOP", {
             body: "You will now receive alerts for recharges & flash sales! 🔔",
             icon: "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg",
             badge: "https://img.icons8.com/ios-filled/96/ffffff/game-controller.png"
@@ -1049,21 +1000,7 @@ export default function App() {
     }
 
     // Requirements validation
-    const reqs = (() => {
-      try {
-        if (selectedProduct.requirements && Array.isArray(selectedProduct.requirements) && selectedProduct.requirements.length > 0) {
-          return selectedProduct.requirements;
-        }
-        const saved = localStorage.getItem('mb_game_requirements');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed.filter(r => r.gameId === selectedProduct.id);
-          }
-        }
-      } catch (e) {}
-      return [];
-    })();
+    const reqs = selectedProduct.requirements && Array.isArray(selectedProduct.requirements) ? selectedProduct.requirements : [];
 
     let finalTarget = '';
     if (reqs.length > 0) {
@@ -1326,19 +1263,19 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-4 py-3 sm:px-6">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             
-            {/* Logo element representing BNY TOPUP */}
+            {/* Logo element representing BNY SHOP */}
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setSelectedCategory('all')}>
               <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                 <img 
                   src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg" 
-                  alt="BNY TOPUP Logo" 
+                  alt="BNY SHOP Logo" 
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
-                  BNY TOPUP
+                  BNY SHOP
                 </span>
                 <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
                   S T O R E
@@ -1389,21 +1326,7 @@ export default function App() {
               </div>
 
               {(() => {
-                const reqs = (() => {
-                  try {
-                    if (displayProduct && displayProduct.requirements && Array.isArray(displayProduct.requirements) && displayProduct.requirements.length > 0) {
-                      return displayProduct.requirements;
-                    }
-                    const saved = localStorage.getItem('mb_game_requirements');
-                    if (saved) {
-                      const parsed = JSON.parse(saved);
-                      if (Array.isArray(parsed)) {
-                        return parsed.filter(r => r.gameId === (displayProduct?.id || ''));
-                      }
-                    }
-                  } catch (e) {}
-                  return [];
-                })();
+                const reqs = displayProduct && displayProduct.requirements && Array.isArray(displayProduct.requirements) ? displayProduct.requirements : [];
 
                 if (reqs.length > 0) {
                   return (
@@ -1574,14 +1497,14 @@ export default function App() {
                     <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                       <img 
                         src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg" 
-                        alt="BNY TOPUP Logo" 
+                        alt="BNY SHOP Logo" 
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-black text-zinc-950 font-display tracking-tight leading-none">
-                        BNY TOPUP
+                        BNY SHOP
                       </span>
                       <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mt-1">
                         NEPAL'S PREMIUM TOP-UP
@@ -1649,7 +1572,7 @@ export default function App() {
               {/* Bottom Copyright Area */}
               <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
                 <div>
-                  © 2026 <span className="text-zinc-750 font-extrabold">BNY TOPUP</span>. All rights reserved.
+                  © 2026 <span className="text-zinc-750 font-extrabold">BNY SHOP</span>. All rights reserved.
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Developed by</span>
@@ -1988,7 +1911,7 @@ export default function App() {
             <section className="pt-10 pb-6 border-t border-zinc-100">
               <div className="text-center space-y-2 mb-10">
                 <h3 className="text-base sm:text-lg font-black tracking-widest text-zinc-900 uppercase">
-                  WHY CHOOSE <span className="text-blue-600">BNY TOPUP</span>?
+                  WHY CHOOSE <span className="text-blue-600">BNY SHOP</span>?
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-500 max-w-lg mx-auto font-medium">
                   We provide the fastest, most secure, and affordable top-up service.
@@ -2086,13 +2009,13 @@ export default function App() {
                     <div className="w-9 h-9 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center bg-zinc-50 shadow-sm shrink-0">
                       <img 
                         src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg" 
-                        alt="BNY TOPUP Logo" 
+                        alt="BNY SHOP Logo" 
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-zinc-950 font-display tracking-tight leading-none">
-                        BNY TOPUP
+                        BNY SHOP
                       </span>
                       <span className="text-[9.5px] font-black text-blue-600 uppercase tracking-wider mt-0.5 leading-none">
                         S T O R E
@@ -2103,7 +2026,7 @@ export default function App() {
                   <span className="block text-[10px] font-black uppercase tracking-wider text-blue-600">NEPAL'S PREMIUM TOP-UP</span>
                   
                   <p className="text-[11px] leading-relaxed text-zinc-500 font-medium">
-                    Welcome to BNY TOPUP, your trusted destination for digital gaming top-ups and gift cards. We provide fast and secure delivery of PUBG Mobile UC, Free Fire Diamonds, Mobile Legends Diamonds, UniPin Vouchers, iTunes Gift Cards, Razer Gold PINs, and other digital products at competitive prices. Enjoy instant service, reliable support, and convenient payment options for all your gaming and digital needs.
+                  Welcome to BNY SHOP, your trusted destination for digital gaming top-ups and gift cards. We provide fast and secure delivery of PUBG Mobile UC, Free Fire Diamonds, Mobile Legends Diamonds, UniPin Vouchers, iTunes Gift Cards, Razer Gold PINs, and other digital products at competitive prices. Enjoy instant service, reliable support, and convenient payment options for all your gaming and digital needs.
                   </p>
 
                   {/* Social Buttons */}
@@ -2183,7 +2106,7 @@ export default function App() {
               {/* Bottom Copyright Area */}
               <div className="pt-6 border-t border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-zinc-400">
                 <div>
-                  © 2026 <span className="text-zinc-750 font-extrabold">BNY TOPUP</span>. All rights reserved.
+                  © 2026 <span className="text-zinc-750 font-extrabold">BNY SHOP</span>. All rights reserved.
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Developed by</span>
@@ -2227,6 +2150,16 @@ export default function App() {
                   tx.email?.toLowerCase() === currentUser.email.toLowerCase()
                 )
               );
+
+              const filteredUserTxs = userTxs.filter(tx => {
+                if (orderStatusFilter === 'all') return true;
+                const txStatus = tx.status || 'PENDING';
+                if (orderStatusFilter === 'PENDING') return txStatus === 'PENDING';
+                if (orderStatusFilter === 'COMPLETED') return txStatus === 'SUCCESS' || txStatus === 'DISPATCHED' || txStatus === 'COMPLETED';
+                if (orderStatusFilter === 'REJECTED') return txStatus === 'FAILED' || txStatus === 'REJECTED';
+                return true;
+              });
+
               if (userTxs.length === 0) {
                 return (
                   <div className="py-12 text-center text-zinc-400">
@@ -2237,9 +2170,53 @@ export default function App() {
                 );
               }
               return (
-                <div className="space-y-4">
-                  {userTxs.map((tx) => {
-                    const displayId = tx.id.startsWith('BNY-') ? tx.id : `BNY-${tx.id.replace(/\D/g, '').slice(0, 6).padEnd(6, '0')}`;
+                <div className="space-y-4 text-left">
+                  {/* Status Filters */}
+                  <div className="flex flex-col gap-2 pb-2 border-b border-zinc-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-zinc-800 uppercase tracking-tight">My Order History</span>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase">
+                        Showing {filteredUserTxs.length} of {userTxs.length} orders
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      {(['all', 'PENDING', 'COMPLETED', 'REJECTED'] as const).map((st) => {
+                        const count = st === 'all' 
+                          ? userTxs.length 
+                          : userTxs.filter(tx => {
+                              const txStatus = tx.status || 'PENDING';
+                              if (st === 'PENDING') return txStatus === 'PENDING';
+                              if (st === 'COMPLETED') return txStatus === 'SUCCESS' || txStatus === 'DISPATCHED' || txStatus === 'COMPLETED';
+                              if (st === 'REJECTED') return txStatus === 'FAILED' || txStatus === 'REJECTED';
+                              return false;
+                            }).length;
+
+                        return (
+                          <button
+                            key={st}
+                            onClick={() => setOrderStatusFilter(st)}
+                            className={`px-3 py-1.5 text-[9px] font-black tracking-wide uppercase rounded-full border cursor-pointer transition-all ${
+                              orderStatusFilter === st
+                                ? 'bg-zinc-950 text-white border-zinc-950 shadow-sm'
+                                : 'bg-white text-zinc-500 hover:text-zinc-900 border-zinc-200'
+                            }`}
+                          >
+                            {st} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {filteredUserTxs.length === 0 ? (
+                    <div className="py-12 text-center text-zinc-400 bg-zinc-50/50 rounded-2xl border border-zinc-150">
+                      <ReceiptText className="w-9 h-9 text-zinc-200 mx-auto mb-2" />
+                      <p className="text-xs font-extrabold text-zinc-650 uppercase">No {orderStatusFilter !== 'all' ? orderStatusFilter.toLowerCase() : ''} orders found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredUserTxs.map((tx) => {
+                        const displayId = tx.id.startsWith('BNY-') ? tx.id : `BNY-${tx.id.replace(/\D/g, '').slice(0, 6).padEnd(6, '0')}`;
                     const associatedProduct = products.find(p => p.id === tx.productId);
                     const gameName = tx.provider || associatedProduct?.provider || associatedProduct?.name || 'Game';
                     
@@ -2404,6 +2381,8 @@ export default function App() {
                       </div>
                     );
                   })}
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -3323,7 +3302,7 @@ export default function App() {
                   <ol className="text-[10px] text-amber-800/90 space-y-1 pl-4 list-decimal font-semibold">
                     <li>Tap the <strong className="text-amber-900 font-extrabold">Share button</strong> at the bottom of Safari.</li>
                     <li>Choose <strong className="text-amber-900 font-extrabold">"Add to Home Screen"</strong>.</li>
-                    <li>Open BNY TOPUP from your Home Screen and click <strong className="text-amber-900 font-extrabold">"Enable Push"</strong>.</li>
+                    <li>Open BNY SHOP from your Home Screen and click <strong className="text-amber-900 font-extrabold">"Enable Push"</strong>.</li>
                   </ol>
                 </div>
               )}
@@ -3373,7 +3352,7 @@ export default function App() {
               </div>
 
               <div className="pt-2 border-t border-zinc-100 flex items-center justify-center text-[9px] font-bold text-zinc-400 tracking-wider uppercase shrink-0">
-                🔒 Secured by BNY TOPUP PWA Gateway
+                🔒 Secured by BNY SHOP PWA Gateway
               </div>
             </motion.div>
           </div>
@@ -3715,21 +3694,7 @@ export default function App() {
                 {/* Account identifier */}
                 <div>
                   {(() => {
-                    const reqs = (() => {
-                      try {
-                        if (selectedProduct.requirements && Array.isArray(selectedProduct.requirements) && selectedProduct.requirements.length > 0) {
-                          return selectedProduct.requirements;
-                        }
-                        const saved = localStorage.getItem('mb_game_requirements');
-                        if (saved) {
-                          const parsed = JSON.parse(saved);
-                          if (Array.isArray(parsed)) {
-                            return parsed.filter(r => r.gameId === selectedProduct.id);
-                          }
-                        }
-                      } catch (e) {}
-                      return [];
-                    })();
+                    const reqs = selectedProduct.requirements && Array.isArray(selectedProduct.requirements) ? selectedProduct.requirements : [];
 
                     if (reqs.length > 0) {
                       return (
@@ -4049,7 +4014,7 @@ export default function App() {
               {/* Logo */}
               <img
                 src="https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg"
-                alt="BNY TOPUP Logo"
+                alt="BNY SHOP Logo"
                 referrerPolicy="no-referrer"
                 className="w-12 h-12 rounded-xl object-cover border border-zinc-150 shrink-0 shadow-sm"
               />
@@ -4057,7 +4022,7 @@ export default function App() {
               {/* App Info */}
               <div className="flex-1 min-w-0 text-left">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-xs font-black text-zinc-900 tracking-tight text-zinc-900">BNY TOPUP</h5>
+                  <h5 className="text-xs font-black text-zinc-900 tracking-tight text-zinc-900">BNY SHOP</h5>
                   {/* Cross Option */}
                   <button
                     type="button"
@@ -4069,7 +4034,7 @@ export default function App() {
                   </button>
                 </div>
                 <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed mt-1">
-                  Install BNY TOPUP on your screen for instant access to in-game top-ups and super-fast order processing!
+                  Install BNY SHOP on your screen for instant access to in-game top-ups and super-fast order processing!
                 </p>
               </div>
             </div>

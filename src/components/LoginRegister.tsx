@@ -130,7 +130,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           }).catch(() => {});
         } catch (e) {}
 
-        triggerToast("Registration successful! Welcome to BNY TOPUP.");
+        triggerToast("Registration successful! Welcome to BNY SHOP.");
         localStorage.setItem('mb_current_user', JSON.stringify(newUserProfile));
         onSuccess(newUserProfile);
       }
@@ -162,7 +162,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         </div>
         <div className="space-y-1">
           <h2 className="text-xl font-black text-zinc-950 tracking-tight">
-            {isLogin ? "Sign In to BNY TOPUP" : "Create Gamer Account"}
+            {isLogin ? "Sign In to BNY SHOP" : "Create Gamer Account"}
           </h2>
         </div>
       </div>

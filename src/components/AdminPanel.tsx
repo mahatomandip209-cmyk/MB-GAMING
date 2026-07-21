@@ -112,7 +112,7 @@ export default function AdminPanel({
   };
 
   // Authentication states
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -529,7 +529,7 @@ export default function AdminPanel({
     esewaNumber: '9841234567',
     minDeposit: 100,
     esewa: { number: '9841234567', name: 'Mandip Mahato' },
-    khalti: { number: '9801234567', name: 'BNY TOPUP Digital Center' }
+    khalti: { number: '9801234567', name: 'BNY SHOP Digital Center' }
   });
   const [banners, setBanners] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -539,12 +539,12 @@ export default function AdminPanel({
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [legalDocs, setLegalDocs] = useState<any>({
-    terms: 'By registering on BNY TOPUP, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
+    terms: 'By registering on BNY SHOP, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
     refund: 'No refunds are permitted once a digital game recharge or voucher coupon has been officially approved and dispatched by the administrator.'
   });
 
   // Admin system credentials & branding details
-  const [storeName, setStoreName] = useState('BNY TOPUP');
+  const [storeName, setStoreName] = useState('BNY SHOP');
   const [storeContact, setStoreContact] = useState('mandipmahato717@gmail.com');
   const [adminPassword, setAdminPassword] = useState('Mandip@#0');
 
@@ -837,7 +837,7 @@ export default function AdminPanel({
       title: pushTitle.trim(),
       body: pushBody.trim(),
       linkUrl: pushLink.trim() || "/",
-      iconUrl: "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg", // BNY TOPUP Logo
+      iconUrl: "https://i.ibb.co/Qv0ZyF0w/IMG-20260713-WA0032.jpg", // BNY SHOP Logo
       timestamp: Date.now()
     };
 
@@ -896,7 +896,7 @@ export default function AdminPanel({
 
   // Check login state
   useEffect(() => {
-    setIsLoggedIn(true);
+    setIsLoggedIn(false);
   }, []);
 
   // Sync and fetch all data from Firestore when logged in
@@ -960,7 +960,7 @@ export default function AdminPanel({
             esewaNumber: data.esewaNumber || data.esewa?.number || '9841234567',
             minDeposit: data.minDeposit !== undefined ? data.minDeposit : 100,
             esewa: data.esewa || { number: '9841234567', name: 'Mandip Mahato' },
-            khalti: data.khalti || { number: '9801234567', name: 'BNY TOPUP Digital Center' }
+            khalti: data.khalti || { number: '9801234567', name: 'BNY SHOP Digital Center' }
           });
         } else {
           const initialPayments = {
@@ -968,7 +968,7 @@ export default function AdminPanel({
             esewaNumber: '9841234567',
             minDeposit: 100,
             esewa: { number: '9841234567', name: 'Mandip Mahato' },
-            khalti: { number: '9801234567', name: 'BNY TOPUP Digital Center' }
+            khalti: { number: '9801234567', name: 'BNY SHOP Digital Center' }
           };
           await setDoc(doc(db, 'settings', 'payments'), initialPayments);
           setPaymentSettings(initialPayments);
@@ -1020,7 +1020,7 @@ export default function AdminPanel({
           setAnnouncements(annSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         } else {
           const initialAnn = [
-            { id: 'ann-1', message: '📢 Welcome to BNY TOPUP! Instant UPI recharges available 24/7.', type: 'info' },
+            { id: 'ann-1', message: '📢 Welcome to BNY SHOP! Instant UPI recharges available 24/7.', type: 'info' },
             { id: 'ann-2', message: '⚠️ eSewa payments might take up to 5 minutes to verify due to central banking gateway delay.', type: 'alert' }
           ];
           for (const a of initialAnn) {
@@ -1052,7 +1052,7 @@ export default function AdminPanel({
           if (data.storeContact) setStoreContact(data.storeContact);
           if (data.adminPassword) setAdminPassword(data.adminPassword);
         } else {
-          const initialGen = { storeName: 'BNY TOPUP', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0' };
+          const initialGen = { storeName: 'BNY SHOP', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0' };
           await setDoc(doc(db, 'settings', 'general'), initialGen);
         }
 
@@ -1062,7 +1062,7 @@ export default function AdminPanel({
           setLegalDocs(legalDoc.data());
         } else {
           const initialLegal = {
-            terms: 'By registering on BNY TOPUP, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
+            terms: 'By registering on BNY SHOP, you agree to fulfill payment immediately for selected digital assets. Recharges are subject to manual validation of transaction UIDs.',
             refund: 'No refunds are permitted once a digital game recharge or voucher coupon has been officially approved and dispatched by the administrator.'
           };
           await setDoc(doc(db, 'settings', 'legal'), initialLegal);
@@ -1241,14 +1241,12 @@ export default function AdminPanel({
     e.preventDefault();
     setLoginError('');
 
-    const savedPassword = localStorage.getItem('mb_admin_password') || 'Mandip@#0';
-    
-    if (emailInput.trim() === 'admin@gmail.com' && passwordInput === savedPassword) {
+    if (emailInput.trim().toLowerCase() === 'bnyadminpanel@hotmail.com' && passwordInput === 'Adminbny44!') {
       setIsLoggedIn(true);
       localStorage.setItem('mb_admin_logged_in', 'true');
       triggerToast('Welcome back, Administrator!');
     } else {
-      setLoginError('incorrect password');
+      setLoginError('Invalid email address or incorrect password.');
     }
   };
 
@@ -1341,7 +1339,7 @@ export default function AdminPanel({
     setEditingProduct(null);
     setFormId('');
     setFormName('');
-    setFormCategory('top-up');
+    setFormCategory(categories && categories.length > 0 ? categories[0].id : 'top-up');
     setFormProvider('');
     setFormMinAmount(100);
     setFormMaxAmount(5000);
@@ -1405,10 +1403,10 @@ export default function AdminPanel({
     const updatedProduct: Product = {
       id: fid,
       name: formName,
-      provider: formProvider || formName || 'BNY TOPUP',
+      provider: formProvider || formName || 'BNY SHOP',
       category: formCategory,
       imagePlaceholderColor: 'from-blue-600 to-indigo-700',
-      description: `Premium ${formName} top-up and vouchers from BNY TOPUP. Instantly processed.`,
+      description: `Premium ${formName} top-up and vouchers from BNY SHOP. Instantly processed.`,
       minAmount: Number(formMinAmount) || 100,
       maxAmount: Number(formMaxAmount) || 5000,
       inputLabel: formInputLabel || 'Player ID / UID',
@@ -1736,6 +1734,107 @@ export default function AdminPanel({
       p.provider.toLowerCase().includes(productSearch.toLowerCase()) ||
       p.category.toLowerCase().includes(productSearch.toLowerCase())
   );
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+        {/* Subtle grid background/pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-35" />
+        
+        {/* Back button to storefront */}
+        <button
+          onClick={onClose}
+          className="absolute top-6 left-6 flex items-center gap-2 text-zinc-400 hover:text-white text-xs font-black uppercase tracking-wider bg-zinc-900/60 border border-zinc-800 px-4 py-2 rounded-xl hover:bg-zinc-800 transition-all cursor-pointer shadow-sm z-10"
+        >
+          <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+          Storefront
+        </button>
+
+        {/* Login Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm bg-zinc-900 border border-zinc-800/85 p-8 rounded-3xl shadow-2xl relative z-10 space-y-6"
+        >
+          {/* Logo / Header */}
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 bg-blue-600/10 text-blue-500 rounded-2xl flex items-center justify-center border border-blue-500/20 mx-auto shadow-inner">
+              <ShieldCheck className="w-6 h-6 stroke-[2]" />
+            </div>
+            <div className="space-y-0.5">
+              <h1 className="text-lg font-black text-white tracking-tight uppercase">BNY SHOP</h1>
+              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest font-mono">Administration Portal</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            {loginError && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-[10px] font-bold text-center flex items-center gap-2 justify-center"
+              >
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                <span>{loginError}</span>
+              </motion.div>
+            )}
+
+            {/* Email Field */}
+            <div className="space-y-1">
+              <label className="block text-[8px] font-black uppercase tracking-widest text-zinc-400 font-mono">Admin Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                <input
+                  type="email"
+                  required
+                  placeholder="admin@example.com"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="w-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-600 rounded-xl py-2.5 pl-9 pr-3.5 text-[11px] font-bold focus:outline-none focus:border-blue-500 transition-all font-sans shadow-inner"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-1">
+              <label className="block text-[8px] font-black uppercase tracking-widest text-zinc-400 font-mono">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-600 rounded-xl py-2.5 pl-9 pr-10 text-[11px] font-bold focus:outline-none focus:border-blue-500 transition-all font-sans shadow-inner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white p-1 rounded transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-all shadow-lg hover:shadow-blue-600/10 cursor-pointer active:scale-98 text-center border-none"
+            >
+              Secure Sign In
+            </button>
+          </form>
+
+          {/* Humble Disclaimer */}
+          <p className="text-[9px] text-zinc-600 text-center font-semibold uppercase tracking-wider leading-relaxed">
+            Authorized administrative access only.<br />All sessions and IP requests are logged.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans flex flex-col relative pb-12">
@@ -2332,18 +2431,44 @@ export default function AdminPanel({
 
                 {/* Filter / Actions bar */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4.5 border border-zinc-200 rounded-2xl shadow-xs">
-                  {/* Status Selection Dropdown */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Status Selection Capsule Tabs */}
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className="text-[10px] font-black uppercase text-zinc-400 font-mono">Filter Status:</span>
-                    <select
-                      value={orderFilterStatus}
-                      onChange={(e) => setOrderFilterStatus(e.target.value as any)}
-                      className="bg-white border border-zinc-250 rounded-xl px-3.5 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-800 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                    >
-                      <option value="PENDING">🕒 Pending Orders</option>
-                      <option value="SUCCESS">✅ Completed Orders</option>
-                      <option value="REJECTED">❌ Rejected Orders</option>
-                    </select>
+                    <div className="flex bg-zinc-100 p-1 rounded-2xl border border-zinc-200 shrink-0 select-none">
+                      <button
+                        type="button"
+                        onClick={() => setOrderFilterStatus('PENDING')}
+                        className={`px-4 py-2 text-[10px] font-black tracking-wider uppercase rounded-xl transition-all cursor-pointer ${
+                          orderFilterStatus === 'PENDING'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-zinc-500 hover:text-zinc-800'
+                        }`}
+                      >
+                        🕒 PENDING
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderFilterStatus('SUCCESS')}
+                        className={`px-4 py-2 text-[10px] font-black tracking-wider uppercase rounded-xl transition-all cursor-pointer ${
+                          orderFilterStatus === 'SUCCESS'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-zinc-500 hover:text-zinc-800'
+                        }`}
+                      >
+                        ✅ APPROVED
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderFilterStatus('REJECTED')}
+                        className={`px-4 py-2 text-[10px] font-black tracking-wider uppercase rounded-xl transition-all cursor-pointer ${
+                          orderFilterStatus === 'REJECTED'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-zinc-500 hover:text-zinc-800'
+                        }`}
+                      >
+                        ❌ REJECTED
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:max-w-md">
@@ -2805,6 +2930,7 @@ export default function AdminPanel({
                                     if (confirm(`Are you sure you want to delete the category "${cat.name}"?`)) {
                                       try {
                                         await deleteDoc(doc(db, "categories", cat.id));
+                                        setCategories(prev => prev.filter(c => c.id !== cat.id));
                                         triggerToast(`Category "${cat.name}" deleted successfully!`);
                                       } catch (err) {
                                         console.error("Failed to delete category:", err);
@@ -2881,8 +3007,15 @@ export default function AdminPanel({
                                 const cid = editingCategory 
                                   ? editingCategory.id 
                                   : categoryFormName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
-                                await setDoc(doc(db, "categories", cid), {
-                                  name: categoryFormName.trim()
+                                const updatedCat = { id: cid, name: categoryFormName.trim() };
+                                await setDoc(doc(db, "categories", cid), updatedCat);
+                                setCategories(prev => {
+                                  if (editingCategory) {
+                                    return prev.map(c => c.id === editingCategory.id ? updatedCat : c);
+                                  } else {
+                                    if (prev.some(c => c.id === cid)) return prev;
+                                    return [...prev, updatedCat];
+                                  }
                                 });
                                 triggerToast(editingCategory ? 'Category updated successfully!' : 'Category added successfully!');
                                 setIsCategoryModalOpen(false);
@@ -3799,7 +3932,7 @@ export default function AdminPanel({
                               {ticket.replies.map((reply: string, i: number) => (
                                 <div key={i} className="flex gap-2.5 items-start justify-end">
                                   <div className="bg-zinc-900 text-white p-3 rounded-2xl rounded-tr-none max-w-md">
-                                    <span className="text-[9.5px] font-black text-zinc-400 block mb-1">BNY TOPUP Support (Admin)</span>
+                                    <span className="text-[9.5px] font-black text-zinc-400 block mb-1">BNY SHOP Support (Admin)</span>
                                     <p className="text-xs font-semibold leading-relaxed">{reply}</p>
                                   </div>
                                   <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center font-black text-[10px]">
@@ -3963,25 +4096,10 @@ export default function AdminPanel({
                 <div className="bg-white border border-zinc-200/80 p-6 rounded-3xl space-y-6 shadow-2xs">
                   <div className="text-left pb-3 border-b border-zinc-100">
                     <span className="block text-[9px] font-black uppercase tracking-wider text-zinc-400 font-bold">
-                      Currently Authorized Team ({1 + teamMembers.length})
+                      Currently Authorized Team ({teamMembers.length})
                     </span>
                   </div>
                   <div className="divide-y divide-zinc-100">
-                    {/* Primary Owner (Always Authorized) */}
-                    <div className="flex items-center justify-between py-3.5">
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm shrink-0 border border-amber-100/30">
-                          👑
-                        </div>
-                        <div className="min-w-0 text-left">
-                          <span className="block text-xs font-black text-zinc-800 truncate">mandipmahato717@gmail.com</span>
-                          <span className="block text-[8px] font-extrabold uppercase tracking-wider text-amber-600 font-mono mt-0.5">Primary Owner</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
-                        Full Control
-                      </span>
-                    </div>
 
                     {/* Other authorized members */}
                     {teamMembers.map((member) => {

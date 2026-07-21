@@ -1,6 +1,6 @@
 {
-  "name": "BNY TOPUP",
-  "description": "BNY TOPUP - Your ultimate destination for gaming top-ups, subscriptions, and vouchers.",
+  "name": "BNY SHOP",
+  "description": "BNY SHOP - Your ultimate destination for gaming top-ups, subscriptions, and vouchers.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
