@@ -950,11 +950,6 @@ export default function AdminPanel({
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
 
-  // Check login state
-  useEffect(() => {
-    setIsLoggedIn(false);
-  }, []);
-
   // Sync and fetch all data from Firestore when logged in
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -2025,18 +2020,34 @@ export default function AdminPanel({
 
             {/* 1. DASHBOARD OVERVIEW TAB */}
             {activeTab === 'dashboard' && (() => {
-              const slices = [
-                { value: 304, color: '#3b82f6', label: 'UniPin Voucher (BDT 2000)' },
-                { value: 57, color: '#a855f7', label: 'PUBG UC VOUCHERS' },
-                { value: 14, color: '#ec4899', label: 'Apple Gift Card (US) 🇺🇸' },
-                { value: 36, color: '#f97316', label: 'Garena Free Fire' },
-                { value: 20, color: '#10b981', label: 'GAREENA SHELL' },
-                { value: 8, color: '#ef4444', label: 'Other' },
-                { value: 6, color: '#6366f1', label: 'PUBG Mobile UC' },
-                { value: 1, color: '#eab308', label: 'MLBB Diamonds' }
-              ];
+              // 1. Dynamic Category Distribution
+              const getCategoryDistribution = () => {
+                const counts: { [cat: string]: number } = {};
+                transactions.forEach(t => {
+                  if (t.status !== 'SUCCESS') return;
+                  const category = t.productName || t.category || 'Other';
+                  if (!counts[category]) {
+                    counts[category] = 0;
+                  }
+                  counts[category] += (t.quantity || 1);
+                });
+                
+                const colors = [
+                  '#3b82f6', '#a855f7', '#ec4899', '#f97316',
+                  '#10b981', '#ef4444', '#6366f1', '#eab308'
+                ];
+                
+                const list = Object.keys(counts).map((category, idx) => ({
+                  value: counts[category],
+                  color: colors[idx % colors.length],
+                  label: category,
+                }));
+                list.sort((a, b) => b.value - a.value);
+                return list;
+              };
 
-              const totalSlices = slices.reduce((sum, s) => sum + s.value, 0);
+              const slices = getCategoryDistribution();
+              const totalSlices = slices.reduce((sum, s) => sum + s.value, 0) || 1;
               let accumulatedPercent = 0;
 
               const paths = slices.map((slice) => {
@@ -2089,6 +2100,127 @@ export default function AdminPanel({
                 };
               });
 
+              // 2. Dynamic Revenue and Sales based on selected profit range (DAILY, WEEKLY, MONTHLY, YEARLY)
+              const getFilteredRevenueAndCount = (range: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY') => {
+                const now = new Date();
+                const successTxs = transactions.filter(t => t.status === 'SUCCESS');
+                
+                const filtered = successTxs.filter(t => {
+                  try {
+                    const txDate = new Date(t.timestamp);
+                    if (isNaN(txDate.getTime())) return false;
+                    
+                    const diffMs = now.getTime() - txDate.getTime();
+                    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                    
+                    if (range === 'DAILY') return diffDays <= 1;
+                    if (range === 'WEEKLY') return diffDays <= 7;
+                    if (range === 'MONTHLY') return diffDays <= 30;
+                    if (range === 'YEARLY') return diffDays <= 365;
+                  } catch {
+                    return false;
+                  }
+                  return false;
+                });
+                
+                const count = filtered.length;
+                const revenue = filtered.reduce((acc, t) => acc + (t.amount || 0), 0);
+                return { count, revenue };
+              };
+
+              const { count: filteredCount, revenue: filteredRev } = getFilteredRevenueAndCount(profitRange);
+
+              // 3. Dynamic 30-Day Trend Data
+              const get30DayTrendData = () => {
+                const data: { label: string; amount: number }[] = [];
+                const now = new Date();
+                
+                for (let i = 29; i >= 0; i--) {
+                  const d = new Date();
+                  d.setDate(now.getDate() - i);
+                  const label = `${d.getMonth() + 1}/${d.getDate()}`;
+                  data.push({ label, amount: 0 });
+                }
+                
+                transactions.forEach(t => {
+                  if (t.status !== 'SUCCESS') return;
+                  try {
+                    const txDate = new Date(t.timestamp);
+                    if (isNaN(txDate.getTime())) return;
+                    
+                    const diffMs = now.getTime() - txDate.getTime();
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    if (diffDays >= 0 && diffDays < 30) {
+                      const idx = 29 - diffDays;
+                      if (data[idx]) {
+                        data[idx].amount += (t.amount || 0);
+                      }
+                    }
+                  } catch {}
+                });
+                return data;
+              };
+
+              const trendData = get30DayTrendData();
+              const maxTrendAmount = Math.max(...trendData.map(d => d.amount), 100);
+              
+              const trendPoints = trendData.map((d, i) => {
+                const x = 50 + (i / 29) * (560 - 50);
+                const y = 200 - (d.amount / maxTrendAmount) * (200 - 40);
+                return { x, y, label: d.label, amount: d.amount };
+              });
+              
+              const linePath = trendPoints.map((p, i) => (i === 0 ? `M ${p.x},${p.y}` : `L ${p.x},${p.y}`)).join(' ');
+              const areaPath = trendPoints.length > 0 
+                ? `${linePath} L ${trendPoints[trendPoints.length - 1].x},200 L ${trendPoints[0].x},200 Z` 
+                : '';
+
+              const peakPoint = trendPoints.reduce((max, p) => (p.amount > max.amount ? p : max), trendPoints[0] || { x: 510, y: 200, label: '', amount: 0 });
+
+              // 4. Dynamic Product Performance Rankings
+              const getTopProductsRankings = () => {
+                const productStats: { [name: string]: { revenue: number; units: number } } = {};
+                
+                transactions.forEach(t => {
+                  if (t.status !== 'SUCCESS') return;
+                  const name = t.productName || 'Unknown Product';
+                  if (!productStats[name]) {
+                    productStats[name] = { revenue: 0, units: 0 };
+                  }
+                  productStats[name].revenue += (t.amount || 0);
+                  productStats[name].units += (t.quantity || 1);
+                });
+                
+                const rankingsList = Object.keys(productStats).map(name => ({
+                  name,
+                  revenue: productStats[name].revenue,
+                  units: productStats[name].units,
+                }));
+                
+                rankingsList.sort((a, b) => b.revenue - a.revenue);
+                
+                const colors = [
+                  'bg-blue-100 text-blue-700',
+                  'bg-purple-100 text-purple-700',
+                  'bg-pink-100 text-pink-700',
+                  'bg-emerald-100 text-emerald-700',
+                  'bg-orange-100 text-orange-700',
+                  'bg-zinc-100 text-zinc-700 font-mono',
+                  'bg-blue-50 text-blue-700 font-mono',
+                  'bg-amber-100 text-amber-700 font-mono'
+                ];
+                
+                return rankingsList.map((item, idx) => ({
+                  rank: idx + 1,
+                  name: item.name,
+                  revenue: item.revenue,
+                  units: item.units,
+                  color: colors[idx % colors.length]
+                }));
+              };
+
+              const rankings = getTopProductsRankings();
+
               return (
                 <div className="space-y-6">
                   
@@ -2123,7 +2255,7 @@ export default function AdminPanel({
                         </div>
                       </div>
                       <div className="mt-2">
-                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">{169 + transactions.length}</h4>
+                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">{transactions.length}</h4>
                         <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Processed from all platforms</p>
                       </div>
                     </div>
@@ -2158,17 +2290,19 @@ export default function AdminPanel({
                       </div>
                     </div>
 
-                    {/* Card 4: Pending Top-Ups */}
+                    {/* Card 4: Pending Deposits */}
                     <div className="bg-[#f5f3ff] border border-[#e5e0ff] rounded-3xl p-5 shadow-xs relative flex flex-col justify-between min-h-[120px]">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black text-[#4c1d95] uppercase tracking-wider font-mono">PENDING TOP-UPS</span>
+                        <span className="text-[9px] font-black text-[#4c1d95] uppercase tracking-wider font-mono">PENDING DEPOSITS</span>
                         <div className="p-2 bg-[#ddd6fe] rounded-xl text-purple-600 shadow-2xs">
                           <Wallet className="w-4 h-4 stroke-[2.5]" />
                         </div>
                       </div>
                       <div className="mt-2">
-                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">0</h4>
-                        <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Instant auto API queues</p>
+                        <h4 className="text-3xl font-black text-zinc-950 tracking-tight">
+                          {deposits.filter(d => d.status === 'PENDING').length}
+                        </h4>
+                        <p className="text-[10px] text-zinc-500 mt-1 font-semibold">Awaiting admin approval</p>
                       </div>
                     </div>
 
@@ -2185,7 +2319,7 @@ export default function AdminPanel({
                         <div>
                           <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">TOTAL POINTS (ALL USERS)</span>
                           <h4 className="text-2xl font-black text-zinc-900 mt-0.5">
-                            {(userList.reduce((acc: number, u: any) => acc + u.points, 0) + 98543).toLocaleString()}
+                            {userList.reduce((acc: number, u: any) => acc + (u.points || u.loyaltyPoints || 0), 0).toLocaleString()}
                           </h4>
                         </div>
                       </div>
@@ -2200,7 +2334,9 @@ export default function AdminPanel({
                         </div>
                         <div>
                           <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">ALL-TIME REVENUE</span>
-                          <h4 className="text-2xl font-black text-zinc-900 mt-0.5">NPR 740,000</h4>
+                          <h4 className="text-2xl font-black text-zinc-900 mt-0.5">
+                            NPR {transactions.filter(t => t.status === 'SUCCESS').reduce((acc, t) => acc + (t.amount || 0), 0).toLocaleString()}
+                          </h4>
                         </div>
                       </div>
                       <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-xl">99.8% Success</span>
@@ -2256,14 +2392,10 @@ export default function AdminPanel({
                         <div className="mt-3 flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
                           <div>
                             <h5 className="text-3xl font-black text-zinc-900 leading-tight">
-                              {profitRange === 'DAILY' ? '7 Orders' :
-                               profitRange === 'WEEKLY' ? '45 Orders' :
-                               profitRange === 'MONTHLY' ? '184 Orders' : '2,240 Orders'}
+                              {filteredCount} {filteredCount === 1 ? 'Order' : 'Orders'}
                             </h5>
                             <p className="text-sm font-black mt-1.5 text-zinc-500">
-                              Revenue: <span className="text-blue-600">{profitRange === 'DAILY' ? 'NPR 47,279' :
-                               profitRange === 'WEEKLY' ? 'NPR 315,200' :
-                               profitRange === 'MONTHLY' ? 'NPR 1,240,000' : 'NPR 15,450,000'}</span>
+                              Revenue: <span className="text-blue-600">NPR {filteredRev.toLocaleString()}</span>
                             </p>
                           </div>
                           <span className="text-[10px] text-zinc-400 font-bold mt-2 sm:mt-0 font-mono">Synced with storefront transaction logs</span>
@@ -2324,45 +2456,61 @@ export default function AdminPanel({
                         <line x1="50" y1="200" x2="560" y2="200" stroke="#e2e8f0" strokeWidth="1" />
 
                         {/* Y-axis Labels */}
-                        <text x="40" y="44" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">340000</text>
-                        <text x="40" y="84" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">255000</text>
-                        <text x="40" y="124" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">170000</text>
-                        <text x="40" y="164" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">85000</text>
+                        <text x="40" y="44" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount).toLocaleString()}</text>
+                        <text x="40" y="84" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount * 0.75).toLocaleString()}</text>
+                        <text x="40" y="124" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount * 0.5).toLocaleString()}</text>
+                        <text x="40" y="164" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount * 0.25).toLocaleString()}</text>
                         <text x="40" y="204" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">0</text>
 
                         {/* Area fill */}
-                        <path 
-                          d="M 50,200 L 50,195 C 150,195 250,195 330,195 C 360,195 380,185 400,150 C 420,115 435,40 450,40 C 465,40 475,120 480,170 C 490,170 500,90 510,90 C 520,90 525,180 530,180 C 545,180 550,170 560,150 L 560,200 Z" 
-                          fill="url(#chartGrad)" 
-                        />
+                        {areaPath && (
+                          <path 
+                            d={areaPath} 
+                            fill="url(#chartGrad)" 
+                          />
+                        )}
 
-                        {/* Main spline line */}
-                        <path 
-                          d="M 50,195 C 150,195 250,195 330,195 C 360,195 380,185 400,150 C 420,115 435,40 450,40 C 465,40 475,120 480,170 C 490,170 500,90 510,90 C 520,90 525,180 530,180 C 545,180 550,170 560,150" 
-                          fill="none" 
-                          stroke="#2563eb" 
-                          strokeWidth="3.5" 
-                          strokeLinecap="round"
-                        />
+                        {/* Main line */}
+                        {linePath && (
+                          <path 
+                            d={linePath} 
+                            fill="none" 
+                            stroke="#2563eb" 
+                            strokeWidth="3.5" 
+                            strokeLinecap="round"
+                          />
+                        )}
 
-                        {/* Pulse point at 6/18 Peak */}
-                        <circle cx="510" cy="90" r="5" fill="#2563eb" stroke="#ffffff" strokeWidth="2.5" />
-                        <circle cx="510" cy="90" r="10" fill="#2563eb" fillOpacity="0.25" className="animate-pulse" />
+                        {/* Pulse point at Peak */}
+                        {peakPoint && peakPoint.amount > 0 && (
+                          <>
+                            <circle cx={peakPoint.x} cy={peakPoint.y} r="5" fill="#2563eb" stroke="#ffffff" strokeWidth="2.5" />
+                            <circle cx={peakPoint.x} cy={peakPoint.y} r="10" fill="#2563eb" fillOpacity="0.25" className="animate-pulse" />
+                          </>
+                        )}
 
                         {/* X-axis Labels */}
-                        <text x="50" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">5/26</text>
-                        <text x="150" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">5/31</text>
-                        <text x="250" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/5</text>
-                        <text x="350" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/10</text>
-                        <text x="450" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/15</text>
-                        <text x="550" y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">6/20</text>
+                        {trendPoints.filter((_, idx) => idx % 5 === 0).map((p, idx) => (
+                          <text key={idx} x={p.x} y="222" textAnchor="middle" className="text-[9.5px] font-black fill-zinc-400 font-mono">
+                            {p.label}
+                          </text>
+                        ))}
                       </svg>
 
-                      {/* Popover detail matching Screenshot 3 exactly */}
-                      <div className="absolute top-[28%] left-[82%] sm:left-[80%] bg-white border border-zinc-200 p-2.5 rounded-xl text-[10px] shadow-md text-center pointer-events-none -translate-x-1/2">
-                        <div className="font-extrabold text-zinc-950">6/18</div>
-                        <div className="mt-0.5 text-blue-600 font-black">Profit : 9690</div>
-                      </div>
+                      {/* Popover detail matching Peak */}
+                      {peakPoint && peakPoint.amount > 0 && (
+                        <div 
+                          style={{
+                            position: 'absolute',
+                            top: `${((peakPoint.y - 10) / 240) * 100}%`,
+                            left: `${(peakPoint.x / 600) * 100}%`
+                          }}
+                          className="bg-white border border-zinc-200 p-2.5 rounded-xl text-[10px] shadow-md text-center pointer-events-none -translate-x-1/2 -translate-y-full"
+                        >
+                          <div className="font-extrabold text-zinc-950">{peakPoint.label}</div>
+                          <div className="mt-0.5 text-blue-600 font-black">Sales: NPR {peakPoint.amount.toLocaleString()}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -2380,35 +2528,32 @@ export default function AdminPanel({
                       </div>
 
                       <div className="space-y-2.5">
-                        {[
-                          { rank: 1, name: 'Free Fire Diamonds', revenue: 245000, units: 342, color: 'bg-blue-100 text-blue-700' },
-                          { rank: 2, name: 'UniPin Voucher (BDT 2000)', revenue: 182000, units: 114, color: 'bg-purple-100 text-purple-700' },
-                          { rank: 3, name: 'Apple Gift Card (US) 🇺🇸', revenue: 95000, units: 57, color: 'bg-pink-100 text-pink-700' },
-                          { rank: 4, name: 'GAREENA SHELL', revenue: 78000, units: 96, color: 'bg-emerald-100 text-emerald-700' },
-                          { rank: 5, name: 'Netflix Premium Subscription', revenue: 45000, units: 42, color: 'bg-orange-100 text-orange-700' },
-                          { rank: 6, name: 'Other', revenue: 2451, units: 8, color: 'bg-zinc-100 text-zinc-700 font-mono' },
-                          { rank: 7, name: 'PUBG Mobile UC', revenue: 12040, units: 6, color: 'bg-blue-50 text-blue-700 font-mono' },
-                          { rank: 8, name: 'MLBB Diamonds', revenue: 725, units: 1, color: 'bg-amber-100 text-amber-700 font-mono' }
-                        ].map((item) => (
-                          <div key={item.rank} className="flex items-center justify-between p-3 bg-zinc-50/55 border border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${item.color}`}>
-                                {item.rank}
-                              </span>
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-bold text-zinc-900 truncate">{item.name}</h4>
-                                <p className="text-[9.5px] text-zinc-400 font-medium mt-0.5">
-                                  Units Sold: <span className="font-bold text-zinc-600">{item.units}</span>
-                                </p>
+                        {rankings.length === 0 ? (
+                          <div className="text-center py-12 text-xs text-zinc-400 font-bold">
+                            No successful orders yet to rank.
+                          </div>
+                        ) : (
+                          rankings.slice(0, 8).map((item) => (
+                            <div key={item.rank} className="flex items-center justify-between p-3 bg-zinc-50/55 border border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-colors">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${item.color}`}>
+                                  {item.rank}
+                                </span>
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-bold text-zinc-900 truncate">{item.name}</h4>
+                                  <p className="text-[9.5px] text-zinc-400 font-medium mt-0.5">
+                                    Units Sold: <span className="font-bold text-zinc-600">{item.units}</span>
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-xs font-black text-emerald-600 font-mono">
+                                  NPR {item.revenue.toLocaleString()}
+                                </span>
                               </div>
                             </div>
-                            <div className="text-right shrink-0">
-                              <span className="text-xs font-black text-emerald-600 font-mono">
-                                NPR {item.revenue.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </div>
 
@@ -2423,46 +2568,58 @@ export default function AdminPanel({
 
                       {/* SVG Pie Chart with leader lines */}
                       <div className="relative w-full flex justify-center py-2 bg-zinc-50/30 border border-zinc-100 rounded-2xl">
-                        <svg viewBox="0 0 400 270" className="w-full max-w-[345px] h-auto">
-                          
-                          {/* Render path slices */}
-                          {paths.map((p, i) => (
-                            <g key={i}>
-                              <path 
-                                d={p.pathData} 
-                                fill={p.slice.color} 
-                                className="transition-all hover:opacity-90 cursor-pointer" 
-                              />
-                              {/* Leader line */}
-                              <polyline 
-                                points={`${p.lineStartX},${p.lineStartY} ${p.lineEndX},${p.lineEndY} ${p.labelX},${p.labelY}`} 
-                                fill="none" 
-                                stroke="#a1a1aa" 
-                                strokeWidth="1" 
-                                strokeDasharray="2 2"
-                              />
-                              {/* Count number label at line end */}
-                              <text 
-                                x={p.labelX + (p.textAnchor === 'start' ? 4 : -4)} 
-                                y={p.labelY + 3} 
-                                textAnchor={p.textAnchor} 
-                                className="text-[10px] font-black fill-zinc-500 font-mono"
-                              >
-                                {p.slice.value}
-                              </text>
-                            </g>
-                          ))}
-                        </svg>
+                        {slices.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <svg viewBox="0 0 100 100" className="w-24 h-24 text-zinc-200">
+                              <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="6" strokeDasharray="3 3" />
+                            </svg>
+                            <span className="text-xs text-zinc-400 font-black mt-3">No category data yet</span>
+                          </div>
+                        ) : (
+                          <svg viewBox="0 0 400 270" className="w-full max-w-[345px] h-auto">
+                            {/* Render path slices */}
+                            {paths.map((p, i) => (
+                              <g key={i}>
+                                <path 
+                                  d={p.pathData} 
+                                  fill={p.slice.color} 
+                                  className="transition-all hover:opacity-90 cursor-pointer" 
+                                />
+                                {/* Leader line */}
+                                <polyline 
+                                  points={`${p.lineStartX},${p.lineStartY} ${p.lineEndX},${p.lineEndY} ${p.labelX},${p.labelY}`} 
+                                  fill="none" 
+                                  stroke="#a1a1aa" 
+                                  strokeWidth="1" 
+                                  strokeDasharray="2 2"
+                                />
+                                {/* Count number label at line end */}
+                                <text 
+                                  x={p.labelX + (p.textAnchor === 'start' ? 4 : -4)} 
+                                  y={p.labelY + 3} 
+                                  textAnchor={p.textAnchor} 
+                                  className="text-[10px] font-black fill-zinc-500 font-mono"
+                                >
+                                  {p.slice.value}
+                                </text>
+                              </g>
+                            ))}
+                          </svg>
+                        )}
                       </div>
 
                       {/* Color legend matching Screenshot 4 */}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 text-[10px] font-extrabold text-zinc-500">
-                        {slices.map((slice, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: slice.color }} />
-                            <span className="truncate">{slice.label}</span>
-                          </div>
-                        ))}
+                        {slices.length === 0 ? (
+                          <div className="col-span-2 text-center text-zinc-400">Waiting for first successful sale</div>
+                        ) : (
+                          slices.map((slice, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: slice.color }} />
+                              <span className="truncate">{slice.label}</span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
 
@@ -4108,7 +4265,7 @@ export default function AdminPanel({
                     try {
                       await setDoc(doc(db, 'team_members', email), {
                         email,
-                        role: 'admin', // starts as admin with deposit & order management access enabled!
+                        role: 'member', // starts as member with 'Admin Option: Disabled' initially!
                         addedAt: new Date().toISOString()
                       });
                       setNewMemberEmail('');
@@ -4132,7 +4289,7 @@ export default function AdminPanel({
                       <label className="block text-[9px] font-black uppercase text-zinc-400 font-mono font-bold">Permission Role</label>
                       <input
                         type="text"
-                        value="ADMIN"
+                        value="MEMBER"
                         disabled
                         className="w-full mt-1.5 bg-zinc-150/80 border border-zinc-200 text-zinc-400 rounded-xl py-2 px-3.5 text-xs focus:outline-none font-black tracking-widest cursor-not-allowed text-center uppercase"
                       />

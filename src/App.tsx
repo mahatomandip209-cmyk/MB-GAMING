@@ -1180,7 +1180,7 @@ export default function App() {
         setWalletBalance={setWalletBalance}
         categories={categories}
         setCategories={setCategories}
-        currentUser={currentUser || { name: 'Administrator', email: 'bnyshopadminpanel@gmail.com', walletBalance: 0, loyaltyPoints: 0 }}
+        currentUser={currentUser || undefined}
         teamMembers={teamMembers}
         onClose={() => {
           window.history.pushState({}, '', '/');
