@@ -30,3 +30,100 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #d4d4d8;
 }
+
+/* ==========================================================================
+   BLACK THEME MODE OVERRIDES (Applied dynamically to html and body)
+   ========================================================================== */
+.dark-theme,
+.dark-theme body {
+  background-color: #000000 !important;
+  color: #f4f4f5 !important;
+}
+
+/* White background elements (cards, containers, panels) reset to pure dark zinc */
+.dark-theme .bg-white,
+.dark-theme .bg-zinc-50/55,
+.dark-theme .bg-zinc-50/20,
+.dark-theme .bg-zinc-50/30,
+.dark-theme .bg-zinc-50/50,
+.dark-theme .bg-neutral-50,
+.dark-theme .bg-zinc-100 {
+  background-color: #0a0a0c !important;
+  color: #f4f4f5 !important;
+}
+
+/* Light background panels reset to slightly lighter dark zinc */
+.dark-theme .bg-zinc-50,
+.dark-theme .bg-neutral-100,
+.dark-theme .bg-zinc-100/50 {
+  background-color: #121215 !important;
+  color: #f4f4f5 !important;
+}
+
+/* Overlay backdrops & frosted panels */
+.dark-theme .bg-white\/90,
+.dark-theme .bg-white\/95,
+.dark-theme .bg-zinc-50\/80 {
+  background-color: rgba(10, 10, 12, 0.93) !important;
+  border-color: #1f1f23 !important;
+}
+
+/* Standard text color overrides */
+.dark-theme .text-zinc-900,
+.dark-theme .text-zinc-950,
+.dark-theme .text-zinc-800,
+.dark-theme .text-neutral-950,
+.dark-theme .text-zinc-900\/90 {
+  color: #fafafa !important;
+}
+
+/* Muted / secondary text color overrides */
+.dark-theme .text-zinc-600,
+.dark-theme .text-zinc-500,
+.dark-theme .text-zinc-700,
+.dark-theme .text-zinc-650 {
+  color: #b4b4bb !important;
+}
+
+.dark-theme .text-zinc-400 {
+  color: #81818d !important;
+}
+
+/* Border color overrides */
+.dark-theme .border-zinc-200,
+.dark-theme .border-zinc-150,
+.dark-theme .border-zinc-100,
+.dark-theme .border-zinc-200\/80,
+.dark-theme .border-neutral-200,
+.dark-theme .border-zinc-300,
+.dark-theme .border-zinc-200\/90,
+.dark-theme .border-neutral-150 {
+  border-color: #1c1c21 !important;
+}
+
+/* Inputs, textareas & selectors styling */
+.dark-theme input,
+.dark-theme textarea,
+.dark-theme select {
+  background-color: #121215 !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+
+.dark-theme input::placeholder,
+.dark-theme textarea::placeholder {
+  color: #636370 !important;
+}
+
+/* Divide borders */
+.dark-theme .divide-zinc-100 > :not([hidden]) ~ :not([hidden]),
+.dark-theme .divide-zinc-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c1c21 !important;
+}
+
+/* AdminPanel specific elements override */
+.dark-theme .admin-sidebar,
+.dark-theme aside {
+  background-color: #000000 !important;
+  border-color: #1c1c21 !important;
+}

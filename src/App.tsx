@@ -48,7 +48,8 @@ import {
   Facebook,
   Copy,
   Upload,
-  Eye
+  Eye,
+  Lock
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
@@ -268,6 +269,10 @@ export default function App() {
   // Success states
   const [showSuccessOverlay, setShowSuccessOverlay] = useState<boolean>(false);
   const [lastCompletedTransaction, setLastCompletedTransaction] = useState<Transaction | null>(null);
+
+  // App settings/blocking states
+  const [themeMode, setThemeMode] = useState<'light' | 'black'>('light');
+  const [isUserBlocked, setIsUserBlocked] = useState<boolean>(false);
 
   // Active Promo Index for the main slider
   const [promoIndex, setPromoIndex] = useState<number>(0);
@@ -499,6 +504,20 @@ export default function App() {
       console.error("Failed to load payments settings:", error);
     });
 
+    // Real-time general/theme settings listener
+    const unsubscribeGeneral = onSnapshot(doc(db, "settings", "general"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.themeMode === 'black' || data.themeMode === 'dark') {
+          setThemeMode('black');
+        } else {
+          setThemeMode('light');
+        }
+      }
+    }, (error) => {
+      console.error("Failed to load general settings:", error);
+    });
+
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
@@ -588,12 +607,16 @@ export default function App() {
       unsubscribeProducts();
       unsubscribeCategories();
       unsubscribeBanners();
+      unsubscribeGeneral();
     };
   }, []);
 
   // Subscribe to logged-in user profile changes (real-time balance and points)
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setIsUserBlocked(false);
+      return;
+    }
     
     const userDocRef = doc(db, 'users', currentUser.email);
     const unsubscribeUser = onSnapshot(userDocRef, (snapshot) => {
@@ -605,6 +628,7 @@ export default function App() {
         if (data.loyaltyPoints !== undefined) {
           setLoyaltyPoints(Number(data.loyaltyPoints));
         }
+        setIsUserBlocked(!!data.blocked);
       }
     }, (error) => {
       console.error("User profile subscription failed:", error);
@@ -612,6 +636,17 @@ export default function App() {
     
     return () => unsubscribeUser();
   }, [currentUser?.email]);
+
+  // Synchronize system theme modes (light vs black)
+  useEffect(() => {
+    if (themeMode === 'black') {
+      document.documentElement.classList.add('dark-theme');
+      document.body.classList.add('dark-theme');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+      document.body.classList.remove('dark-theme');
+    }
+  }, [themeMode]);
 
   // Subscribe to logged-in user's deposit/refill requests
   useEffect(() => {
@@ -999,6 +1034,12 @@ export default function App() {
       return;
     }
 
+    if (isUserBlocked) {
+      triggerToast('❌ Your account has been suspended by the administrator. Ordering is disabled.');
+      setModalError('Your account has been suspended. Ordering is disabled.');
+      return;
+    }
+
     // Requirements validation
     const reqs = selectedProduct.requirements && Array.isArray(selectedProduct.requirements) ? selectedProduct.requirements : [];
 
@@ -1111,6 +1152,12 @@ export default function App() {
     e.preventDefault();
     if (!currentUser) {
       setWalletError('Please sign in to submit a deposit request.');
+      return;
+    }
+
+    if (isUserBlocked) {
+      setWalletError('❌ Your account is suspended. Depositing is disabled.');
+      triggerToast('❌ Your account is suspended. Depositing is disabled.');
       return;
     }
 
@@ -3058,10 +3105,24 @@ export default function App() {
 
               <button
                 type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2 cursor-pointer mt-2 active:scale-98"
+                disabled={isUserBlocked}
+                className={`w-full py-4 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2 active:scale-98 ${
+                  isUserBlocked 
+                    ? 'bg-red-600 hover:bg-red-600 opacity-90 cursor-not-allowed shadow-red-500/10' 
+                    : 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/10'
+                }`}
               >
-                <CreditCard className="w-4 h-4" />
-                <span>Pay NPR {checkoutAmount * quantity}</span>
+                {isUserBlocked ? (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>Account Suspended - Cannot Order</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay NPR {checkoutAmount * quantity}</span>
+                  </>
+                )}
               </button>
             </form>
           </div>

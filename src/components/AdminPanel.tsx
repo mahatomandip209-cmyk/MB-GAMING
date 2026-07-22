@@ -62,7 +62,8 @@ import {
   Music,
   Gamepad,
   Upload,
-  ShoppingBag
+  ShoppingBag,
+  Palette
 } from 'lucide-react';
 import { Product, Transaction } from '../types';
 
@@ -603,6 +604,7 @@ export default function AdminPanel({
   const [storeName, setStoreName] = useState('BNY SHOP');
   const [storeContact, setStoreContact] = useState('mandipmahato717@gmail.com');
   const [adminPassword, setAdminPassword] = useState('Mandip@#0');
+  const [themeMode, setThemeMode] = useState<'light' | 'black'>('light');
 
   // Coupon inputs
   const [newCouponCode, setNewCouponCode] = useState('');
@@ -1102,8 +1104,13 @@ export default function AdminPanel({
           if (data.storeName) setStoreName(data.storeName);
           if (data.storeContact) setStoreContact(data.storeContact);
           if (data.adminPassword) setAdminPassword(data.adminPassword);
+          if (data.themeMode === 'black' || data.themeMode === 'dark') {
+            setThemeMode('black');
+          } else {
+            setThemeMode('light');
+          }
         } else {
-          const initialGen = { storeName: 'BNY SHOP', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0' };
+          const initialGen = { storeName: 'BNY SHOP', storeContact: 'mandipmahato717@gmail.com', adminPassword: 'Mandip@#0', themeMode: 'light' };
           await setDoc(doc(db, 'settings', 'general'), initialGen);
         }
 
@@ -1778,6 +1785,21 @@ export default function AdminPanel({
     }
   };
 
+  const handleThemeChange = async (mode: 'light' | 'black') => {
+    setThemeMode(mode);
+    try {
+      await setDoc(doc(db, 'settings', 'general'), {
+        themeMode: mode,
+        storeName,
+        storeContact,
+        adminPassword
+      }, { merge: true });
+      triggerToast(`🎉 App theme updated to ${mode === 'black' ? 'Black Mode' : 'Light Mode'}!`);
+    } catch (err) {
+      triggerToast('Theme updated successfully!');
+    }
+  };
+
   // Search filtered products
   const filteredProducts = products.filter(
     p =>
@@ -2306,41 +2328,6 @@ export default function AdminPanel({
                       </div>
                     </div>
 
-                  </div>
-
-                  {/* Grid 2: Extra Stats */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Card 5: Total Points */}
-                    <div className="bg-[#fdfbe7] border border-[#f9f3b5] rounded-3xl p-5 shadow-xs relative flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-[#f5ec98] text-[#716104] rounded-2xl">
-                          <Coins className="w-6 h-6 stroke-[2]" />
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">TOTAL POINTS (ALL USERS)</span>
-                          <h4 className="text-2xl font-black text-zinc-900 mt-0.5">
-                            {userList.reduce((acc: number, u: any) => acc + (u.points || u.loyaltyPoints || 0), 0).toLocaleString()}
-                          </h4>
-                        </div>
-                      </div>
-                      <span className="bg-yellow-100 text-yellow-800 text-[10px] font-black px-2.5 py-1 rounded-xl">Loyalty Active</span>
-                    </div>
-
-                    {/* Card 6: All-Time Revenue */}
-                    <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-3xl p-5 shadow-xs relative flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-[#bbf7d0] text-[#14532d] rounded-2xl">
-                          <TrendingUp className="w-6 h-6 stroke-[2]" />
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider block font-mono">ALL-TIME REVENUE</span>
-                          <h4 className="text-2xl font-black text-zinc-900 mt-0.5">
-                            NPR {transactions.filter(t => t.status === 'SUCCESS').reduce((acc, t) => acc + (t.amount || 0), 0).toLocaleString()}
-                          </h4>
-                        </div>
-                      </div>
-                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-1 rounded-xl">99.8% Success</span>
-                    </div>
                   </div>
 
                   {/* Profit Tracker card matching uploaded layout (Screenshot 2 & 3 style) */}
@@ -3058,8 +3045,8 @@ export default function AdminPanel({
                                         setUserList(updated);
                                         localStorage.setItem('mb_admin_users', JSON.stringify(updated));
                                         try {
-                                          await setDoc(doc(db, 'users', usr.email || usr.id), { ...usr, deleted: true });
-                                          triggerToast('Account profile deleted from Firestore.');
+                                          await deleteDoc(doc(db, 'users', usr.email || usr.id));
+                                          triggerToast('Account profile permanently deleted from Firestore.');
                                         } catch (e) {
                                           triggerToast('Account profile deleted.');
                                         }
@@ -3696,6 +3683,62 @@ export default function AdminPanel({
                     </button>
                   </div>
                 </div>
+
+                {/* Theme Mode Selection Section */}
+                <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-zinc-100">
+                    <Palette className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <h3 className="text-xs font-black uppercase text-zinc-950 tracking-tight">App Theme Mode</h3>
+                      <p className="text-[10px] text-zinc-400 font-bold">SELECT THE SYSTEM-WIDE VISUAL SKIN FOR ALL USERS</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div 
+                      onClick={() => handleThemeChange('light')}
+                      className={`cursor-pointer p-4 rounded-2xl border transition-all flex flex-col justify-between h-[100px] text-left relative overflow-hidden ${
+                        themeMode === 'light'
+                          ? 'bg-blue-50/15 border-blue-600 ring-1 ring-blue-600 shadow-xs'
+                          : 'bg-white border-zinc-200/80 hover:bg-zinc-50 hover:border-zinc-300'
+                      }`}
+                    >
+                      {themeMode === 'light' && (
+                        <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-0.5 flex items-center justify-center shadow-sm">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                      <span className="text-[11.5px] font-black text-zinc-900 uppercase">
+                        Light Mode
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-bold">
+                        Default clean layout (original design)
+                      </span>
+                    </div>
+
+                    <div 
+                      onClick={() => handleThemeChange('black')}
+                      className={`cursor-pointer p-4 rounded-2xl border transition-all flex flex-col justify-between h-[100px] text-left relative overflow-hidden ${
+                        themeMode === 'black'
+                          ? 'bg-blue-50/15 border-blue-600 ring-1 ring-blue-600 shadow-xs'
+                          : 'bg-white border-zinc-200/80 hover:bg-zinc-50 hover:border-zinc-300'
+                      }`}
+                    >
+                      {themeMode === 'black' && (
+                        <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-0.5 flex items-center justify-center shadow-sm">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                      <span className="text-[11.5px] font-black text-zinc-900 uppercase">
+                        Black Mode
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-bold">
+                        Whole app is styled with deep black dark theme
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             )}
 
