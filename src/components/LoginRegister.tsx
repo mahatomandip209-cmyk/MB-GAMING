@@ -363,7 +363,7 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           ) : isLogin ? (
             <>
               <LogIn className="w-4 h-4" />
-              <span>LOG IN TO MB STORE</span>
+              <span>LOG IN TO BNY SHOP</span>
             </>
           ) : (
             <>
