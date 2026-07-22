@@ -119,7 +119,7 @@ const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quali
 
 export default function App() {
   // STATE MANAGEMENT
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => ALL_PRODUCTS);
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => [
     { id: 'top-up', name: 'Top Up' },
@@ -131,7 +131,15 @@ export default function App() {
     const saved = localStorage.getItem('mb_current_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          const unified = parsed.walletBalance ?? parsed.balance ?? parsed.loyaltyPoints ?? parsed.points;
+          if (unified !== undefined) {
+            parsed.walletBalance = Number(unified);
+            parsed.loyaltyPoints = Number(unified);
+          }
+        }
+        return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -144,32 +152,25 @@ export default function App() {
     if (savedUser) {
       try {
         const u = JSON.parse(savedUser);
-        if (u.walletBalance !== undefined) return Number(u.walletBalance);
+        const unified = u.walletBalance ?? u.balance ?? u.loyaltyPoints ?? u.points;
+        if (unified !== undefined) return Number(unified);
       } catch {}
     }
     const saved = localStorage.getItem('mb_gaming_wallet');
-    return saved ? Number(saved) : 2450;
+    if (saved) return Number(saved);
+    const savedPts = localStorage.getItem('mb_gaming_loyalty');
+    return savedPts ? Number(savedPts) : 2450;
   });
 
   useEffect(() => {
     localStorage.setItem('mb_gaming_wallet', walletBalance.toString());
   }, [walletBalance]);
 
-  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(() => {
-    const savedUser = localStorage.getItem('mb_current_user');
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        if (u.loyaltyPoints !== undefined) return Number(u.loyaltyPoints);
-      } catch {}
-    }
-    const saved = localStorage.getItem('mb_gaming_loyalty');
-    return saved ? Number(saved) : 86534;
-  });
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(() => walletBalance);
 
   useEffect(() => {
-    localStorage.setItem('mb_gaming_loyalty', loyaltyPoints.toString());
-  }, [loyaltyPoints]);
+    localStorage.setItem('mb_gaming_loyalty', walletBalance.toString());
+  }, [walletBalance]);
 
   const [teamMembers, setTeamMembers] = useState<string[]>(() => {
     try {
@@ -520,10 +521,23 @@ export default function App() {
 
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      setProducts(list);
+      if (!snapshot.empty) {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        setProducts(list);
+      } else {
+        // Seed initial products directly to Firestore when empty so products exist permanently
+        ALL_PRODUCTS.forEach(async (p) => {
+          try {
+            await setDoc(doc(db, "products", p.id), p);
+          } catch (err) {
+            console.error("Failed to populate initial product:", p.id, err);
+          }
+        });
+        setProducts(ALL_PRODUCTS);
+      }
     }, (error) => {
       console.error("Real-time products listener failed:", error);
+      setProducts(ALL_PRODUCTS);
     });
 
     // 3b. Real-time categories listener
@@ -622,11 +636,11 @@ export default function App() {
     const unsubscribeUser = onSnapshot(userDocRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        if (data.walletBalance !== undefined) {
-          setWalletBalance(Number(data.walletBalance));
-        }
-        if (data.loyaltyPoints !== undefined) {
-          setLoyaltyPoints(Number(data.loyaltyPoints));
+        const unified = data.walletBalance ?? data.balance ?? data.loyaltyPoints ?? data.points;
+        if (unified !== undefined) {
+          const val = Number(unified);
+          setWalletBalance(val);
+          setLoyaltyPoints(val);
         }
         setIsUserBlocked(!!data.blocked);
       }
@@ -1080,16 +1094,17 @@ export default function App() {
       }
     }
 
-    // Check balance
+    // Check balance / points
     const totalCost = checkoutAmount * quantity;
     if (walletBalance < totalCost) {
-      setModalError(`Insufficient funds in wallet! Your balance is Rs. ${walletBalance}. Click "Wallet" in the top right to refill.`);
+      setModalError(`Insufficient funds/points in wallet! Your available balance is Rs. ${walletBalance}. Click "Wallet" in the top right to refill.`);
       return;
     }
 
     // Success flow! Deduct balance and create transaction
     const newBalance = walletBalance - totalCost;
     setWalletBalance(newBalance);
+    setLoyaltyPoints(newBalance);
 
     // Create unique pin for vouchers
     const pinString = (selectedProduct.category === 'voucher' || selectedProduct.category === 'vouchers')
