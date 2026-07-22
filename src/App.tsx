@@ -119,7 +119,14 @@ const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800, quali
 
 export default function App() {
   // STATE MANAGEMENT
-  const [products, setProducts] = useState<Product[]>(() => ALL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('mb_products_cache');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => [
     { id: 'top-up', name: 'Top Up' },
@@ -521,23 +528,13 @@ export default function App() {
 
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
-      if (!snapshot.empty) {
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        setProducts(list);
-      } else {
-        // Seed initial products directly to Firestore when empty so products exist permanently
-        ALL_PRODUCTS.forEach(async (p) => {
-          try {
-            await setDoc(doc(db, "products", p.id), p);
-          } catch (err) {
-            console.error("Failed to populate initial product:", p.id, err);
-          }
-        });
-        setProducts(ALL_PRODUCTS);
-      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      setProducts(list);
+      try {
+        localStorage.setItem('mb_products_cache', JSON.stringify(list));
+      } catch {}
     }, (error) => {
       console.error("Real-time products listener failed:", error);
-      setProducts(ALL_PRODUCTS);
     });
 
     // 3b. Real-time categories listener
@@ -991,12 +988,11 @@ export default function App() {
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    const listToFilter = products && products.length > 0 ? products : ALL_PRODUCTS;
-    return listToFilter.filter((product) => {
+    return products.filter((product) => {
       const matchCategory = selectedCategory === 'all' || product.category === selectedCategory || (selectedCategory === 'voucher' && product.category === 'vouchers');
-      const matchSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          product.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchSearch = (product.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (product.provider || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (product.description || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchCategory && matchSearch;
     });
   }, [products, selectedCategory, searchQuery]);
