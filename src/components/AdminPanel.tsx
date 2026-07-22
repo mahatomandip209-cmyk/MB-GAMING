@@ -640,10 +640,10 @@ export default function AdminPanel({
         { id: 'games', label: 'Games', icon: Gamepad2 },
         { id: 'requirements', label: 'Requirements', icon: FileText },
         { id: 'products', label: 'Products', icon: ShoppingBag },
-        { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'banners', label: 'Banners', icon: ImageIcon },
         { id: 'legal', label: 'Legal', icon: FileText },
         { id: 'team', label: 'Add Team Member', icon: UserPlus },
+        { id: 'payments', label: 'Settings', icon: Settings },
       ];
     } else if (memberDoc) {
       if (isAdminOptionEnabled) {
@@ -666,10 +666,10 @@ export default function AdminPanel({
         { id: 'games', label: 'Games', icon: Gamepad2 },
         { id: 'requirements', label: 'Requirements', icon: FileText },
         { id: 'products', label: 'Products', icon: ShoppingBag },
-        { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'banners', label: 'Banners', icon: ImageIcon },
         { id: 'legal', label: 'Legal', icon: FileText },
         { id: 'team', label: 'Add Team Member', icon: UserPlus },
+        { id: 'payments', label: 'Settings', icon: Settings },
       ];
     }
   };
@@ -1315,9 +1315,9 @@ export default function AdminPanel({
   };
 
   // Update Transaction Status
-  const handleUpdateTransactionStatus = async (txId: string, status: 'SUCCESS' | 'PENDING' | 'FAILED') => {
+  const handleUpdateTransactionStatus = async (txId: string, status: 'SUCCESS' | 'PENDING' | 'FAILED' | 'REJECTED') => {
     setTransactions(prev =>
-      prev.map(t => (t.id === txId ? { ...t, status } : t))
+      prev.map(t => (t.id === txId ? { ...t, status: status as any } : t))
     );
     triggerToast(`Transaction status updated to ${status}`);
 
@@ -1353,7 +1353,53 @@ export default function AdminPanel({
         const notifTitle = status === 'SUCCESS' ? '✅ Recharge Approved!' : '❌ Recharge Rejected';
         const notifBody = status === 'SUCCESS'
           ? `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) has been completed successfully!`
-          : `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) was rejected. Please contact support.`;
+          : `Your recharge order for ${tx.productName} (UID: ${tx.targetAccount}) was rejected. NPR ${tx.amount} points have been refunded to your wallet!`;
+
+        // Process refund if order is rejected/failed
+        if (status === 'FAILED' || status === 'REJECTED') {
+          const userMail = tx.userEmail || tx.email;
+          if (userMail && tx.amount) {
+            try {
+              const userRef = doc(db, 'users', userMail);
+              const userSnap = await getDoc(userRef);
+              if (userSnap.exists()) {
+                const uData = userSnap.data();
+                const currBal = Number(uData.walletBalance ?? uData.balance ?? uData.loyaltyPoints ?? uData.points ?? 0);
+                const newBal = currBal + Number(tx.amount);
+                await setDoc(userRef, {
+                  walletBalance: newBal,
+                  balance: newBal,
+                  loyaltyPoints: newBal,
+                  points: newBal
+                }, { merge: true });
+              } else {
+                const uObj = userList.find(u => u.email?.toLowerCase() === userMail.toLowerCase() || u.id === userMail);
+                const currBal = Number(uObj?.walletBalance ?? uObj?.balance ?? 0);
+                const newBal = currBal + Number(tx.amount);
+                await setDoc(userRef, {
+                  email: userMail,
+                  walletBalance: newBal,
+                  balance: newBal,
+                  loyaltyPoints: newBal,
+                  points: newBal
+                }, { merge: true });
+              }
+
+              setUserList(prev => prev.map(u => {
+                if (u.email?.toLowerCase() === userMail.toLowerCase() || u.id === userMail) {
+                  const cB = Number(u.walletBalance ?? u.balance ?? 0);
+                  const nB = cB + Number(tx.amount);
+                  return { ...u, walletBalance: nB, balance: nB, loyaltyPoints: nB, points: nB };
+                }
+                return u;
+              }));
+
+              triggerToast(`💰 Order rejected & NPR ${tx.amount} refunded to ${userMail}`);
+            } catch (rErr) {
+              console.error("Error refunding user points/wallet:", rErr);
+            }
+          }
+        }
 
         const notifPayload = {
           title: notifTitle,

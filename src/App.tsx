@@ -991,8 +991,9 @@ export default function App() {
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    const listToFilter = products && products.length > 0 ? products : ALL_PRODUCTS;
+    return listToFilter.filter((product) => {
+      const matchCategory = selectedCategory === 'all' || product.category === selectedCategory || (selectedCategory === 'voucher' && product.category === 'vouchers');
       const matchSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1106,11 +1107,6 @@ export default function App() {
     setWalletBalance(newBalance);
     setLoyaltyPoints(newBalance);
 
-    // Create unique pin for vouchers
-    const pinString = (selectedProduct.category === 'voucher' || selectedProduct.category === 'vouchers')
-      ? `PIN-${Math.floor(10000000 + Math.random() * 90000000)}` 
-      : undefined;
-
     if (!finalTarget) {
       finalTarget = currentUser?.email || 'N/A';
     }
@@ -1127,7 +1123,6 @@ export default function App() {
       targetAccount: finalTarget,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'PENDING',
-      pinCode: pinString,
       userEmail: currentUser?.email,
       email: currentUser?.email,
       quantity: quantity
