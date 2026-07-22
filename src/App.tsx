@@ -166,7 +166,7 @@ export default function App() {
     const saved = localStorage.getItem('mb_gaming_wallet');
     if (saved) return Number(saved);
     const savedPts = localStorage.getItem('mb_gaming_loyalty');
-    return savedPts ? Number(savedPts) : 2450;
+    return savedPts ? Number(savedPts) : 0;
   });
 
   useEffect(() => {

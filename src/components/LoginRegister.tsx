@@ -109,8 +109,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           userProfile = {
             name: emailLower === 'bnyadminpanel@hotmail.com' ? 'Administrator' : (userCredential.user.displayName || emailLower.split('@')[0]),
             email: emailLower,
-            walletBalance: emailLower === 'bnyadminpanel@hotmail.com' ? 999999 : 2500,
-            loyaltyPoints: emailLower === 'bnyadminpanel@hotmail.com' ? 99999 : 0,
+            walletBalance: emailLower === 'bnyadminpanel@hotmail.com' ? 999999 : 0,
+            loyaltyPoints: emailLower === 'bnyadminpanel@hotmail.com' ? 999999 : 0,
             registered: new Date().toISOString().split('T')[0]
           };
           await setDoc(userDocRef, userProfile);
@@ -124,13 +124,13 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         const userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
         await updateProfile(userCredential.user, { displayName: name.trim() });
 
-        // Save User profile in Firestore with starting 0 points and 2500 balance
+        // Save User profile in Firestore with starting 0 points and 0 balance
         const userDocRef = doc(db, 'users', emailLower);
         const newUserProfile = {
           name: name.trim(),
           email: emailLower,
           whatsapp: whatsapp.trim() || "",
-          walletBalance: 2500,
+          walletBalance: 0,
           loyaltyPoints: 0,
           registered: new Date().toISOString().split('T')[0]
         };
