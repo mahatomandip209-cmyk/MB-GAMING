@@ -1657,7 +1657,7 @@ export default function AdminPanel({
   };
 
   // Adjust balance of test client wallet
-  const [newBalanceInput, setNewBalanceInput] = useState(walletBalance.toString());
+  const [newBalanceInput, setNewBalanceInput] = useState((walletBalance ?? 0).toString());
   const handleAdjustBalance = (e: FormEvent) => {
     e.preventDefault();
     const val = Number(newBalanceInput);
@@ -2016,12 +2016,31 @@ export default function AdminPanel({
                     <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
                     <span className="flex-1">{item.label}</span>
                     
-                    {/* Badge counters */}
-                    {item.id === 'orders' && transactions.filter(t => t.status === 'PENDING').length > 0 && (
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white text-blue-600' : 'bg-red-100 text-red-600'}`}>
-                        {transactions.filter(t => t.status === 'PENDING').length}
-                      </span>
-                    )}
+                    {/* Badge counters & Green Notification Dots */}
+                    {item.id === 'orders' && (() => {
+                      const pendingOrdersCount = transactions.filter(t => String(t.status || 'PENDING').toUpperCase() === 'PENDING').length;
+                      if (pendingOrdersCount === 0) return null;
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 text-[9.5px] font-black px-2 py-0.5 rounded-full ${
+                          isActive ? 'bg-white text-emerald-600' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                        }`}>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <span>{pendingOrdersCount}</span>
+                        </span>
+                      );
+                    })()}
+                    {item.id === 'deposits' && (() => {
+                      const pendingDepositsCount = deposits.filter(d => String(d.status || 'PENDING').toUpperCase() === 'PENDING').length;
+                      if (pendingDepositsCount === 0) return null;
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 text-[9.5px] font-black px-2 py-0.5 rounded-full ${
+                          isActive ? 'bg-white text-emerald-600' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                        }`}>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          <span>{pendingDepositsCount}</span>
+                        </span>
+                      );
+                    })()}
                   </button>
                 );
               })}
@@ -2080,6 +2099,26 @@ export default function AdminPanel({
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
                       <span className="truncate">{item.label}</span>
+                      {item.id === 'orders' && (() => {
+                        const count = transactions.filter(t => String(t.status || 'PENDING').toUpperCase() === 'PENDING').length;
+                        if (count === 0) return null;
+                        return (
+                          <span className="ml-auto inline-flex items-center gap-1 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                            <span>{count}</span>
+                          </span>
+                        );
+                      })()}
+                      {item.id === 'deposits' && (() => {
+                        const count = deposits.filter(d => String(d.status || 'PENDING').toUpperCase() === 'PENDING').length;
+                        if (count === 0) return null;
+                        return (
+                          <span className="ml-auto inline-flex items-center gap-1 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                            <span>{count}</span>
+                          </span>
+                        );
+                      })()}
                     </button>
                   );
                 })}
@@ -2428,7 +2467,7 @@ export default function AdminPanel({
                               {filteredCount} {filteredCount === 1 ? 'Order' : 'Orders'}
                             </h5>
                             <p className="text-sm font-black mt-1.5 text-zinc-500">
-                              Revenue: <span className="text-blue-600">NPR {filteredRev.toLocaleString()}</span>
+                              Revenue: <span className="text-blue-600">NPR {(filteredRev ?? 0).toLocaleString()}</span>
                             </p>
                           </div>
                           <span className="text-[10px] text-zinc-400 font-bold mt-2 sm:mt-0 font-mono">Synced with storefront transaction logs</span>
@@ -2489,10 +2528,10 @@ export default function AdminPanel({
                         <line x1="50" y1="200" x2="560" y2="200" stroke="#e2e8f0" strokeWidth="1" />
 
                         {/* Y-axis Labels */}
-                        <text x="40" y="44" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount).toLocaleString()}</text>
-                        <text x="40" y="84" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount * 0.75).toLocaleString()}</text>
-                        <text x="40" y="124" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount * 0.5).toLocaleString()}</text>
-                        <text x="40" y="164" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount * 0.25).toLocaleString()}</text>
+                        <text x="40" y="44" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round(maxTrendAmount || 0).toLocaleString()}</text>
+                        <text x="40" y="84" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round((maxTrendAmount || 0) * 0.75).toLocaleString()}</text>
+                        <text x="40" y="124" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round((maxTrendAmount || 0) * 0.5).toLocaleString()}</text>
+                        <text x="40" y="164" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">{Math.round((maxTrendAmount || 0) * 0.25).toLocaleString()}</text>
                         <text x="40" y="204" textAnchor="end" className="text-[9px] font-bold fill-zinc-400 font-mono">0</text>
 
                         {/* Area fill */}
@@ -2541,7 +2580,7 @@ export default function AdminPanel({
                           className="bg-white border border-zinc-200 p-2.5 rounded-xl text-[10px] shadow-md text-center pointer-events-none -translate-x-1/2 -translate-y-full"
                         >
                           <div className="font-extrabold text-zinc-950">{peakPoint.label}</div>
-                          <div className="mt-0.5 text-blue-600 font-black">Sales: NPR {peakPoint.amount.toLocaleString()}</div>
+                          <div className="mt-0.5 text-blue-600 font-black">Sales: NPR {(peakPoint?.amount ?? 0).toLocaleString()}</div>
                         </div>
                       )}
                     </div>
@@ -2581,7 +2620,7 @@ export default function AdminPanel({
                               </div>
                               <div className="text-right shrink-0">
                                 <span className="text-xs font-black text-emerald-600 font-mono">
-                                  NPR {item.revenue.toLocaleString()}
+                                  NPR {(item?.revenue ?? 0).toLocaleString()}
                                 </span>
                               </div>
                             </div>
@@ -2745,18 +2784,30 @@ export default function AdminPanel({
 
                 {/* Orders Grid Layout - Redesigned to Different Grids instead of table */}
                 {(() => {
+                  const pSearch = (productSearch || '').toLowerCase().trim();
                   const filteredList = transactions.filter(t => {
-                    const matchesSearch = t.id.toLowerCase().includes(productSearch.toLowerCase()) || 
-                                          t.targetAccount.toLowerCase().includes(productSearch.toLowerCase()) || 
-                                          t.productName.toLowerCase().includes(productSearch.toLowerCase()) ||
-                                          (t.userEmail && t.userEmail.toLowerCase().includes(productSearch.toLowerCase())) ||
-                                          (t.email && t.email.toLowerCase().includes(productSearch.toLowerCase()));
+                    if (!t) return false;
+                    const safeId = String(t.id || '').toLowerCase();
+                    const safeTarget = String(t.targetAccount || '').toLowerCase();
+                    const safeProduct = String(t.productName || '').toLowerCase();
+                    const safeUserEmail = String(t.userEmail || '').toLowerCase();
+                    const safeEmail = String(t.email || '').toLowerCase();
+
+                    const matchesSearch = !pSearch || 
+                      safeId.includes(pSearch) || 
+                      safeTarget.includes(pSearch) || 
+                      safeProduct.includes(pSearch) ||
+                      safeUserEmail.includes(pSearch) ||
+                      safeEmail.includes(pSearch);
                     
+                    const statusStr = String(t.status || 'PENDING').toUpperCase();
                     let matchesStatus = false;
                     if (orderFilterStatus === 'REJECTED') {
-                      matchesStatus = t.status === 'FAILED' || (t.status as any) === 'REJECTED';
+                      matchesStatus = statusStr === 'FAILED' || statusStr === 'REJECTED' || statusStr === 'CANCELLED';
+                    } else if (orderFilterStatus === 'SUCCESS') {
+                      matchesStatus = statusStr === 'SUCCESS' || statusStr === 'APPROVED' || statusStr === 'COMPLETED';
                     } else {
-                      matchesStatus = (t.status || 'PENDING') === (orderFilterStatus as any);
+                      matchesStatus = statusStr === 'PENDING';
                     }
                     return matchesSearch && matchesStatus;
                   });
@@ -2767,13 +2818,14 @@ export default function AdminPanel({
                         <div className="w-10 h-10 rounded-full bg-zinc-50 border border-zinc-150 flex items-center justify-center mx-auto text-zinc-300">
                           <Eye className="w-4 h-4" />
                         </div>
-                        <p>No orders matching search criteria found.</p>
+                        <p>No {orderFilterStatus.toLowerCase()} orders found.</p>
                       </div>
                     );
                   }
 
                   // Auto requirements detection helper
-                  const parseRequirements = (target: string) => {
+                  const parseRequirements = (rawTarget: any) => {
+                    const target = String(rawTarget || '');
                     if (!target) return [];
                     if (target.includes(' | ')) {
                       return target.split(' | ').map(item => {
@@ -2802,7 +2854,7 @@ export default function AdminPanel({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {filteredList.map(tx => {
                         const detectedReqs = parseRequirements(tx.targetAccount);
-                        const unitPrice = tx.amount / (tx.quantity || 1);
+                        const unitPrice = (tx.amount || 0) / (tx.quantity || 1);
 
                         return (
                           <div 
@@ -2841,7 +2893,7 @@ export default function AdminPanel({
                                   <div>
                                     <span className="block text-[8px] font-bold uppercase tracking-wider text-zinc-400">Unit Price</span>
                                     <span className="block text-[11px] font-black text-zinc-800 font-mono mt-0.5">
-                                      Rs. {Math.round(unitPrice).toLocaleString()}
+                                      Rs. {Math.round(unitPrice || 0).toLocaleString()}
                                     </span>
                                   </div>
                                   <div>
@@ -2853,7 +2905,7 @@ export default function AdminPanel({
                                   <div>
                                     <span className="block text-[8px] font-bold uppercase tracking-wider text-blue-500">Total Cost</span>
                                     <span className="block text-[11px] font-black text-blue-600 font-mono mt-0.5">
-                                      Rs. {tx.amount.toLocaleString()}
+                                      Rs. {(tx?.amount ?? 0).toLocaleString()}
                                     </span>
                                   </div>
                                 </div>
@@ -3044,7 +3096,7 @@ export default function AdminPanel({
                               <td className="py-3 px-4 font-mono text-[10.5px] text-zinc-500">{usr.phone || 'N/A'}</td>
                               <td className="py-3 px-4 font-mono">
                                 <span className="font-extrabold text-[#716104] bg-yellow-50 px-2.5 py-1 rounded-xl border border-yellow-200/50 text-[10.5px] inline-flex items-center gap-1">
-                                  ★ {usr.points?.toLocaleString() || 0} PTS
+                                  ★ {(usr?.points ?? 0).toLocaleString()} PTS
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-[10px]">
@@ -3490,10 +3542,20 @@ export default function AdminPanel({
                       <tbody className="divide-y divide-zinc-100 font-medium">
                         {(() => {
                           const list = deposits.filter(dep => {
-                            const matchesStatus = dep.status === depositFilterStatus;
-                            const matchesSearch = dep.userEmail?.toLowerCase().includes(depositSearchQuery.toLowerCase()) || 
-                                                  dep.amount?.toString().includes(depositSearchQuery) || 
-                                                  dep.id?.toLowerCase().includes(depositSearchQuery.toLowerCase());
+                            if (!dep) return false;
+                            const statusStr = String(dep.status || 'PENDING').toUpperCase();
+                            const filterStr = String(depositFilterStatus).toUpperCase();
+                            const matchesStatus = statusStr === filterStr;
+
+                            const query = (depositSearchQuery || '').toLowerCase().trim();
+                            const safeEmail = String(dep.userEmail || '').toLowerCase();
+                            const safeAmount = String(dep.amount || '');
+                            const safeId = String(dep.id || '').toLowerCase();
+
+                            const matchesSearch = !query || 
+                              safeEmail.includes(query) || 
+                              safeAmount.includes(query) || 
+                              safeId.includes(query);
                             return matchesStatus && matchesSearch;
                           });
 

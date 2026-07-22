@@ -1345,7 +1345,7 @@ export default function App() {
                   className="px-4 py-1.5 rounded-full bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#3b82f6] flex items-center gap-1.5 text-xs font-black tracking-wide transition-all cursor-pointer shadow-sm active:scale-95 border-none"
                 >
                   <Link className="w-3.5 h-3.5 text-blue-600 stroke-[2.5]" />
-                  <span>Pts {loyaltyPoints.toLocaleString()}</span>
+                  <span>Pts {(loyaltyPoints ?? 0).toLocaleString()}</span>
                 </button>
               ) : (
                 <button
@@ -2483,7 +2483,7 @@ export default function App() {
                       <div className="text-left">
                         <span className="text-[9px] font-extrabold tracking-wider text-blue-100 uppercase block">Available Points</span>
                         <span className="text-xl font-black text-white font-mono tracking-tight leading-none block mt-1">
-                          {loyaltyPoints.toLocaleString()} Pts
+                          {(loyaltyPoints ?? 0).toLocaleString()} Pts
                         </span>
                       </div>
                       <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs ml-4 shrink-0">
@@ -2835,7 +2835,7 @@ export default function App() {
                       {/* Points Indicator with link icon */}
                       <div className="pt-1 flex items-center gap-1 text-blue-600 font-extrabold">
                         <Link className="w-3.5 h-3.5" />
-                        <span className="text-[11px] hover:underline cursor-pointer">{loyaltyPoints.toLocaleString()} Points</span>
+                        <span className="text-[11px] hover:underline cursor-pointer">{(loyaltyPoints ?? 0).toLocaleString()} Points</span>
                       </div>
                     </div>
                   </div>
@@ -2884,7 +2884,7 @@ export default function App() {
                       </div>
                       <div>
                         <h5 className="text-[11px] font-extrabold text-zinc-800">Store Points</h5>
-                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: {loyaltyPoints.toLocaleString()} Points</p>
+                        <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">Balance: {(loyaltyPoints ?? 0).toLocaleString()} Points</p>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 transition-colors" />
@@ -3410,7 +3410,7 @@ export default function App() {
                           <h5 className="text-xs font-extrabold text-zinc-900 group-hover:text-blue-600 transition-colors">{notif.title}</h5>
                           <p className="text-[11px] text-zinc-500 leading-normal">{notif.body}</p>
                           <span className="block text-[8px] font-bold text-zinc-400 font-mono pt-1">
-                            {new Date(notif.timestamp).toLocaleString()}
+                            {notif?.timestamp ? new Date(notif.timestamp).toLocaleString() : ''}
                           </span>
                         </div>
                       </div>
@@ -3469,7 +3469,7 @@ export default function App() {
                 <div className="bg-blue-600 text-white rounded-xl p-3 relative overflow-hidden shadow-sm flex items-center justify-between">
                   <div className="text-left">
                     <span className="text-[8px] font-extrabold tracking-wider text-blue-100 uppercase block">Available Points</span>
-                    <span className="text-sm font-black text-white font-mono tracking-tight block mt-0.5">{loyaltyPoints.toLocaleString()} Pts</span>
+                    <span className="text-sm font-black text-white font-mono tracking-tight block mt-0.5">{(loyaltyPoints ?? 0).toLocaleString()} Pts</span>
                   </div>
                   <Link className="w-4 h-4 text-blue-200 opacity-85 shrink-0" />
                 </div>
