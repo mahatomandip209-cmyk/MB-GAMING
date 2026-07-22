@@ -55,7 +55,7 @@ import { Category, Product, Transaction } from './types';
 import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
 import { LoginRegister } from './components/LoginRegister';
-import { db, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
+import { db, auth, signOut, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
 
 export function getProductPackages(product: Product): { name: string; price: number }[] {
   // Check if the product has custom packages stored on the database object
@@ -201,6 +201,58 @@ export default function App() {
     });
     return () => unsubscribeTeam();
   }, []);
+
+  // Real-time account deletion auto-logout listener
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const emailLower = currentUser.email.toLowerCase();
+
+    // 1. Listen for deleted_users collection entry
+    const unsubDeleted = onSnapshot(doc(db, 'deleted_users', emailLower), (snap) => {
+      if (snap.exists()) {
+        signOut(auth).catch(() => {});
+        setCurrentUser(null);
+        localStorage.removeItem('mb_current_user');
+        localStorage.removeItem('mb_gaming_wallet');
+        localStorage.removeItem('mb_gaming_loyalty');
+        triggerToast("Your account has been deleted.");
+      }
+    }, (err) => {
+      console.warn("Deleted user listener error:", err);
+    });
+
+    // 2. Listen for removal from users collection (for non-primary admin)
+    const unsubUser = onSnapshot(doc(db, 'users', emailLower), (snap) => {
+      const isPrimaryAdmin = emailLower === 'mandipmahato717@gmail.com' || 
+                             emailLower === 'bnyshopadminpanel@gmail.com' || 
+                             emailLower === 'bnyadminpanel@hotmail.com';
+      if (!snap.exists() && !isPrimaryAdmin) {
+        signOut(auth).catch(() => {});
+        setCurrentUser(null);
+        localStorage.removeItem('mb_current_user');
+        localStorage.removeItem('mb_gaming_wallet');
+        localStorage.removeItem('mb_gaming_loyalty');
+        triggerToast("Your account has been deleted.");
+      } else if (snap.exists()) {
+        const data = snap.data();
+        if (data?.status === 'DELETED' || data?.isDeleted) {
+          signOut(auth).catch(() => {});
+          setCurrentUser(null);
+          localStorage.removeItem('mb_current_user');
+          localStorage.removeItem('mb_gaming_wallet');
+          localStorage.removeItem('mb_gaming_loyalty');
+          triggerToast("Your account has been deleted.");
+        }
+      }
+    }, (err) => {
+      console.warn("User status listener error:", err);
+    });
+
+    return () => {
+      unsubDeleted();
+      unsubUser();
+    };
+  }, [currentUser?.email]);
 
   // Sync user profile state changes
   useEffect(() => {
@@ -2595,10 +2647,10 @@ export default function App() {
                               }}
                               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                             />
-                            <div className="border border-dashed border-zinc-250 hover:border-blue-500 bg-zinc-50 hover:bg-white rounded-xl py-3.5 px-4 text-center transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs">
-                              <Upload className="w-4.5 h-4.5 text-zinc-400 shrink-0" />
-                              <span className="text-xs font-black text-zinc-700 truncate">
-                                {depositScreenshotBase64 ? '📁 Receipt Selected' : 'Choose Payment Screenshot'}
+                            <div className={`border border-dashed ${depositScreenshotBase64 ? 'border-emerald-500 bg-emerald-50/50' : 'border-zinc-300 hover:border-blue-500 bg-zinc-50 hover:bg-white'} rounded-xl py-3.5 px-4 text-center transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs`}>
+                              <Upload className={`w-4.5 h-4.5 ${depositScreenshotBase64 ? 'text-emerald-600' : 'text-zinc-400'} shrink-0`} />
+                              <span className={`text-xs font-black ${depositScreenshotBase64 ? 'text-emerald-800' : 'text-zinc-700'} truncate`}>
+                                {depositScreenshotBase64 ? '✓ Receipt Screenshot Selected' : 'Choose Payment Screenshot'}
                               </span>
                             </div>
                           </div>
@@ -2606,22 +2658,22 @@ export default function App() {
 
                         {/* Screenshot Preview */}
                         {depositScreenshotBase64 && (
-                          <div className="flex items-center justify-between bg-zinc-50 border border-zinc-200/80 px-4 py-3 rounded-xl animate-fade-in shadow-xs">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-between bg-emerald-50/60 border border-emerald-200/80 px-4 py-3 rounded-xl animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-3 min-w-0">
                               <img 
                                 src={depositScreenshotBase64} 
                                 alt="Receipt preview" 
-                                className="w-12 h-12 object-cover rounded-lg border border-zinc-200 shadow-xs shrink-0"
+                                className="w-12 h-12 object-cover rounded-lg border border-emerald-200 shadow-xs shrink-0"
                               />
-                              <div className="text-left">
-                                <span className="block text-xs font-bold text-zinc-800">Screenshot Attached</span>
-                                <span className="block text-[10px] text-zinc-400 font-semibold">Ready to upload</span>
+                              <div className="text-left min-w-0">
+                                <span className="block text-xs font-black text-emerald-900 truncate">Payment Receipt Attached</span>
+                                <span className="block text-[10px] text-emerald-700 font-bold">Ready to submit</span>
                               </div>
                             </div>
                             <button 
                               type="button"
                               onClick={() => setDepositScreenshotBase64('')}
-                              className="text-red-500 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              className="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0"
                             >
                               Remove
                             </button>
@@ -2632,7 +2684,7 @@ export default function App() {
                         <button
                           type="submit"
                           disabled={isDepositing}
-                          className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/10 cursor-pointer flex items-center justify-center gap-2 active:scale-98 border-none mt-4"
+                          className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer flex items-center justify-center gap-2 active:scale-98 border-none mt-4"
                         >
                           {isDepositing ? (
                             <>
@@ -2829,7 +2881,14 @@ export default function App() {
                       )}
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="text-sm font-black text-zinc-800 leading-tight">{currentUser.name}</h4>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="text-sm font-black text-zinc-800 leading-tight">{currentUser.name}</h4>
+                        {(currentUser.email.toLowerCase() === 'mandipmahato717@gmail.com' || currentUser.email.toLowerCase() === 'bnyshopadminpanel@gmail.com' || currentUser.email.toLowerCase() === 'bnyadminpanel@hotmail.com' || teamMembers.includes(currentUser.email.toLowerCase())) && (
+                          <span className="bg-blue-600 text-white text-[8.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-zinc-400 font-bold">{currentUser.email}</p>
                       
                       {/* Points Indicator with link icon */}
@@ -2861,18 +2920,18 @@ export default function App() {
                         const navEvent = new PopStateEvent('popstate');
                         window.dispatchEvent(navEvent);
                       }}
-                      className="flex items-center justify-between p-2.5 bg-blue-50/50 border border-blue-100 hover:bg-blue-100/30 rounded-xl cursor-pointer transition-colors group"
+                      className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl cursor-pointer transition-all hover:opacity-95 shadow-md shadow-blue-500/15 group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                          <ShieldCheck className="w-4.5 h-4.5" />
+                        <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white">
+                          <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
                         </div>
                         <div>
-                          <h5 className="text-[11px] font-extrabold text-blue-700">Admin Control Panel</h5>
-                          <p className="text-[10px] text-blue-500 font-semibold mt-0.5">Manage deposits, orders, and products</p>
+                          <h5 className="text-xs font-black tracking-tight">Admin Control Panel</h5>
+                          <p className="text-[10px] text-blue-100 font-medium mt-0.5">Manage deposits, orders, products & users</p>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                      <ChevronRight className="w-4 h-4 text-blue-200 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   )}
 
@@ -3568,10 +3627,10 @@ export default function App() {
                         }}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                       />
-                      <div className="border border-dashed border-zinc-200 hover:border-blue-500 bg-zinc-50 hover:bg-white rounded-xl py-2 px-3 text-center transition-all cursor-pointer flex items-center justify-center gap-2 h-[42px]">
-                        <Upload className="w-4 h-4 text-zinc-400 shrink-0" />
-                        <span className="text-[10px] font-bold text-zinc-600 truncate">
-                          {depositScreenshotBase64 ? '📁 Receipt Selected' : 'Choose Receipt'}
+                      <div className={`border border-dashed ${depositScreenshotBase64 ? 'border-emerald-500 bg-emerald-50/50' : 'border-zinc-200 hover:border-blue-500 bg-zinc-50 hover:bg-white'} rounded-xl py-2 px-3 text-center transition-all cursor-pointer flex items-center justify-center gap-2 h-[42px]`}>
+                        <Upload className={`w-4 h-4 ${depositScreenshotBase64 ? 'text-emerald-600' : 'text-zinc-400'} shrink-0`} />
+                        <span className={`text-[10px] font-extrabold ${depositScreenshotBase64 ? 'text-emerald-800' : 'text-zinc-600'} truncate`}>
+                          {depositScreenshotBase64 ? '✓ Receipt Selected' : 'Choose Receipt'}
                         </span>
                       </div>
                     </div>
@@ -3580,19 +3639,22 @@ export default function App() {
 
                 {/* Screenshot Preview */}
                 {depositScreenshotBase64 && (
-                  <div className="flex items-center justify-between bg-zinc-50 border border-zinc-200/80 px-3.5 py-2.5 rounded-xl">
-                    <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-between bg-emerald-50/60 border border-emerald-200/80 px-3.5 py-2.5 rounded-xl">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <img 
                         src={depositScreenshotBase64} 
                         alt="Receipt preview" 
-                        className="w-10 h-10 object-cover rounded-lg border border-zinc-200 shadow-xs shrink-0"
+                        className="w-10 h-10 object-cover rounded-lg border border-emerald-200 shadow-xs shrink-0"
                       />
-                      <span className="text-[10px] text-zinc-500 font-bold">Screenshot attached successfully</span>
+                      <div className="text-left min-w-0">
+                        <span className="block text-[10px] font-black text-emerald-900 truncate">Screenshot Attached</span>
+                        <span className="block text-[9px] text-emerald-700 font-bold">Ready to submit</span>
+                      </div>
                     </div>
                     <button 
                       type="button"
                       onClick={() => setDepositScreenshotBase64('')}
-                      className="text-red-500 hover:text-red-650 hover:bg-red-50 p-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors"
+                      className="text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors border border-red-200/60 shrink-0"
                     >
                       Remove
                     </button>
@@ -3602,7 +3664,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={isDepositing}
-                  className="w-full py-3.5 bg-blue-650 hover:bg-blue-600 disabled:bg-blue-400 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm shadow-blue-500/10 cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer flex items-center justify-center gap-2 border-none"
                 >
                   {isDepositing ? (
                     <>

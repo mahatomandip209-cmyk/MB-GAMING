@@ -5,6 +5,7 @@ import {
   db, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  signOut,
   updateProfile,
   doc, 
   setDoc, 
@@ -72,6 +73,14 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
     try {
       const emailLower = email.toLowerCase().trim();
 
+      // Check if account was deleted by admin
+      const deletedSnap = await getDoc(doc(db, 'deleted_users', emailLower));
+      if (deletedSnap.exists()) {
+        await signOut(auth).catch(() => {});
+        triggerToast("Account has been deleted");
+        throw new Error("Account has been deleted");
+      }
+
       if (isLogin) {
         let userCredential;
         if (emailLower === 'bnyadminpanel@hotmail.com' && password === 'Adminbny44!') {
@@ -95,25 +104,39 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         const userDocRef = doc(db, 'users', emailLower);
         const userDocSnap = await getDoc(userDocRef);
         
+        const isPrimaryAdmin = emailLower === 'mandipmahato717@gmail.com' || 
+                               emailLower === 'bnyshopadminpanel@gmail.com' || 
+                               emailLower === 'bnyadminpanel@hotmail.com';
+
         let userProfile;
         if (userDocSnap.exists()) {
           userProfile = userDocSnap.data();
+          if (userProfile?.status === 'DELETED' || userProfile?.isDeleted) {
+            await signOut(auth).catch(() => {});
+            triggerToast("Account has been deleted");
+            throw new Error("Account has been deleted");
+          }
           // Ensure admin user profile has correct admin-level wallet and loyalty privileges
           if (emailLower === 'bnyadminpanel@hotmail.com') {
             userProfile.walletBalance = userProfile.walletBalance || 999999;
             userProfile.loyaltyPoints = userProfile.loyaltyPoints || 99999;
             await setDoc(userDocRef, userProfile);
           }
-        } else {
-          // Fallback bootstrap if user profile doesn't exist in Firestore
+        } else if (isPrimaryAdmin) {
+          // Fallback bootstrap if primary admin user profile doesn't exist in Firestore
           userProfile = {
             name: emailLower === 'bnyadminpanel@hotmail.com' ? 'Administrator' : (userCredential.user.displayName || emailLower.split('@')[0]),
             email: emailLower,
-            walletBalance: emailLower === 'bnyadminpanel@hotmail.com' ? 999999 : 0,
-            loyaltyPoints: emailLower === 'bnyadminpanel@hotmail.com' ? 999999 : 0,
+            walletBalance: 999999,
+            loyaltyPoints: 999999,
             registered: new Date().toISOString().split('T')[0]
           };
           await setDoc(userDocRef, userProfile);
+        } else {
+          // Non-admin user profile was deleted in Firestore
+          await signOut(auth).catch(() => {});
+          triggerToast("Account has been deleted");
+          throw new Error("Account has been deleted");
         }
 
         triggerToast(emailLower === 'bnyadminpanel@hotmail.com' ? "Welcome back, Administrator!" : "Welcome back! Logged in successfully.");

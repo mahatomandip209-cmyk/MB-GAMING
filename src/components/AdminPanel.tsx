@@ -3143,8 +3143,14 @@ export default function AdminPanel({
                                         setUserList(updated);
                                         localStorage.setItem('mb_admin_users', JSON.stringify(updated));
                                         try {
-                                          await deleteDoc(doc(db, 'users', usr.email || usr.id));
-                                          triggerToast('Account profile permanently deleted from Firestore.');
+                                          const targetEmail = (usr.email || usr.id || '').toLowerCase();
+                                          await deleteDoc(doc(db, 'users', targetEmail));
+                                          await setDoc(doc(db, 'deleted_users', targetEmail), {
+                                            email: targetEmail,
+                                            deleted: true,
+                                            deletedAt: new Date().toISOString()
+                                          });
+                                          triggerToast('Account profile permanently deleted.');
                                         } catch (e) {
                                           triggerToast('Account profile deleted.');
                                         }
