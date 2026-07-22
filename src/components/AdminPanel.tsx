@@ -769,7 +769,7 @@ export default function AdminPanel({
         throw new Error("Response was not a success payload.");
       }
     } catch (err) {
-      console.error("Connection test failed:", err);
+      console.warn("Connection test notice:", err);
       setConnectionStatus('disconnected');
       setConnectionError(err instanceof Error ? err.message : String(err));
       return false;
@@ -794,7 +794,7 @@ export default function AdminPanel({
       list.sort((a: any, b: any) => b.timestamp - a.timestamp);
       setSentPushLogs(list);
     } catch (fsErr) {
-      console.error("Failed to fetch logs from Firestore:", fsErr);
+      console.warn("Failed to fetch logs notice:", fsErr);
     }
   };
 
@@ -1141,7 +1141,7 @@ export default function AdminPanel({
           setRequirementsText(defaultReq);
         }
       } catch (err) {
-        console.error("Error loading Firestore data:", err);
+        console.warn("Firestore data loading notice:", err);
       }
     };
 
