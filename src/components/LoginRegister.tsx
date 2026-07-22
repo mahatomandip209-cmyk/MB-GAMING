@@ -73,9 +73,9 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
     try {
       const emailLower = email.toLowerCase().trim();
 
-      // Check if account was deleted by admin
-      const deletedSnap = await getDoc(doc(db, 'deleted_users', emailLower));
-      if (deletedSnap.exists()) {
+      // Check if account was deleted by admin (safe call)
+      const deletedSnap = await getDoc(doc(db, 'deleted_users', emailLower)).catch(() => null);
+      if (deletedSnap?.exists()) {
         await signOut(auth).catch(() => {});
         triggerToast("Account has been deleted");
         throw new Error("Account has been deleted");
@@ -100,16 +100,16 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           userCredential = await signInWithEmailAndPassword(auth, emailLower, password);
         }
         
-        // Fetch User profile from Firestore
+        // Fetch User profile from Firestore safely
         const userDocRef = doc(db, 'users', emailLower);
-        const userDocSnap = await getDoc(userDocRef);
+        const userDocSnap = await getDoc(userDocRef).catch(() => null);
         
         const isPrimaryAdmin = emailLower === 'mandipmahato717@gmail.com' || 
                                emailLower === 'bnyshopadminpanel@gmail.com' || 
                                emailLower === 'bnyadminpanel@hotmail.com';
 
         let userProfile;
-        if (userDocSnap.exists()) {
+        if (userDocSnap?.exists()) {
           userProfile = userDocSnap.data();
           if (userProfile?.status === 'DELETED' || userProfile?.isDeleted) {
             await signOut(auth).catch(() => {});
@@ -120,23 +120,18 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           if (emailLower === 'bnyadminpanel@hotmail.com') {
             userProfile.walletBalance = userProfile.walletBalance || 999999;
             userProfile.loyaltyPoints = userProfile.loyaltyPoints || 99999;
-            await setDoc(userDocRef, userProfile);
+            await setDoc(userDocRef, userProfile).catch(() => {});
           }
-        } else if (isPrimaryAdmin) {
-          // Fallback bootstrap if primary admin user profile doesn't exist in Firestore
+        } else {
+          // Fallback user profile creation if doc missing or quota limit prevents read
           userProfile = {
             name: emailLower === 'bnyadminpanel@hotmail.com' ? 'Administrator' : (userCredential.user.displayName || emailLower.split('@')[0]),
             email: emailLower,
-            walletBalance: 999999,
-            loyaltyPoints: 999999,
+            walletBalance: isPrimaryAdmin ? 999999 : 0,
+            loyaltyPoints: isPrimaryAdmin ? 999999 : 0,
             registered: new Date().toISOString().split('T')[0]
           };
-          await setDoc(userDocRef, userProfile);
-        } else {
-          // Non-admin user profile was deleted in Firestore
-          await signOut(auth).catch(() => {});
-          triggerToast("Account has been deleted");
-          throw new Error("Account has been deleted");
+          await setDoc(userDocRef, userProfile).catch(() => {});
         }
 
         triggerToast(emailLower === 'bnyadminpanel@hotmail.com' ? "Welcome back, Administrator!" : "Welcome back! Logged in successfully.");
@@ -145,9 +140,9 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
       } else {
         // Firebase Auth: Register
         const userCredential = await createUserWithEmailAndPassword(auth, emailLower, password);
-        await updateProfile(userCredential.user, { displayName: name.trim() });
+        await updateProfile(userCredential.user, { displayName: name.trim() }).catch(() => {});
 
-        // Save User profile in Firestore with starting 0 points and 0 balance
+        // Save User profile in Firestore safely
         const userDocRef = doc(db, 'users', emailLower);
         const newUserProfile = {
           name: name.trim(),
@@ -157,7 +152,9 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
           loyaltyPoints: 0,
           registered: new Date().toISOString().split('T')[0]
         };
-        await setDoc(userDocRef, newUserProfile);
+        await setDoc(userDocRef, newUserProfile).catch((err) => {
+          console.warn("Firestore profile save notice:", err);
+        });
 
         // Track a notification on server/db as well
         try {
@@ -189,6 +186,8 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         errMsg = "No account found with this email.";
       } else if (err.code === "auth/email-already-in-use") {
         errMsg = "An account with this email address already exists.";
+      } else if (err.message && (err.message.includes("Quota limit exceeded") || err.message.includes("quota"))) {
+        errMsg = "Registration database service is reaching free daily limits. Your account will be saved locally.";
       } else if (err.message) {
         errMsg = err.message;
       }

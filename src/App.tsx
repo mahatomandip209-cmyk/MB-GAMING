@@ -197,7 +197,11 @@ export default function App() {
       setTeamMembers(emails);
       localStorage.setItem('mb_team_member_emails', JSON.stringify(emails));
     }, (error) => {
-      console.error("Error listening to team members in App.tsx:", error);
+      console.warn("Team members snapshot notice:", error?.message || error);
+      try {
+        const cached = localStorage.getItem('mb_team_member_emails');
+        if (cached) setTeamMembers(JSON.parse(cached));
+      } catch {}
     });
     return () => unsubscribeTeam();
   }, []);
@@ -497,8 +501,8 @@ export default function App() {
       list.sort((a: any, b: any) => b.timestamp - a.timestamp);
       setServerNotifications(list);
       handleNewNotificationAlert(list);
-    } catch (fsErr) {
-      console.error("Firestore notifications fallback failed:", fsErr);
+    } catch (fsErr: any) {
+      console.warn("Firestore notifications fallback notice:", fsErr?.message || fsErr);
     }
   };
 
@@ -519,8 +523,8 @@ export default function App() {
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
       setTransactions(list);
-    } catch (fsErr) {
-      console.error("Firestore transactions fallback failed:", fsErr);
+    } catch (fsErr: any) {
+      console.warn("Firestore transactions fallback notice:", fsErr?.message || fsErr);
     }
   };
 
@@ -536,7 +540,7 @@ export default function App() {
       setServerNotifications(list);
       handleNewNotificationAlert(list);
     }, (error) => {
-      console.error("Real-time notifications listener failed:", error);
+      console.warn("Real-time notifications listener notice:", error?.message || error);
       fetchNotifications();
     });
 
@@ -546,7 +550,7 @@ export default function App() {
       list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
       setTransactions(list);
     }, (error) => {
-      console.error("Real-time transactions listener failed:", error);
+      console.warn("Real-time transactions listener notice:", error?.message || error);
       fetchTransactions();
     });
 
@@ -561,7 +565,7 @@ export default function App() {
         });
       }
     }, (error) => {
-      console.error("Failed to load payments settings:", error);
+      console.warn("Failed to load payments settings notice:", error?.message || error);
     });
 
     // Real-time general/theme settings listener
@@ -575,7 +579,7 @@ export default function App() {
         }
       }
     }, (error) => {
-      console.error("Failed to load general settings:", error);
+      console.warn("Failed to load general settings notice:", error?.message || error);
     });
 
     // 3. Real-time products listener
@@ -586,7 +590,11 @@ export default function App() {
         localStorage.setItem('mb_products_cache', JSON.stringify(list));
       } catch {}
     }, (error) => {
-      console.error("Real-time products listener failed:", error);
+      console.warn("Real-time products listener notice:", error?.message || error);
+      try {
+        const cached = localStorage.getItem('mb_products_cache');
+        if (cached) setProducts(JSON.parse(cached));
+      } catch {}
     });
 
     // 3b. Real-time categories listener
@@ -605,13 +613,13 @@ export default function App() {
           try {
             await setDoc(doc(db, "categories", cat.id), { id: cat.id, name: cat.name });
           } catch (err) {
-            console.error("Failed to populate initial category:", cat.id, err);
+            console.warn("Failed to populate initial category:", cat.id, err);
           }
         });
         setCategories(defaultCategories);
       }
     }, (error) => {
-      console.error("Real-time categories listener failed:", error);
+      console.warn("Real-time categories listener notice:", error?.message || error);
     });
 
     // 3c. Real-time banners listener
@@ -623,7 +631,7 @@ export default function App() {
         setBanners(PROMO_BANNERS);
       }
     }, (error) => {
-      console.error("Real-time banners listener failed:", error);
+      console.warn("Real-time banners listener notice:", error?.message || error);
       setBanners(PROMO_BANNERS);
     });
 
@@ -694,7 +702,7 @@ export default function App() {
         setIsUserBlocked(!!data.blocked);
       }
     }, (error) => {
-      console.error("User profile subscription failed:", error);
+      console.warn("User profile subscription notice:", error?.message || error);
     });
     
     return () => unsubscribeUser();
@@ -724,7 +732,7 @@ export default function App() {
       list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
       setDepositRequests(list);
     }, (error) => {
-      console.error("Failed to load user deposit requests:", error);
+      console.warn("Failed to load user deposit requests notice:", error?.message || error);
     });
     return () => unsubscribeDeposits();
   }, [currentUser?.email]);
