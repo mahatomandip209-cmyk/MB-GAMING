@@ -325,10 +325,23 @@ export default function App() {
   // Wallet top-up state
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
   const [customWalletAdd, setCustomWalletAdd] = useState<string>('');
-  const [paymentSettings, setPaymentSettings] = useState({
-    qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
-    esewaNumber: '9841234567',
-    minDeposit: 100,
+  const [paymentSettings, setPaymentSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('mb_payment_settings') || localStorage.getItem('mb_admin_payments');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          qrImageUrl: parsed.qrImageUrl || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+          esewaNumber: parsed.esewaNumber || parsed.esewa?.number || '9841234567',
+          minDeposit: parsed.minDeposit !== undefined ? Number(parsed.minDeposit) : 100,
+        };
+      }
+    } catch {}
+    return {
+      qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+      esewaNumber: '9841234567',
+      minDeposit: 100,
+    };
   });
   const [depositRequests, setDepositRequests] = useState<any[]>([]);
   const [selectedDepositScreenshot, setSelectedDepositScreenshot] = useState<string | null>(null);
@@ -563,11 +576,15 @@ export default function App() {
     const unsubscribePayments = onSnapshot(doc(db, "settings", "payments"), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setPaymentSettings({
+        const updated = {
           qrImageUrl: data.qrImageUrl || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
           esewaNumber: data.esewaNumber || data.esewa?.number || '9841234567',
           minDeposit: data.minDeposit !== undefined ? Number(data.minDeposit) : 100,
-        });
+        };
+        setPaymentSettings(updated);
+        try {
+          localStorage.setItem('mb_payment_settings', JSON.stringify(updated));
+        } catch {}
       }
     }, (error) => {
       console.warn("Failed to load payments settings notice:", error?.message || error);

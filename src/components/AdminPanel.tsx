@@ -581,12 +581,18 @@ export default function AdminPanel({
   const [userList, setUserList] = useState<any[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [requirementsText, setRequirementsText] = useState('1. Players must provide a correct Game UID.\n2. Payment must be uploaded via eSewa QR code.\n3. Make sure to upload the valid screenshot for instant verification.');
-  const [paymentSettings, setPaymentSettings] = useState<any>({
-    qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
-    esewaNumber: '9841234567',
-    minDeposit: 100,
-    esewa: { number: '9841234567', name: 'Mandip Mahato' },
-    khalti: { number: '9801234567', name: 'BNY SHOP Digital Center' }
+  const [paymentSettings, setPaymentSettings] = useState<any>(() => {
+    try {
+      const cached = localStorage.getItem('mb_admin_payments') || localStorage.getItem('mb_payment_settings');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      qrImageUrl: 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+      esewaNumber: '9841234567',
+      minDeposit: 100,
+      esewa: { number: '9841234567', name: 'Mandip Mahato' },
+      khalti: { number: '9801234567', name: 'BNY SHOP Digital Center' }
+    };
   });
   const [banners, setBanners] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -1058,7 +1064,26 @@ export default function AdminPanel({
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    // 1b. Set up real-time listener for Team Members
+    // 1c. Real-time payments settings listener
+    const unsubscribePayments = onSnapshot(doc(db, 'settings', 'payments'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const updated = {
+          qrImageUrl: data.qrImageUrl || 'https://i.ibb.co/DhS7g1V/FB-IMG-1780450529119.jpg',
+          esewaNumber: data.esewaNumber || data.esewa?.number || '9841234567',
+          minDeposit: data.minDeposit !== undefined ? Number(data.minDeposit) : 100,
+          esewa: data.esewa || { number: data.esewaNumber || '9841234567', name: 'Mandip Mahato' },
+          khalti: data.khalti || { number: '9801234567', name: 'BNY SHOP Digital Center' }
+        };
+        setPaymentSettings(updated);
+        try {
+          localStorage.setItem('mb_admin_payments', JSON.stringify(updated));
+          localStorage.setItem('mb_payment_settings', JSON.stringify(updated));
+        } catch {}
+      }
+    }, (error) => {
+      console.warn("Real-time admin payments listener notice:", error?.message || error);
+    });
     const unsubscribeTeam = onSnapshot(collection(db, 'team_members'), (snapshot) => {
       const list: any[] = [];
       snapshot.forEach((doc) => {
@@ -1283,6 +1308,7 @@ export default function AdminPanel({
     return () => {
       unsubscribeUsers();
       unsubscribeTeam();
+      unsubscribePayments();
       window.removeEventListener('mb_user_registered', handleUserRegisteredEvent);
     };
   }, [isLoggedIn]);
@@ -3368,16 +3394,44 @@ export default function AdminPanel({
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.size > 2 * 1024 * 1024) {
-                                    triggerToast('Image is too large! Choose an image smaller than 2MB.');
-                                    return;
-                                  }
+                                  const img = new Image();
                                   const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    if (typeof reader.result === 'string') {
-                                      setPaymentSettings({ ...paymentSettings, qrImageUrl: reader.result });
-                                      triggerToast('eSewa QR Code uploaded successfully!');
-                                    }
+                                  reader.onload = (evt) => {
+                                    img.onload = () => {
+                                      const canvas = document.createElement('canvas');
+                                      const MAX_WIDTH = 600;
+                                      const MAX_HEIGHT = 600;
+                                      let width = img.width;
+                                      let height = img.height;
+
+                                      if (width > height) {
+                                        if (width > MAX_WIDTH) {
+                                          height = Math.round((height * MAX_WIDTH) / width);
+                                          width = MAX_WIDTH;
+                                        }
+                                      } else {
+                                        if (height > MAX_HEIGHT) {
+                                          width = Math.round((width * MAX_HEIGHT) / height);
+                                          height = MAX_HEIGHT;
+                                        }
+                                      }
+
+                                      canvas.width = width;
+                                      canvas.height = height;
+                                      const ctx = canvas.getContext('2d');
+                                      if (ctx) {
+                                        ctx.drawImage(img, 0, 0, width, height);
+                                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                                        const updated = { ...paymentSettings, qrImageUrl: compressedBase64 };
+                                        setPaymentSettings(updated);
+                                        try {
+                                          localStorage.setItem('mb_admin_payments', JSON.stringify(updated));
+                                          localStorage.setItem('mb_payment_settings', JSON.stringify(updated));
+                                        } catch {}
+                                        triggerToast('eSewa QR Code image selected & optimized!');
+                                      }
+                                    };
+                                    img.src = evt.target?.result as string;
                                   };
                                   reader.readAsDataURL(file);
                                 }
@@ -3439,10 +3493,19 @@ export default function AdminPanel({
                     <button
                       onClick={async () => {
                         try {
-                          await setDoc(doc(db, 'settings', 'payments'), paymentSettings);
-                          triggerToast('Payment Settings successfully updated in Firestore!');
-                        } catch (err) {
-                          triggerToast('Payment Settings updated successfully!');
+                          const payload = {
+                            ...paymentSettings,
+                            updatedAt: new Date().toISOString()
+                          };
+                          await setDoc(doc(db, 'settings', 'payments'), payload, { merge: true });
+                          try {
+                            localStorage.setItem('mb_admin_payments', JSON.stringify(payload));
+                            localStorage.setItem('mb_payment_settings', JSON.stringify(payload));
+                          } catch {}
+                          triggerToast('Payment Settings & QR Code saved across all devices!');
+                        } catch (err: any) {
+                          console.error("Failed to save payment settings:", err);
+                          triggerToast('Saved locally: ' + (err?.message || 'Updated'));
                         }
                       }}
                       className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black uppercase tracking-widest py-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
