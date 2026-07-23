@@ -52,7 +52,7 @@ import {
   Lock
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
-import { PROMO_BANNERS } from './data';
+import { PROMO_BANNERS, DEFAULT_PRODUCTS } from './data';
 import AdminPanel from './components/AdminPanel';
 import { LoginRegister } from './components/LoginRegister';
 import { db, auth, signOut, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
@@ -124,13 +124,12 @@ export default function App() {
       const saved = localStorage.getItem('mb_products_cache');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          // Filter out old sample products if any remained in cache
-          return parsed.filter((p: any) => p && !['prod-ff', 'prod-pubg', 'prod-mlbb', 'prod-tg', 'prod-unipin', 'prod-garena-shell', 'prod-design'].includes(p.id));
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
       }
     } catch {}
-    return [];
+    return DEFAULT_PRODUCTS;
   });
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => [
@@ -606,6 +605,16 @@ export default function App() {
 
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
+      if (snapshot.empty) {
+        DEFAULT_PRODUCTS.forEach(p => {
+          setDoc(doc(db, "products", p.id), p).catch(() => {});
+        });
+        setProducts(DEFAULT_PRODUCTS);
+        try {
+          localStorage.setItem('mb_products_cache', JSON.stringify(DEFAULT_PRODUCTS));
+        } catch {}
+        return;
+      }
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       setProducts(list);
       try {
@@ -617,13 +626,13 @@ export default function App() {
         const cached = localStorage.getItem('mb_products_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setProducts(parsed);
             return;
           }
         }
       } catch {}
-      setProducts([]);
+      setProducts(DEFAULT_PRODUCTS);
     });
 
     // 3b. Real-time categories listener
@@ -1260,7 +1269,23 @@ export default function App() {
     setShowSuccessOverlay(true); // Open success overlay
     triggerToast('Purchase request submitted for administrator review!');
 
-    // Post to server for multi-device admin sync
+    // 1. Save order directly to Firestore for real-time multi-device sync
+    try {
+      setDoc(doc(db, "transactions", newTx.id), newTx).catch(() => {});
+      setDoc(doc(db, "orders", newTx.id), newTx).catch(() => {});
+      if (currentUser?.email) {
+        setDoc(doc(db, "users", currentUser.email.toLowerCase()), {
+          balance: newBalance,
+          walletBalance: newBalance,
+          points: newBalance,
+          loyaltyPoints: newBalance
+        }, { merge: true }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn("Firestore order sync notice:", e);
+    }
+
+    // 2. Post to server for secondary sync
     safeFetchJson(getBackendUrl('/api/transactions'), {
       method: 'POST',
       headers: {

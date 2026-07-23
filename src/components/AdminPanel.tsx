@@ -1084,6 +1084,17 @@ export default function AdminPanel({
     }, (error) => {
       console.warn("Real-time admin payments listener notice:", error?.message || error);
     });
+
+    // 1d. Real-time transactions / orders listener
+    const unsubscribeTransactions = onSnapshot(collection(db, 'transactions'), (snapshot) => {
+      if (!snapshot.empty) {
+        const list = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })) as any[];
+        list.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+        setTransactions(list);
+      }
+    }, (error) => {
+      console.warn("Real-time admin transactions listener notice:", error?.message || error);
+    });
     const unsubscribeTeam = onSnapshot(collection(db, 'team_members'), (snapshot) => {
       const list: any[] = [];
       snapshot.forEach((doc) => {
@@ -1309,6 +1320,7 @@ export default function AdminPanel({
       unsubscribeUsers();
       unsubscribeTeam();
       unsubscribePayments();
+      unsubscribeTransactions();
       window.removeEventListener('mb_user_registered', handleUserRegisteredEvent);
     };
   }, [isLoggedIn]);
@@ -1502,14 +1514,12 @@ export default function AdminPanel({
       console.warn("Failed to sync status update with server, falling back to direct Firestore update:", err);
     }
 
-    // 1b. Direct Firestore fallback for status
-    if (!apiSuccess) {
-      try {
-        await setDoc(doc(db, "transactions", txId), { status }, { merge: true });
-        console.log("Direct Firestore transaction status sync successful!");
-      } catch (fsErr) {
-        console.error("Direct Firestore status update failed too:", fsErr);
-      }
+    // Direct Firestore update for status
+    try {
+      await setDoc(doc(db, "transactions", txId), { status }, { merge: true });
+      await setDoc(doc(db, "orders", txId), { status }, { merge: true });
+    } catch (fsErr) {
+      console.error("Direct Firestore status update failed:", fsErr);
     }
 
     try {
