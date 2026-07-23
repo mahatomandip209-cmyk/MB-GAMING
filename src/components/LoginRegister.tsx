@@ -136,6 +136,32 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
 
         triggerToast(emailLower === 'bnyadminpanel@hotmail.com' ? "Welcome back, Administrator!" : "Welcome back! Logged in successfully.");
         localStorage.setItem('mb_current_user', JSON.stringify(userProfile));
+        
+        // Sync user profile to admin users cache
+        try {
+          const cachedUsersStr = localStorage.getItem('mb_admin_users');
+          let usersList: any[] = cachedUsersStr ? JSON.parse(cachedUsersStr) : [];
+          if (!Array.isArray(usersList)) usersList = [];
+          const idx = usersList.findIndex(u => u.email?.toLowerCase() === emailLower);
+          if (idx >= 0) {
+            usersList[idx] = { ...usersList[idx], ...userProfile };
+          } else {
+            usersList.push({
+              id: 'usr-' + Date.now(),
+              name: userProfile.name || emailLower.split('@')[0],
+              email: emailLower,
+              phone: userProfile.whatsapp || userProfile.phone || '',
+              balance: userProfile.walletBalance ?? 0,
+              walletBalance: userProfile.walletBalance ?? 0,
+              points: userProfile.loyaltyPoints ?? 0,
+              loyaltyPoints: userProfile.loyaltyPoints ?? 0,
+              registered: userProfile.registered || new Date().toISOString().split('T')[0]
+            });
+          }
+          localStorage.setItem('mb_admin_users', JSON.stringify(usersList));
+          window.dispatchEvent(new CustomEvent('mb_user_registered', { detail: userProfile }));
+        } catch (e) {}
+
         onSuccess(userProfile as any);
       } else {
         // Firebase Auth: Register
@@ -155,6 +181,31 @@ export const LoginRegister: React.FC<LoginRegisterProps> = ({ onSuccess, getBack
         await setDoc(userDocRef, newUserProfile).catch((err) => {
           console.warn("Firestore profile save notice:", err);
         });
+
+        // Sync new user profile to local admin users cache immediately
+        try {
+          const cachedUsersStr = localStorage.getItem('mb_admin_users');
+          let usersList: any[] = cachedUsersStr ? JSON.parse(cachedUsersStr) : [];
+          if (!Array.isArray(usersList)) usersList = [];
+          const idx = usersList.findIndex(u => u.email?.toLowerCase() === emailLower);
+          if (idx >= 0) {
+            usersList[idx] = { ...usersList[idx], ...newUserProfile };
+          } else {
+            usersList.push({
+              id: 'usr-' + Date.now(),
+              name: newUserProfile.name,
+              email: emailLower,
+              phone: newUserProfile.whatsapp,
+              balance: 0,
+              walletBalance: 0,
+              points: 0,
+              loyaltyPoints: 0,
+              registered: newUserProfile.registered
+            });
+          }
+          localStorage.setItem('mb_admin_users', JSON.stringify(usersList));
+          window.dispatchEvent(new CustomEvent('mb_user_registered', { detail: newUserProfile }));
+        } catch (e) {}
 
         // Track a notification on server/db as well
         try {

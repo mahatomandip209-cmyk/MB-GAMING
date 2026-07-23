@@ -52,7 +52,7 @@ import {
   Lock
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
-import { ALL_PRODUCTS, PROMO_BANNERS } from './data';
+import { ALL_PRODUCTS, DEFAULT_PRODUCTS, PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
 import { LoginRegister } from './components/LoginRegister';
 import { db, auth, signOut, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
@@ -122,10 +122,12 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const saved = localStorage.getItem('mb_products_cache');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_PRODUCTS;
   });
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => [
@@ -585,16 +587,27 @@ export default function App() {
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      setProducts(list);
-      try {
-        localStorage.setItem('mb_products_cache', JSON.stringify(list));
-      } catch {}
+      if (list && list.length > 0) {
+        setProducts(list);
+        try {
+          localStorage.setItem('mb_products_cache', JSON.stringify(list));
+        } catch {}
+      } else {
+        setProducts(DEFAULT_PRODUCTS);
+      }
     }, (error) => {
       console.warn("Real-time products listener notice:", error?.message || error);
       try {
         const cached = localStorage.getItem('mb_products_cache');
-        if (cached) setProducts(JSON.parse(cached));
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+            return;
+          }
+        }
       } catch {}
+      setProducts(DEFAULT_PRODUCTS);
     });
 
     // 3b. Real-time categories listener
@@ -725,16 +738,60 @@ export default function App() {
       setDepositRequests([]);
       return;
     }
+    const emailLower = currentUser.email?.toLowerCase();
+
+    const getLocalDeposits = () => {
+      try {
+        const cached = localStorage.getItem('mb_admin_deposits');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            return parsed.filter((dep: any) => dep.userEmail?.toLowerCase() === emailLower);
+          }
+        }
+      } catch {}
+      return [];
+    };
+
+    setDepositRequests(getLocalDeposits());
+
     const unsubscribeDeposits = onSnapshot(collection(db, "deposits"), (snapshot) => {
-      const list = snapshot.docs
+      const fsList = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((dep: any) => dep.userEmail?.toLowerCase() === currentUser.email.toLowerCase());
-      list.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
-      setDepositRequests(list);
+        .filter((dep: any) => dep.userEmail?.toLowerCase() === emailLower);
+      
+      const localList = getLocalDeposits();
+      const depMap = new Map();
+      [...localList, ...fsList].forEach((d: any) => {
+        if (d && d.id) depMap.set(d.id, d);
+      });
+      const combined = Array.from(depMap.values());
+      combined.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
+      setDepositRequests(combined);
     }, (error) => {
       console.warn("Failed to load user deposit requests notice:", error?.message || error);
+      setDepositRequests(getLocalDeposits());
     });
-    return () => unsubscribeDeposits();
+
+    const handleUpdate = () => {
+      setDepositRequests(prev => {
+        const localList = getLocalDeposits();
+        const depMap = new Map();
+        [...prev, ...localList].forEach((d: any) => {
+          if (d && d.id) depMap.set(d.id, d);
+        });
+        const combined = Array.from(depMap.values());
+        combined.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
+        return combined;
+      });
+    };
+
+    window.addEventListener('mb_deposit_updated', handleUpdate);
+
+    return () => {
+      unsubscribeDeposits();
+      window.removeEventListener('mb_deposit_updated', handleUpdate);
+    };
   }, [currentUser?.email]);
 
   // Synchronize Push Subscription with Backend
@@ -1251,7 +1308,27 @@ export default function App() {
         timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
       };
 
-      await setDoc(doc(db, 'deposits', depId), newDeposit);
+      // 1. Try Firestore save safely
+      await setDoc(doc(db, 'deposits', depId), newDeposit).catch((err) => {
+        console.warn("Firestore deposit save notice:", err);
+      });
+
+      // 2. Always store in local admin deposits cache
+      try {
+        const cachedStr = localStorage.getItem('mb_admin_deposits');
+        let localDeps: any[] = cachedStr ? JSON.parse(cachedStr) : [];
+        if (!Array.isArray(localDeps)) localDeps = [];
+        // Prevent duplicate
+        if (!localDeps.some(d => d.id === depId)) {
+          localDeps.unshift(newDeposit);
+        }
+        localStorage.setItem('mb_admin_deposits', JSON.stringify(localDeps));
+        window.dispatchEvent(new Event('mb_deposit_updated'));
+      } catch (e) {}
+
+      // 3. Update local user deposit requests state
+      setDepositRequests(prev => [newDeposit, ...prev.filter(d => d.id !== depId)]);
+
       setCustomWalletAdd('');
       setDepositScreenshotBase64('');
       triggerToast('🎉 Deposit request submitted! Pending verification.');

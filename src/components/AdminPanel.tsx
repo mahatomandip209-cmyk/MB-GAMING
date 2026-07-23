@@ -798,81 +798,189 @@ export default function AdminPanel({
     }
   };
 
-  // Deposits real-time sync
+  // Deposits real-time sync with local cache & custom events
   useEffect(() => {
     if (!isLoggedIn) return;
+
+    const getCachedDeposits = () => {
+      try {
+        const cached = localStorage.getItem('mb_admin_deposits');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+      return [];
+    };
+
+    // Initialize with local cache
+    setDeposits(getCachedDeposits());
+
     const q = query(collection(db, "deposits"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: any[] = [];
+      const fsList: any[] = [];
       snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
+        fsList.push({ id: docSnap.id, ...docSnap.data() });
       });
-      list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-      setDeposits(list);
+      const cached = getCachedDeposits();
+      const depMap = new Map();
+      [...cached, ...fsList].forEach((d: any) => {
+        if (d && d.id) depMap.set(d.id, d);
+      });
+      const combined = Array.from(depMap.values());
+      combined.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+      setDeposits(combined);
+      try {
+        localStorage.setItem('mb_admin_deposits', JSON.stringify(combined));
+      } catch {}
     }, (error) => {
       console.warn("Deposits snapshot notice in admin panel:", error?.message || error);
+      setDeposits(getCachedDeposits());
     });
-    return () => unsubscribe();
+
+    const handleDepositUpdate = () => {
+      const cached = getCachedDeposits();
+      setDeposits(prev => {
+        const depMap = new Map();
+        [...prev, ...cached].forEach((d: any) => {
+          if (d && d.id) depMap.set(d.id, d);
+        });
+        const combined = Array.from(depMap.values());
+        combined.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+        return combined;
+      });
+    };
+
+    window.addEventListener('mb_deposit_updated', handleDepositUpdate);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('mb_deposit_updated', handleDepositUpdate);
+    };
   }, [isLoggedIn]);
 
   const handleApproveDeposit = async (dep: any) => {
+    const updatedDep = { ...dep, status: 'COMPLETED' };
+
+    // 1. Update deposits state locally immediately
+    setDeposits(prev => prev.map(d => d.id === dep.id ? updatedDep : d));
+
+    // 2. Persist in local storage
     try {
-      // 1. Update deposit status to COMPLETED
-      await setDoc(doc(db, 'deposits', dep.id), { ...dep, status: 'COMPLETED' }, { merge: true });
-      
-      // 2. Load latest user document and credit funds & points
-      const userRef = doc(db, 'users', dep.userEmail);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        const currentBalance = Number(userData.walletBalance ?? userData.balance ?? 0);
-        const newBalance = currentBalance + Number(dep.amount);
-        const currentPoints = Number(userData.loyaltyPoints ?? userData.points ?? 0);
-        const newPoints = currentPoints + Number(dep.amount); // credit points equal to deposit amount
-
-        await setDoc(userRef, { 
-          ...userData, 
-          balance: newBalance, 
-          walletBalance: newBalance,
-          points: newPoints,
-          loyaltyPoints: newPoints
-        }, { merge: true });
-      } else {
-        const listUser = userList.find(u => u.email === dep.userEmail);
-        const currentBalance = Number(listUser?.walletBalance ?? listUser?.balance ?? 0);
-        const newBalance = currentBalance + Number(dep.amount);
-        const currentPoints = Number(listUser?.loyaltyPoints ?? listUser?.points ?? 0);
-        const newPoints = currentPoints + Number(dep.amount);
-
-        const userObj = {
-          id: listUser?.id || 'usr-' + Date.now(),
-          name: listUser?.name || dep.userEmail.split('@')[0],
-          email: dep.userEmail,
-          balance: newBalance,
-          walletBalance: newBalance,
-          points: newPoints,
-          loyaltyPoints: newPoints,
-          phone: listUser?.phone || '98XXXXXXXX',
-          blocked: listUser?.blocked || false,
-          registered: listUser?.registered || new Date().toISOString().split('T')[0]
-        };
-        await setDoc(userRef, userObj);
+      const cached = localStorage.getItem('mb_admin_deposits');
+      let list: any[] = cached ? JSON.parse(cached) : [];
+      if (Array.isArray(list)) {
+        list = list.map(d => d.id === dep.id ? updatedDep : d);
+        localStorage.setItem('mb_admin_deposits', JSON.stringify(list));
       }
-      triggerToast(`🎉 Deposit of Rs. ${dep.amount} approved & credited with +${dep.amount} Points!`);
-    } catch (err) {
-      console.error("Failed to approve deposit:", err);
-      triggerToast("Error approving deposit.");
+    } catch {}
+
+    // 3. Update user list & local user balance immediately
+    const userEmailLower = dep.userEmail?.toLowerCase();
+    let updatedBalance = Number(dep.amount);
+    let updatedPoints = Number(dep.amount);
+
+    setUserList(prev => prev.map(u => {
+      if (u.email?.toLowerCase() === userEmailLower) {
+        const curBal = Number(u.walletBalance ?? u.balance ?? 0);
+        const curPts = Number(u.loyaltyPoints ?? u.points ?? 0);
+        updatedBalance = curBal + Number(dep.amount);
+        updatedPoints = curPts + Number(dep.amount);
+        return {
+          ...u,
+          balance: updatedBalance,
+          walletBalance: updatedBalance,
+          points: updatedPoints,
+          loyaltyPoints: updatedPoints
+        };
+      }
+      return u;
+    }));
+
+    // Persist user balance in localStorage
+    try {
+      const cachedUsersStr = localStorage.getItem('mb_admin_users');
+      let usersList: any[] = cachedUsersStr ? JSON.parse(cachedUsersStr) : [];
+      if (Array.isArray(usersList)) {
+        usersList = usersList.map(u => {
+          if (u.email?.toLowerCase() === userEmailLower) {
+            const curBal = Number(u.walletBalance ?? u.balance ?? 0);
+            const curPts = Number(u.loyaltyPoints ?? u.points ?? 0);
+            return {
+              ...u,
+              balance: curBal + Number(dep.amount),
+              walletBalance: curBal + Number(dep.amount),
+              points: curPts + Number(dep.amount),
+              loyaltyPoints: curPts + Number(dep.amount)
+            };
+          }
+          return u;
+        });
+        localStorage.setItem('mb_admin_users', JSON.stringify(usersList));
+      }
+
+      const currUserStr = localStorage.getItem('mb_current_user');
+      if (currUserStr) {
+        const currUser = JSON.parse(currUserStr);
+        if (currUser.email?.toLowerCase() === userEmailLower) {
+          currUser.walletBalance = (Number(currUser.walletBalance) || 0) + Number(dep.amount);
+          currUser.loyaltyPoints = (Number(currUser.loyaltyPoints) || 0) + Number(dep.amount);
+          localStorage.setItem('mb_current_user', JSON.stringify(currUser));
+        }
+      }
+    } catch {}
+
+    // 4. Background Firestore sync
+    try {
+      await setDoc(doc(db, 'deposits', dep.id), updatedDep, { merge: true }).catch(() => {});
+      const userRef = doc(db, 'users', userEmailLower);
+      const userSnap = await getDoc(userRef).catch(() => null);
+      if (userSnap?.exists()) {
+        const userData = userSnap.data();
+        const curBal = Number(userData.walletBalance ?? userData.balance ?? 0);
+        const curPts = Number(userData.loyaltyPoints ?? userData.points ?? 0);
+        await setDoc(userRef, {
+          ...userData,
+          balance: curBal + Number(dep.amount),
+          walletBalance: curBal + Number(dep.amount),
+          points: curPts + Number(dep.amount),
+          loyaltyPoints: curPts + Number(dep.amount)
+        }, { merge: true }).catch(() => {});
+      } else {
+        await setDoc(userRef, {
+          email: userEmailLower,
+          balance: updatedBalance,
+          walletBalance: updatedBalance,
+          points: updatedPoints,
+          loyaltyPoints: updatedPoints
+        }, { merge: true }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn("Deposit approval sync notice:", e);
     }
+
+    triggerToast(`🎉 Deposit of Rs. ${dep.amount} approved & credited with +${dep.amount} Points!`);
   };
 
   const handleRejectDeposit = async (dep: any) => {
+    const updatedDep = { ...dep, status: 'REJECTED' };
+
+    setDeposits(prev => prev.map(d => d.id === dep.id ? updatedDep : d));
+
     try {
-      await setDoc(doc(db, 'deposits', dep.id), { ...dep, status: 'REJECTED' }, { merge: true });
-      triggerToast(`Deposit of Rs. ${dep.amount} rejected.`);
-    } catch (err) {
-      console.error("Failed to reject deposit:", err);
-      triggerToast("Error rejecting deposit.");
-    }
+      const cached = localStorage.getItem('mb_admin_deposits');
+      let list: any[] = cached ? JSON.parse(cached) : [];
+      if (Array.isArray(list)) {
+        list = list.map(d => d.id === dep.id ? updatedDep : d);
+        localStorage.setItem('mb_admin_deposits', JSON.stringify(list));
+      }
+    } catch {}
+
+    await setDoc(doc(db, 'deposits', dep.id), updatedDep, { merge: true }).catch((err) => {
+      console.warn("Firestore deposit reject notice:", err);
+    });
+
+    triggerToast(`Deposit of Rs. ${dep.amount} rejected.`);
   };
 
   useEffect(() => {
@@ -967,43 +1075,96 @@ export default function AdminPanel({
       console.warn("Team members snapshot notice:", error?.message || error);
     });
 
-    // 1. Set up real-time listener for Users collection
-    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      if (!snapshot.empty) {
-        const fetchedUsers = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const bal = data.walletBalance ?? data.balance ?? 0;
-          const pts = data.loyaltyPoints ?? data.points ?? 0;
-          return {
-            id: doc.id,
-            ...data,
-            balance: bal,
-            walletBalance: bal,
-            points: pts,
-            loyaltyPoints: pts
-          };
-        });
-        setUserList(fetchedUsers);
-      } else {
-        const initialUsers = [
-          { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, walletBalance: 5000, points: 1500, loyaltyPoints: 1500, registered: '2026-06-01' },
-          { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, walletBalance: 150, points: 230, loyaltyPoints: 230, registered: '2026-06-10' },
-          { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, walletBalance: 1200, points: 450, loyaltyPoints: 450, registered: '2026-06-14' },
-          { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, walletBalance: 0, points: 80, loyaltyPoints: 80, registered: '2026-06-18' },
-          { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, walletBalance: 4500, points: 900, loyaltyPoints: 900, registered: '2026-06-22' }
-        ];
-        initialUsers.forEach(async (u) => {
-          await setDoc(doc(db, 'users', u.email), u);
-        });
-        setUserList(initialUsers);
-      }
-    }, (error) => {
-      console.warn("Users real-time snapshot notice:", error?.message || error);
+    // 1. Set up real-time listener for Users collection with local cache fallback & custom event listener
+    const getCachedUsers = () => {
       try {
         const cached = localStorage.getItem('mb_admin_users');
-        if (cached) setUserList(JSON.parse(cached));
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
       } catch {}
+      return [
+        { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, walletBalance: 5000, points: 1500, loyaltyPoints: 1500, registered: '2026-06-01' },
+        { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, walletBalance: 150, points: 230, loyaltyPoints: 230, registered: '2026-06-10' },
+        { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, walletBalance: 1200, points: 450, loyaltyPoints: 450, registered: '2026-06-14' },
+        { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, walletBalance: 0, points: 80, loyaltyPoints: 80, registered: '2026-06-18' },
+        { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, walletBalance: 4500, points: 900, loyaltyPoints: 900, registered: '2026-06-22' }
+      ];
+    };
+
+    setUserList(getCachedUsers());
+
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const fsUsers = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const bal = data.walletBalance ?? data.balance ?? 0;
+        const pts = data.loyaltyPoints ?? data.points ?? 0;
+        return {
+          id: doc.id,
+          ...data,
+          balance: bal,
+          walletBalance: bal,
+          points: pts,
+          loyaltyPoints: pts
+        };
+      });
+
+      const cachedUsers = getCachedUsers();
+      const userMap = new Map();
+      [...cachedUsers, ...fsUsers].forEach((u: any) => {
+        if (u && (u.email || u.id)) {
+          const key = (u.email || u.id).toLowerCase();
+          userMap.set(key, { ...userMap.get(key), ...u });
+        }
+      });
+      const combined = Array.from(userMap.values());
+      setUserList(combined);
+      try {
+        localStorage.setItem('mb_admin_users', JSON.stringify(combined));
+      } catch {}
+    }, (error) => {
+      console.warn("Users real-time snapshot notice:", error?.message || error);
+      setUserList(getCachedUsers());
     });
+
+    const handleUserRegisteredEvent = (evt: any) => {
+      const cachedUsers = getCachedUsers();
+      const detail = evt?.detail;
+      setUserList(prev => {
+        const userMap = new Map();
+        [...prev, ...cachedUsers].forEach((u: any) => {
+          if (u && (u.email || u.id)) {
+            const key = (u.email || u.id).toLowerCase();
+            userMap.set(key, u);
+          }
+        });
+        if (detail && detail.email) {
+          const key = detail.email.toLowerCase();
+          const existing = userMap.get(key) || {};
+          userMap.set(key, {
+            id: 'usr-' + Date.now(),
+            name: detail.name || detail.email.split('@')[0],
+            email: detail.email,
+            phone: detail.whatsapp || detail.phone || '',
+            balance: detail.walletBalance ?? 0,
+            walletBalance: detail.walletBalance ?? 0,
+            points: detail.loyaltyPoints ?? 0,
+            loyaltyPoints: detail.loyaltyPoints ?? 0,
+            registered: detail.registered || new Date().toISOString().split('T')[0],
+            ...existing,
+            ...detail
+          });
+        }
+        const combined = Array.from(userMap.values());
+        try {
+          localStorage.setItem('mb_admin_users', JSON.stringify(combined));
+        } catch {}
+        return combined;
+      });
+    };
+
+    window.addEventListener('mb_user_registered', handleUserRegisteredEvent);
 
     const loadAllFirestoreData = async () => {
       try {
@@ -1149,6 +1310,7 @@ export default function AdminPanel({
     return () => {
       unsubscribeUsers();
       unsubscribeTeam();
+      window.removeEventListener('mb_user_registered', handleUserRegisteredEvent);
     };
   }, [isLoggedIn]);
 
