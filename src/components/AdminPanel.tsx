@@ -822,16 +822,10 @@ export default function AdminPanel({
       snapshot.forEach((docSnap) => {
         fsList.push({ id: docSnap.id, ...docSnap.data() });
       });
-      const cached = getCachedDeposits();
-      const depMap = new Map();
-      [...cached, ...fsList].forEach((d: any) => {
-        if (d && d.id) depMap.set(d.id, d);
-      });
-      const combined = Array.from(depMap.values());
-      combined.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
-      setDeposits(combined);
+      fsList.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+      setDeposits(fsList);
       try {
-        localStorage.setItem('mb_admin_deposits', JSON.stringify(combined));
+        localStorage.setItem('mb_admin_deposits', JSON.stringify(fsList));
       } catch {}
     }, (error) => {
       console.warn("Deposits snapshot notice in admin panel:", error?.message || error);
@@ -1075,22 +1069,16 @@ export default function AdminPanel({
       console.warn("Team members snapshot notice:", error?.message || error);
     });
 
-    // 1. Set up real-time listener for Users collection with local cache fallback & custom event listener
+    // 1. Set up real-time listener for Users collection with local cache fallback
     const getCachedUsers = () => {
       try {
         const cached = localStorage.getItem('mb_admin_users');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed)) return parsed;
         }
       } catch {}
-      return [
-        { id: 'usr-101', name: 'Mandip Mahato', email: 'mandipmahato717@gmail.com', phone: '9841234567', balance: 5000, walletBalance: 5000, points: 1500, loyaltyPoints: 1500, registered: '2026-06-01' },
-        { id: 'usr-102', name: 'Gamer Nepal Pro', email: 'gamerpro@outlook.com', phone: '9801234567', balance: 150, walletBalance: 150, points: 230, loyaltyPoints: 230, registered: '2026-06-10' },
-        { id: 'usr-103', name: 'Rohan Shrestha', email: 'rohan.shrestha@gmail.com', phone: '9812345678', balance: 1200, walletBalance: 1200, points: 450, loyaltyPoints: 450, registered: '2026-06-14' },
-        { id: 'usr-104', name: 'Sita Devkota', email: 'sita.devkota@yahoo.com', phone: '9842345679', balance: 0, walletBalance: 0, points: 80, loyaltyPoints: 80, registered: '2026-06-18' },
-        { id: 'usr-105', name: 'Aayush Thapa', email: 'aayush.thapa@gmail.com', phone: '9863456780', balance: 4500, walletBalance: 4500, points: 900, loyaltyPoints: 900, registered: '2026-06-22' }
-      ];
+      return [];
     };
 
     setUserList(getCachedUsers());
@@ -1110,18 +1098,9 @@ export default function AdminPanel({
         };
       });
 
-      const cachedUsers = getCachedUsers();
-      const userMap = new Map();
-      [...cachedUsers, ...fsUsers].forEach((u: any) => {
-        if (u && (u.email || u.id)) {
-          const key = (u.email || u.id).toLowerCase();
-          userMap.set(key, { ...userMap.get(key), ...u });
-        }
-      });
-      const combined = Array.from(userMap.values());
-      setUserList(combined);
+      setUserList(fsUsers);
       try {
-        localStorage.setItem('mb_admin_users', JSON.stringify(combined));
+        localStorage.setItem('mb_admin_users', JSON.stringify(fsUsers));
       } catch {}
     }, (error) => {
       console.warn("Users real-time snapshot notice:", error?.message || error);
@@ -1129,20 +1108,15 @@ export default function AdminPanel({
     });
 
     const handleUserRegisteredEvent = (evt: any) => {
-      const cachedUsers = getCachedUsers();
       const detail = evt?.detail;
-      setUserList(prev => {
-        const userMap = new Map();
-        [...prev, ...cachedUsers].forEach((u: any) => {
-          if (u && (u.email || u.id)) {
-            const key = (u.email || u.id).toLowerCase();
-            userMap.set(key, u);
-          }
-        });
-        if (detail && detail.email) {
+      if (detail && detail.email) {
+        setUserList(prev => {
           const key = detail.email.toLowerCase();
-          const existing = userMap.get(key) || {};
-          userMap.set(key, {
+          const exists = prev.some((u: any) => (u.email || u.id || '').toLowerCase() === key);
+          if (exists) {
+            return prev.map((u: any) => (u.email || u.id || '').toLowerCase() === key ? { ...u, ...detail } : u);
+          }
+          const newUser = {
             id: 'usr-' + Date.now(),
             name: detail.name || detail.email.split('@')[0],
             email: detail.email,
@@ -1152,16 +1126,15 @@ export default function AdminPanel({
             points: detail.loyaltyPoints ?? 0,
             loyaltyPoints: detail.loyaltyPoints ?? 0,
             registered: detail.registered || new Date().toISOString().split('T')[0],
-            ...existing,
             ...detail
-          });
-        }
-        const combined = Array.from(userMap.values());
-        try {
-          localStorage.setItem('mb_admin_users', JSON.stringify(combined));
-        } catch {}
-        return combined;
-      });
+          };
+          const updated = [...prev, newUser];
+          try {
+            localStorage.setItem('mb_admin_users', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
     };
 
     window.addEventListener('mb_user_registered', handleUserRegisteredEvent);

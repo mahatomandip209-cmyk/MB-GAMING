@@ -52,7 +52,7 @@ import {
   Lock
 } from 'lucide-react';
 import { Category, Product, Transaction } from './types';
-import { ALL_PRODUCTS, DEFAULT_PRODUCTS, PROMO_BANNERS } from './data';
+import { PROMO_BANNERS } from './data';
 import AdminPanel from './components/AdminPanel';
 import { LoginRegister } from './components/LoginRegister';
 import { db, auth, signOut, collection, getDocs, onSnapshot, doc, setDoc } from './firebase';
@@ -124,10 +124,13 @@ export default function App() {
       const saved = localStorage.getItem('mb_products_cache');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Filter out old sample products if any remained in cache
+          return parsed.filter((p: any) => p && !['prod-ff', 'prod-pubg', 'prod-mlbb', 'prod-tg', 'prod-unipin', 'prod-garena-shell', 'prod-design'].includes(p.id));
+        }
       }
     } catch {}
-    return DEFAULT_PRODUCTS;
+    return [];
   });
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(() => [
@@ -587,27 +590,23 @@ export default function App() {
     // 3. Real-time products listener
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      if (list && list.length > 0) {
-        setProducts(list);
-        try {
-          localStorage.setItem('mb_products_cache', JSON.stringify(list));
-        } catch {}
-      } else {
-        setProducts(DEFAULT_PRODUCTS);
-      }
+      setProducts(list);
+      try {
+        localStorage.setItem('mb_products_cache', JSON.stringify(list));
+      } catch {}
     }, (error) => {
       console.warn("Real-time products listener notice:", error?.message || error);
       try {
         const cached = localStorage.getItem('mb_products_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             setProducts(parsed);
             return;
           }
         }
       } catch {}
-      setProducts(DEFAULT_PRODUCTS);
+      setProducts([]);
     });
 
     // 3b. Real-time categories listener
@@ -760,14 +759,11 @@ export default function App() {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter((dep: any) => dep.userEmail?.toLowerCase() === emailLower);
       
-      const localList = getLocalDeposits();
-      const depMap = new Map();
-      [...localList, ...fsList].forEach((d: any) => {
-        if (d && d.id) depMap.set(d.id, d);
-      });
-      const combined = Array.from(depMap.values());
-      combined.sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
-      setDepositRequests(combined);
+      fsList.sort((a: any, b: any) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+      setDepositRequests(fsList);
+      try {
+        localStorage.setItem('mb_user_deposits_' + emailLower, JSON.stringify(fsList));
+      } catch {}
     }, (error) => {
       console.warn("Failed to load user deposit requests notice:", error?.message || error);
       setDepositRequests(getLocalDeposits());
